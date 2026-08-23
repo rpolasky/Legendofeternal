@@ -1256,7 +1256,7 @@
             flex-direction: column;
             align-items: flex-end;
             justify-content: space-evenly;
-            gap: 6px;
+            gap: 14px;
             padding-top: 10px;
             padding-right: 10px;
         }
@@ -1306,8 +1306,8 @@
         }
 
         .battle-hero .hero-avatar {
-            width: 84px;
-            height: 84px;
+            width: 116px;
+            height: 116px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -1319,6 +1319,18 @@
             transition: filter 0.25s ease, transform 0.25s ease;
             /* Heroes face left toward the monster side */
             transform: scaleX(-1);
+        }
+
+        /* Tap hitbox: real padding (not a negative-margin trick, which would
+           let neighboring heroes' hitboxes overlap through the gap) so taps
+           landing just outside the pixel art - very common on phones -
+           still register on the intended hero. Only .hero-avatar paints a
+           visible sprite, so this doesn't change how the party looks, only
+           how forgiving tapping each hero is. The extra vertical room this
+           needs is accounted for by the larger gap on .party-battle-area
+           below, so adjacent heroes' padded zones never touch. */
+        .battle-hero {
+            padding: 10px;
         }
 
         /* Reused generic stat-bar/fill styles - now rendered inside the
@@ -3263,8 +3275,8 @@
             }
 
             .battle-hero .hero-avatar {
-                width: 92px;
-                height: 92px;
+                width: 122px;
+                height: 122px;
                 font-size: 20px;
             }
 
@@ -3421,8 +3433,8 @@
             }
 
             .battle-hero .hero-avatar {
-                width: 70px;
-                height: 70px;
+                width: 96px;
+                height: 96px;
                 font-size: 14px;
             }
 
@@ -6189,8 +6201,12 @@
         }
 
         canEquip(item) {
-            if (item.type === 'weapon') return true;
-            if (item.type === 'armor') return true;
+            if (item.type === 'weapon' || item.type === 'armor') {
+                if (item.mageOnly && this.heroClass !== 'mage') return false;
+                if (item.warriorOnly && this.heroClass !== 'warrior') return false;
+                if (item.paladinOnly && this.heroClass !== 'paladin') return false;
+                return true;
+            }
             
             if (item.type === 'shield') {
                 if (this.heroClass === 'warrior' || this.heroClass === 'paladin') return true;
@@ -11445,11 +11461,11 @@
                         this.log(`📦 Obtained: ${materialName} x${quantity}`);
                     }
                     materialsFound.push({ name: materialName, quantity: quantity });
-                    if (window.game.state.currentScreen === 'cave') {
-                        const location = window.game.nearLocation;
-                        if (location && location.name === 'Shadow Grove' && materialName === 'Shadow Essence') {
-                            window.game.updateQuestProgress('special_location', 1, null, { location: 'Shadow Grove' });
-                        }
+                    // Use dungeonMap.locationName rather than state.currentScreen, which
+                    // is unreliable during battle (it always reads 'battle' there) - this
+                    // is why the Shadow Grove essence-collection progress never used to count.
+                    if (window.game.dungeonMap && window.game.dungeonMap.locationName === 'Shadow Grove' && materialName === 'Shadow Essence') {
+                        window.game.updateQuestProgress('special_location', 1, null, { location: 'Shadow Grove' });
                     }
                     this.showDropSparkles('#c0c0c0');
                     if (window.game && window.game.checkItemBounties) {
@@ -11457,9 +11473,10 @@
                     }
                 }
             });
-            if (window.game && window.game.state && window.game.state.currentScreen === 'cave') {
-                const location = window.game.nearLocation;
-                if (location && location.name === 'Crystal Caverns') {
+            // Use dungeonMap.locationName rather than state.currentScreen, which is
+            // unreliable during battle (it always reads 'battle' there).
+            if (window.game && window.game.dungeonMap && window.game.dungeonMap.locationName === 'Crystal Caverns') {
+                {
                     this.monsters.forEach(monster => {
                         if (Math.random() < 0.2) {
                             const quantity = 1;
@@ -11634,11 +11651,11 @@
                 this.monsters.forEach(monster => {
                     window.game.updateQuestProgress('monster_kill', 1, monster.name);
                     window.game.trackMonsterKill(monster.name, monster.isBoss);
-                    if (window.game.state.currentScreen === 'cave') {
-                        const location = window.game.nearLocation;
-                        if (location && location.name === 'Shadow Grove') {
-                            window.game.updateQuestProgress('special_location', 1, null, { location: 'Shadow Grove' });
-                        }
+                    // Use dungeonMap.locationName rather than state.currentScreen, which
+                    // is unreliable during battle (it always reads 'battle' there) - this
+                    // is why the Shadow Grove stalker-kill progress never used to count.
+                    if (window.game.dungeonMap && window.game.dungeonMap.locationName === 'Shadow Grove') {
+                        window.game.updateQuestProgress('special_location', 1, null, { location: 'Shadow Grove' });
                     }
                     if (this.lastSpellElement) {
                         window.game.trackElementalKill(this.lastSpellElement);
@@ -11727,6 +11744,9 @@
                     window.game.returnToWorld();
                 }
             }
+            // Autosave after every battle (victory, escape, or defeat) so progress
+            // is never lost to a crash/backgrounding right after a fight.
+            if (window.game && window.game.saveGame) window.game.saveGame(true);
         }
 
         resetAllStatusEffects() {
@@ -13847,6 +13867,15 @@
             this.nearNPC = null;
             this.loopStarted = false;
             this.quests = [];
+            // Persistent record of quest IDs that have ever been turned in,
+            // separate from `this.quests` (which only holds still-active
+            // quests - completing a quest splices it out of that array).
+            // Needed because the story-boss gates (Goblin King, Dread Knight,
+            // Mummy Lord) used to re-check `this.quests` for the prerequisite
+            // intel quest, which meant turning that quest in at the guild -
+            // the normal, expected thing to do - made the gate impossible to
+            // pass, since the quest no longer existed in the active list.
+            this.completedQuestIds = new Set();
             this.activeQuest = null;
             this.questLogVisible = false;
             this.selectedGemIndex = undefined;
@@ -14657,6 +14686,7 @@
                 this.ui.showPopup('Not Complete', 'You haven\'t finished this quest yet!');
                 return;
             }
+            this.completedQuestIds.add(quest.id);
             this.party.gold += quest.reward.gold;
             if (quest.reward.item) {
                 this.grantQuestRewardItem(quest.reward.item, quest.reward.quantity);
@@ -14834,6 +14864,7 @@
                 this.ui.showPopup('Not Complete', 'You haven\'t finished this quest yet!');
                 return;
             }
+            this.completedQuestIds.add(quest.id);
             this.party.gold += quest.reward.gold;
             if (quest.reward.item) {
                 this.grantQuestRewardItem(quest.reward.item, quest.reward.quantity);
@@ -15329,21 +15360,24 @@
             }
             const bossName = this.dungeonMap ? this.dungeonMap.locationName : (this.nearLocation ? this.nearLocation.name : null);
             if (bossName === 'Goblin Keep') {
-                const hasGoblinQuest = this.quests.some(q => q.id === 'brighthollow_goblin_intel' && q.progress >= q.goal);
+                const hasGoblinQuest = this.completedQuestIds.has('brighthollow_goblin_intel') ||
+                    this.quests.some(q => q.id === 'brighthollow_goblin_intel' && q.progress >= q.goal);
                 if (!hasGoblinQuest) {
                     this.ui.showPopup('Warning', 'The Goblin King is too powerful!\nComplete the Goblin Intelligence quest first for a strategic advantage.');
                     return;
                 }
             }
             if (bossName === 'Dark Fortress') {
-                const hasDarkKnightQuest = this.quests.some(q => q.id === 'duskmere_dread_knight_intel' && q.progress >= q.goal);
+                const hasDarkKnightQuest = this.completedQuestIds.has('duskmere_dread_knight_intel') ||
+                    this.quests.some(q => q.id === 'duskmere_dread_knight_intel' && q.progress >= q.goal);
                 if (!hasDarkKnightQuest) {
                     this.ui.showPopup('Warning', 'The Dread Knight is too powerful!\nComplete the Dread Knight Intelligence quest first.');
                     return;
                 }
             }
             if (bossName === 'Sunken Temple') {
-                const hasTempleQuest = this.quests.some(q => q.id === 'sylvaris_elemental_trials' && q.progress >= q.goal);
+                const hasTempleQuest = this.completedQuestIds.has('sylvaris_elemental_trials') ||
+                    this.quests.some(q => q.id === 'sylvaris_elemental_trials' && q.progress >= q.goal);
                 if (!hasTempleQuest) {
                     this.ui.showPopup('Warning', 'The Mummy Lord is too powerful!\nComplete the Elemental Trials quest first.');
                     return;
@@ -15422,6 +15456,8 @@
                     this.state.switchScreen('spring');
                     break;
             }
+            // Autosave whenever a town/dungeon is entered from the world map.
+            this.saveGame(true);
         }
 
         showQuestMenu() {
@@ -16439,21 +16475,24 @@
             if (this.nearLocation) {
                 var bossName = this.nearLocation.name;
                 if (bossName === 'Goblin Keep') {
-                    var hasGoblinQuest = this.quests.some(q => q.id === 'brighthollow_goblin_intel' && q.progress >= q.goal);
+                    var hasGoblinQuest = this.completedQuestIds.has('brighthollow_goblin_intel') ||
+                        this.quests.some(q => q.id === 'brighthollow_goblin_intel' && q.progress >= q.goal);
                     if (!hasGoblinQuest) {
                         this.ui.showPopup('Warning', 'The Goblin King is too powerful!\nComplete the Goblin Intelligence quest first for a strategic advantage.');
                         return;
                     }
                 }
                 if (bossName === 'Dark Fortress') {
-                    var hasDarkKnightQuest = this.quests.some(q => q.id === 'duskmere_dread_knight_intel' && q.progress >= q.goal);
+                    var hasDarkKnightQuest = this.completedQuestIds.has('duskmere_dread_knight_intel') ||
+                        this.quests.some(q => q.id === 'duskmere_dread_knight_intel' && q.progress >= q.goal);
                     if (!hasDarkKnightQuest) {
                         this.ui.showPopup('Warning', 'The Dread Knight is too powerful!\nComplete the Dread Knight Intelligence quest first.');
                         return;
                     }
                 }
                 if (bossName === 'Sunken Temple') {
-                    var hasTempleQuest = this.quests.some(q => q.id === 'sylvaris_elemental_trials' && q.progress >= q.goal);
+                    var hasTempleQuest = this.completedQuestIds.has('sylvaris_elemental_trials') ||
+                        this.quests.some(q => q.id === 'sylvaris_elemental_trials' && q.progress >= q.goal);
                     if (!hasTempleQuest) {
                         this.ui.showPopup('Warning', 'The Mummy Lord is too powerful!\nComplete the Elemental Trials quest first.');
                         return;
@@ -16607,6 +16646,8 @@
             this.audio.playMusic('overworld', getBattleEnvironment('world').scene);
             this.updateGoldDisplays();
             this.state.switchScreen('world');
+            // Autosave whenever a town/dungeon is exited back to the world map.
+            this.saveGame(true);
         }
 
         toggleMenu() {
@@ -16811,9 +16852,9 @@
                 var equipNote = '';
                 if (!canEquip) {
                     if (item.type === 'shield') equipNote = ' (Warrior/Paladin only)';
-                    else if (item.type === 'jewelry' && item.mageOnly) equipNote = ' (Mage only)';
-                    else if (item.type === 'jewelry' && item.warriorOnly) equipNote = ' (Warrior only)';
-                    else if (item.type === 'jewelry' && item.paladinOnly) equipNote = ' (Paladin only)';
+                    else if (item.mageOnly) equipNote = ' (Mage only)';
+                    else if (item.warriorOnly) equipNote = ' (Warrior only)';
+                    else if (item.paladinOnly) equipNote = ' (Paladin only)';
                 }
                 div.innerHTML = '<span>' + item.name + equipNote + ' <span style="color: #88ff88; font-size: 11px; margin-left: 5px;">' + stats2 + '</span></span><span class="item-price">' + (canEquip ? 'Equip' : '🔒') + '</span>';
                 if (canEquip) {
@@ -17297,13 +17338,13 @@
         //                      SAVE/LOAD METHODS
         // =====================================================================
 
-        saveGame() {
+        saveGame(silent = false) {
             if (!this.party || !this.world) {
-                this.ui.showPopup('Save Error', 'No game in progress to save!');
+                if (!silent) this.ui.showPopup('Save Error', 'No game in progress to save!');
                 return;
             }
             if (this.currentSlot === undefined) {
-                this.ui.showPopup('Save Error', 'Please select a save slot first!');
+                if (!silent) this.ui.showPopup('Save Error', 'Please select a save slot first!');
                 return;
             }
             const saveData = {
@@ -17346,6 +17387,7 @@
                     secretLocations: this.world.secretLocations
                 },
                 quests: this.quests,
+                completedQuestIds: Array.from(this.completedQuestIds || []),
                 bounties: this.bounties,
                 monsterKills: this.monsterKills,
                 achievements: this.achievements ? this.achievements.toSaveData() : null,
@@ -17361,12 +17403,38 @@
                 const saveKey = this.getSaveKey();
                 localStorage.setItem(saveKey, JSON.stringify(saveData));
                 this.updateSlotInfo();
-                this.ui.showPopup('Game Saved', `Slot ${this.currentSlot} saved successfully!\n${saveData.timestamp}`);
-                console.log(`Game saved to slot ${this.currentSlot}:`, saveData);
+                if (silent) {
+                    console.log(`Autosaved to slot ${this.currentSlot}:`, saveData);
+                    this.showAutosaveToast();
+                } else {
+                    this.ui.showPopup('Game Saved', `Slot ${this.currentSlot} saved successfully!\n${saveData.timestamp}`);
+                    console.log(`Game saved to slot ${this.currentSlot}:`, saveData);
+                }
             } catch (e) {
                 console.error('Save error:', e);
-                this.ui.showPopup('Save Error', 'Failed to save game. Storage may be full.');
+                if (!silent) this.ui.showPopup('Save Error', 'Failed to save game. Storage may be full.');
             }
+        }
+
+        /** Small, unobtrusive "Autosaved" toast in the corner - doesn't
+         *  interrupt play with a popup the way manual saveGame() does. */
+        showAutosaveToast() {
+            let toast = document.getElementById('autosave-toast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'autosave-toast';
+                toast.style.cssText = 'position:fixed; bottom:14px; left:50%; transform:translateX(-50%); ' +
+                    'background:rgba(20,20,30,0.9); color:#8fd88f; border:1px solid #3a6a3a; ' +
+                    'padding:6px 14px; border-radius:6px; font-size:12px; z-index:99999; ' +
+                    'pointer-events:none; opacity:0; transition:opacity 0.3s ease;';
+                toast.textContent = '💾 Autosaved';
+                document.body.appendChild(toast);
+            }
+            toast.style.opacity = '1';
+            clearTimeout(this._autosaveToastTimer);
+            this._autosaveToastTimer = setTimeout(() => {
+                toast.style.opacity = '0';
+            }, 1400);
         }
 
         loadGame() {
@@ -17458,6 +17526,21 @@
                     }
                 }
                 this.quests = saveData.quests || [];
+                // Older saves predate this field - reconstruct a best-effort
+                // completed set from the fact that finished quests are gone
+                // from `this.quests`, so any of the three story-intel quests
+                // NOT still present/incomplete is treated as done. Otherwise
+                // an old save would re-trigger the "quest not found in your
+                // active list" boss gate bug this field exists to fix.
+                if (saveData.completedQuestIds) {
+                    this.completedQuestIds = new Set(saveData.completedQuestIds);
+                } else {
+                    this.completedQuestIds = new Set();
+                    ['brighthollow_goblin_intel', 'duskmere_dread_knight_intel', 'sylvaris_elemental_trials'].forEach(id => {
+                        const active = this.quests.find(q => q.id === id);
+                        if (!active) this.completedQuestIds.add(id);
+                    });
+                }
                 this.bounties = saveData.bounties || [];
                 this.monsterKills = saveData.monsterKills || {};
                 // Older saves predate the lore journal - default them to just
