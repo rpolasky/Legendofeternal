@@ -4005,9 +4005,11 @@
                         <div style="display: flex; gap: 8px; margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
                             <button id="menu-items-tab-btn" class="menu-button" onclick="window.game.showMenuItemsTab('items')" style="padding: 5px 15px; font-size: 13px;">🎒 Items</button>
                             <button id="menu-materials-tab-btn" class="menu-button" onclick="window.game.showMenuItemsTab('materials')" style="padding: 5px 15px; font-size: 13px;">🧱 Materials</button>
+                            <button id="menu-fragments-tab-btn" class="menu-button" onclick="window.game.showMenuItemsTab('fragments')" style="padding: 5px 15px; font-size: 13px;">💎 Fragments</button>
                         </div>
                         <div id="menu-inventory-list" class="shop-inventory" style="height: 250px; margin-bottom: 12px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 4px; padding: 6px;"></div>
                         <div id="menu-materials-list" class="shop-inventory" style="height: 250px; margin-bottom: 12px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 4px; padding: 6px; display: none;"></div>
+                        <div id="menu-fragments-list" class="shop-inventory" style="height: 250px; margin-bottom: 12px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 4px; padding: 6px; display: none;"></div>
                         <div id="menu-item-details" style="padding: 10px; background: rgba(0,0,0,0.3); border-radius: 4px; min-height: 60px;"></div>
                     </div>
                     
@@ -6372,6 +6374,7 @@
             this.poisonDamage = template.poisonDamage || 0;
             this.poisonDuration = template.poisonDuration || 0;
             this.drops = template.drops || null;
+            this.fragment = template.fragment || null;
         }
 
         takeDamage(amount) {
@@ -6395,34 +6398,44 @@
             monsters: [
                 { name: 'Goblin', sprite: '👺', level: 1, hp: 30, attack: 8, defense: 3, speed: 5, exp: 15, gold: 10,
                     elementalWeakness: { fire: 1.5, lightning: 1.3 }, desc: 'Weak to fire and lightning',
-                    drops: { material: 'Goblin Ear', chance: 0.7, quantity: 1 } },
+                    drops: { material: 'Goblin Ear', chance: 0.7, quantity: 1 },
+                    fragment: { color: 'Emerald', chance: 0.25 } },
                 { name: 'Wolf', sprite: '🐺', level: 2, hp: 45, attack: 12, defense: 4, speed: 8, exp: 25, gold: 15,
                     elementalWeakness: { ice: 1.5 }, elementalResist: { lightning: 0.8 }, desc: 'Weak to ice, resists lightning',
-                    drops: { material: 'Wolf Fang', chance: 0.7, quantity: 1 } },
+                    drops: { material: 'Wolf Fang', chance: 0.7, quantity: 1 },
+                    fragment: { color: 'Sapphire', chance: 0.25 } },
                 { name: 'Giant Rat', sprite: '🐀', level: 1, hp: 25, attack: 6, defense: 2, speed: 6, exp: 10, gold: 8,
                     elementalWeakness: { fire: 1.3, lightning: 1.3 }, desc: 'Weak to fire and lightning',
-                    drops: { material: 'Rat Tail', chance: 0.6, quantity: 1 } },
+                    drops: { material: 'Rat Tail', chance: 0.6, quantity: 1 },
+                    fragment: { color: 'Emerald', chance: 0.25 } },
                 { name: 'Bandit', sprite: '🗡️', level: 2, hp: 40, attack: 10, defense: 5, speed: 5, exp: 20, gold: 25,
                     desc: 'No elemental affinities',
-                    drops: { material: 'Stolen Goods', chance: 0.5, quantity: 1 } },
+                    drops: { material: 'Stolen Goods', chance: 0.5, quantity: 1 },
+                    fragment: { color: 'Topaz', chance: 0.25 } },
                 { name: 'Wild Boar', sprite: '🐗', level: 3, hp: 60, attack: 14, defense: 6, speed: 4, exp: 35, gold: 20,
                     elementalResist: { lightning: 0.7 }, desc: 'Tough hide resists lightning',
-                    drops: { material: 'Boar Hide', chance: 0.7, quantity: 1 } },
+                    drops: { material: 'Boar Hide', chance: 0.7, quantity: 1 },
+                    fragment: { color: 'Emerald', chance: 0.25 } },
                 { name: 'Goblin Scout', sprite: '🏹', level: 2, hp: 35, attack: 9, defense: 3, speed: 7, exp: 20, gold: 15,
                     elementalWeakness: { fire: 1.3, lightning: 1.3 }, desc: 'Fast and sneaky, weak to fire and lightning',
-                    drops: { material: 'Goblin Ear', chance: 0.7, quantity: 1 } },
+                    drops: { material: 'Goblin Ear', chance: 0.7, quantity: 1 },
+                    fragment: { color: 'Emerald', chance: 0.25 } },
                 { name: 'Forest Spider', sprite: '🕷️', level: 3, hp: 40, attack: 11, defense: 4, speed: 6, exp: 30, gold: 18,
                     elementalWeakness: { fire: 1.4 }, desc: 'Venomous bite', poisonChance: 0.35, poisonDamage: 4, poisonDuration: 4,
-                    drops: { material: 'Spider Silk', chance: 0.7, quantity: 1 } },
+                    drops: { material: 'Spider Silk', chance: 0.7, quantity: 1 },
+                    fragment: { color: 'Amethyst', chance: 0.25 } },
                 { name: 'Goblin Warrior', sprite: '⚔️', level: 4, hp: 55, attack: 15, defense: 7, speed: 4, exp: 45, gold: 30,
                     elementalWeakness: { fire: 1.5, lightning: 1.2 }, desc: 'Stronger goblin, weak to fire, slightly weak to lightning',
-                    drops: { material: 'Goblin Ear', chance: 0.8, quantity: 1 } },
+                    drops: { material: 'Goblin Ear', chance: 0.8, quantity: 1 },
+                    fragment: { color: 'Emerald', chance: 0.25 } },
                 { name: 'Elite Goblin', sprite: '👹', level: 5, hp: 120, attack: 25, defense: 10, speed: 6, exp: 120, gold: 100, isElite: true,
                     elementalWeakness: { fire: 1.5, lightning: 1.3 }, desc: 'Tough goblin chieftain, weak to fire and lightning',
-                    drops: { material: 'Goblin Ear', chance: 0.8, quantity: 2 } },
+                    drops: { material: 'Goblin Ear', chance: 0.8, quantity: 2 },
+                    fragment: { color: 'Emerald', chance: 0.25 } },
                 { name: 'Shadow Stalker', sprite: '👤', level: 6, hp: 120, attack: 25, defense: 10, speed: 10, exp: 120, gold: 100, isElite: true,
                     elementalWeakness: { fire: 1.5 }, elementalResist: { lightning: 1.3 }, desc: 'Moves between shadows, resists lightning',
-                    drops: { material: 'Shadow Essence', chance: 0.7, quantity: 1 } }
+                    drops: { material: 'Shadow Essence', chance: 0.7, quantity: 1 },
+                    fragment: { color: 'Amethyst', chance: 0.25 } }
             ]
         },
         PRAVOCA: {
@@ -6432,35 +6445,45 @@
             monsters: [
                 { name: 'Skeleton', sprite: '💀', level: 4, hp: 60, attack: 15, defense: 8, speed: 4, exp: 40, gold: 25,
                     elementalResist: { ice: 0.5, lightning: 0.7 }, elementalWeakness: { fire: 1.5 }, desc: 'Resists ice and lightning, weak to fire',
-                    drops: { material: 'Bone Fragment', chance: 0.8, quantity: 1 } },
+                    drops: { material: 'Bone Fragment', chance: 0.8, quantity: 1 },
+                    fragment: { color: 'Amethyst', chance: 0.25 } },
                 { name: 'Orc', sprite: '👹', level: 5, hp: 80, attack: 18, defense: 10, speed: 5, exp: 60, gold: 40,
                     elementalResist: { lightning: 0.8 }, desc: 'No elemental affinities, slightly resists lightning',
-                    drops: { material: 'Orc Hide', chance: 0.7, quantity: 1 } },
+                    drops: { material: 'Orc Hide', chance: 0.7, quantity: 1 },
+                    fragment: { color: 'Topaz', chance: 0.25 } },
                 { name: 'Wraith', sprite: '👻', level: 6, hp: 70, attack: 20, defense: 6, speed: 10, exp: 80, gold: 50,
                     elementalResist: { ice: 0.5, fire: 0.5, lightning: 0.5 }, desc: 'Resists all elements',
-                    drops: { material: 'Soul Essence', chance: 0.6, quantity: 1 } },
+                    drops: { material: 'Soul Essence', chance: 0.6, quantity: 1 },
+                    fragment: { color: 'Amethyst', chance: 0.25 } },
                 { name: 'Swamp Thing', sprite: '🌿', level: 5, hp: 90, attack: 16, defense: 9, speed: 3, exp: 65, gold: 45,
                     elementalWeakness: { fire: 1.4, lightning: 1.2 }, desc: 'Weak to fire and lightning',
-                    drops: { material: 'Swamp Moss', chance: 0.7, quantity: 1 } },
+                    drops: { material: 'Swamp Moss', chance: 0.7, quantity: 1 },
+                    fragment: { color: 'Emerald', chance: 0.25 } },
                 { name: 'Zombie', sprite: '🧟', level: 4, hp: 70, attack: 12, defense: 5, speed: 2, exp: 45, gold: 30,
                     elementalWeakness: { fire: 1.3 }, elementalResist: { lightning: 0.8 }, desc: 'Slow but tough, resists lightning',
                     poisonChance: 0.25, poisonDamage: 5, poisonDuration: 4,
-                    drops: { material: 'Rotten Flesh', chance: 0.7, quantity: 1 } },
+                    drops: { material: 'Rotten Flesh', chance: 0.7, quantity: 1 },
+                    fragment: { color: 'Amethyst', chance: 0.25 } },
                 { name: 'Ghoul', sprite: '👤', level: 5, hp: 65, attack: 17, defense: 7, speed: 6, exp: 55, gold: 38,
                     elementalWeakness: { fire: 1.4 }, desc: 'Undead scavenger, weak to fire', poisonChance: 0.35, poisonDamage: 6, poisonDuration: 4,
-                    drops: { material: 'Ghoul Claw', chance: 0.7, quantity: 1 } },
+                    drops: { material: 'Ghoul Claw', chance: 0.7, quantity: 1 },
+                    fragment: { color: 'Amethyst', chance: 0.25 } },
                 { name: 'Orc Shaman', sprite: '🔮', level: 6, hp: 75, attack: 14, defense: 8, speed: 5, exp: 75, gold: 55,
                     spell: 'Shadow Bolt', elementalResist: { lightning: 0.6 }, desc: 'Uses dark magic, resists lightning',
-                    drops: { material: 'Orc Hide', chance: 0.7, quantity: 1 } },
+                    drops: { material: 'Orc Hide', chance: 0.7, quantity: 1 },
+                    fragment: { color: 'Topaz', chance: 0.25 } },
                 { name: 'Dark Knight', sprite: '⚔️', level: 7, hp: 120, attack: 25, defense: 15, speed: 6, exp: 120, gold: 80,
                     elementalResist: { lightning: 0.7 }, desc: 'Fallen warrior, resists lightning',
-                    drops: { material: 'Dark Steel', chance: 0.6, quantity: 1 } },
+                    drops: { material: 'Dark Steel', chance: 0.6, quantity: 1 },
+                    fragment: { color: 'Topaz', chance: 0.25 } },
                 { name: 'Elite Orc', sprite: '👺', level: 8, hp: 200, attack: 32, defense: 18, speed: 6, exp: 200, gold: 180, isElite: true,
                     elementalResist: { lightning: 0.6 }, desc: 'Orc war chief, resists lightning',
-                    drops: { material: 'Orc Hide', chance: 0.8, quantity: 2 } },
+                    drops: { material: 'Orc Hide', chance: 0.8, quantity: 2 },
+                    fragment: { color: 'Topaz', chance: 0.25 } },
                 { name: 'Dread Wraith', sprite: '👻', level: 8, hp: 180, attack: 30, defense: 12, speed: 12, exp: 220, gold: 200, isElite: true,
                     elementalResist: { ice: 0.3, fire: 0.3, lightning: 0.3 }, desc: 'Powerful spirit, resists all elements',
-                    drops: { material: 'Soul Essence', chance: 0.7, quantity: 2 } }
+                    drops: { material: 'Soul Essence', chance: 0.7, quantity: 2 },
+                    fragment: { color: 'Amethyst', chance: 0.25 } }
             ]
         },
         ELFHEIM: {
@@ -6470,35 +6493,45 @@
             monsters: [
                 { name: 'Sand Worm', sprite: '🪱', level: 7, hp: 100, attack: 20, defense: 12, speed: 4, exp: 90, gold: 70,
                     elementalWeakness: { ice: 1.4, lightning: 1.2 }, desc: 'Burrows in sand, weak to ice and lightning',
-                    drops: { material: 'Sand Worm Tooth', chance: 0.7, quantity: 1 } },
+                    drops: { material: 'Sand Worm Tooth', chance: 0.7, quantity: 1 },
+                    fragment: { color: 'Ruby', chance: 0.25 } },
                 { name: 'Mummy', sprite: '🧻', level: 8, hp: 130, attack: 22, defense: 14, speed: 3, exp: 110, gold: 85,
                     elementalWeakness: { fire: 1.3 }, elementalResist: { lightning: 0.7 }, desc: 'Ancient cursed, resists lightning',
-                    drops: { material: 'Mummy Wrapping', chance: 0.7, quantity: 1 } },
+                    drops: { material: 'Mummy Wrapping', chance: 0.7, quantity: 1 },
+                    fragment: { color: 'Amethyst', chance: 0.25 } },
                 { name: 'Desert Scorpion', sprite: '🦂', level: 8, hp: 110, attack: 24, defense: 12, speed: 7, exp: 120, gold: 90,
                     elementalWeakness: { ice: 1.3 }, elementalResist: { lightning: 0.8 }, desc: 'Poisonous stinger, resists lightning',
                     poisonChance: 0.4, poisonDamage: 8, poisonDuration: 4,
-                    drops: { material: 'Scorpion Stinger', chance: 0.7, quantity: 1 } },
+                    drops: { material: 'Scorpion Stinger', chance: 0.7, quantity: 1 },
+                    fragment: { color: 'Ruby', chance: 0.25 } },
                 { name: 'Djinn', sprite: '🌪️', level: 9, hp: 120, attack: 26, defense: 10, speed: 10, exp: 140, gold: 110,
                     elementalResist: { fire: 0.7, lightning: 0.8 }, elementalWeakness: { ice: 1.4 }, desc: 'Fire spirit, resists fire and lightning',
-                    drops: { material: 'Djinn Essence', chance: 0.6, quantity: 1 } },
+                    drops: { material: 'Djinn Essence', chance: 0.6, quantity: 1 },
+                    fragment: { color: 'Topaz', chance: 0.25 } },
                 { name: 'Sand Golem', sprite: '🗿', level: 9, hp: 180, attack: 24, defense: 18, speed: 2, exp: 150, gold: 120,
                     elementalResist: { fire: 0.8, ice: 0.8, lightning: 0.6 }, desc: 'Living statue, resists all elements',
-                    drops: { material: 'Golem Core', chance: 0.6, quantity: 1 } },
+                    drops: { material: 'Golem Core', chance: 0.6, quantity: 1 },
+                    fragment: { color: 'Emerald', chance: 0.25 } },
                 { name: 'Camel Rider', sprite: '🐫', level: 7, hp: 95, attack: 21, defense: 10, speed: 8, exp: 100, gold: 80,
                     desc: 'Desert nomad, no elemental affinities',
-                    drops: { material: 'Nomad Goods', chance: 0.5, quantity: 1 } },
+                    drops: { material: 'Nomad Goods', chance: 0.5, quantity: 1 },
+                    fragment: { color: 'Emerald', chance: 0.25 } },
                 { name: 'Sand Spirit', sprite: '💨', level: 8, hp: 85, attack: 23, defense: 8, speed: 12, exp: 115, gold: 95,
                     elementalWeakness: { ice: 1.3 }, elementalResist: { lightning: 0.7 }, desc: 'Whirlwind of sand, resists lightning',
-                    drops: { material: 'Sand Essence', chance: 0.7, quantity: 1 } },
+                    drops: { material: 'Sand Essence', chance: 0.7, quantity: 1 },
+                    fragment: { color: 'Sapphire', chance: 0.25 } },
                 { name: 'Ancient Mummy Lord', sprite: '👑', level: 15, hp: 1200, attack: 55, defense: 30, speed: 6, exp: 2500, gold: 2000, isElite: true, isBoss: true,
                     elementalWeakness: { fire: 1.5 }, elementalResist: { ice: 0.5, lightning: 0.7 }, desc: 'Pharaoh\'s guardian, weak to fire',
-                    drops: { material: 'Pharaoh\'s Staff', chance: 1.0, quantity: 1, type: 'treasure' } },
+                    drops: { material: 'Pharaoh\'s Staff', chance: 1.0, quantity: 1, type: 'treasure' },
+                    fragment: { color: 'Amethyst', chance: 0.25 } },
                 { name: 'Lesser Fire Elemental', sprite: '🔥', level: 10, hp: 130, attack: 25, defense: 10, speed: 7, exp: 180, gold: 150,
                     elementalResist: { fire: 0.3, lightning: 0.8 }, elementalWeakness: { ice: 1.5 }, desc: 'Living flame, weak to ice',
-                    drops: { material: 'Fire Core', chance: 0.6, quantity: 1 } },
+                    drops: { material: 'Fire Core', chance: 0.6, quantity: 1 },
+                    fragment: { color: 'Ruby', chance: 0.25 } },
                 { name: 'Fire Elemental', sprite: '🔥', level: 12, hp: 190, attack: 32, defense: 14, speed: 8, exp: 250, gold: 220, isElite: true,
                     elementalResist: { fire: 0.2, lightning: 0.7 }, elementalWeakness: { ice: 1.8 }, desc: 'Living flame, resists lightning slightly',
-                    drops: { material: 'Fire Core', chance: 0.7, quantity: 1 } }
+                    drops: { material: 'Fire Core', chance: 0.7, quantity: 1 },
+                    fragment: { color: 'Ruby', chance: 0.25 } }
             ]
         },
         CHAOS: {
@@ -6508,32 +6541,41 @@
             monsters: [
                 { name: 'Demon', sprite: '👿', level: 12, hp: 180, attack: 40, defense: 18, speed: 9, exp: 350, gold: 250,
                     elementalWeakness: { ice: 1.5 }, elementalResist: { fire: 0.7, lightning: 0.7 }, desc: 'Weak to ice, resists fire and lightning',
-                    drops: { material: 'Demon Horn', chance: 0.7, quantity: 1 } },
+                    drops: { material: 'Demon Horn', chance: 0.7, quantity: 1 },
+                    fragment: { color: 'Amethyst', chance: 0.25 } },
                 { name: 'Dragon', sprite: '🐉', level: 15, hp: 500, attack: 50, defense: 25, speed: 5, exp: 1000, gold: 1000,
                     elementalResist: { fire: 0.5, ice: 0.5, lightning: 0.5 }, desc: 'Resists all elements equally',
-                    drops: { material: 'Dragon Scale', chance: 0.8, quantity: 2 } },
+                    drops: { material: 'Dragon Scale', chance: 0.8, quantity: 2 },
+                    fragment: { color: 'Ruby', chance: 0.25 } },
                 { name: 'Lava Beast', sprite: '🌋', level: 13, hp: 220, attack: 38, defense: 20, speed: 4, exp: 400, gold: 300,
                     elementalResist: { fire: 0.3, lightning: 0.6 }, elementalWeakness: { ice: 1.7 }, desc: 'Born of magma, resists lightning',
-                    drops: { material: 'Lava Core', chance: 0.7, quantity: 1 } },
+                    drops: { material: 'Lava Core', chance: 0.7, quantity: 1 },
+                    fragment: { color: 'Ruby', chance: 0.25 } },
                 { name: 'Flame Knight', sprite: '🔥', level: 14, hp: 240, attack: 42, defense: 22, speed: 6, exp: 450, gold: 350,
                     elementalResist: { fire: 0.5, lightning: 0.7 }, elementalWeakness: { ice: 1.5 }, desc: 'Burning warrior, resists lightning',
-                    drops: { material: 'Flame Steel', chance: 0.7, quantity: 1 } },
+                    drops: { material: 'Flame Steel', chance: 0.7, quantity: 1 },
+                    fragment: { color: 'Ruby', chance: 0.25 } },
                 { name: 'Ice Demon', sprite: '❄️', level: 14, hp: 230, attack: 40, defense: 20, speed: 7, exp: 450, gold: 350,
                     elementalResist: { ice: 0.5, lightning: 0.7 }, elementalWeakness: { fire: 1.5 }, desc: 'Frozen fiend, resists lightning',
-                    drops: { material: 'Ice Crystal', chance: 0.7, quantity: 1 } },
+                    drops: { material: 'Ice Crystal', chance: 0.7, quantity: 1 },
+                    fragment: { color: 'Sapphire', chance: 0.25 } },
                 { name: 'Ember Knight', sprite: '⚔️', level: 16, hp: 280, attack: 48, defense: 24, speed: 8, exp: 600, gold: 500,
                     elementalResist: { fire: 0.6, ice: 0.6, lightning: 0.4 }, desc: 'Servant of Voraxis, very resistant to lightning',
-                    drops: { material: 'Ashen Shard', chance: 0.6, quantity: 1 } },
+                    drops: { material: 'Ashen Shard', chance: 0.6, quantity: 1 },
+                    fragment: { color: 'Ruby', chance: 0.25 } },
                 { name: 'Abyssal Demon', sprite: '🌑', level: 17, hp: 320, attack: 52, defense: 26, speed: 7, exp: 700, gold: 600,
                     elementalResist: { fire: 0.6, ice: 0.6, lightning: 0.6 }, desc: 'From the void, resists all elements',
                     poisonChance: 0.15, poisonDamage: 15, poisonDuration: 4,
-                    drops: { material: 'Abyss Essence', chance: 0.7, quantity: 1 } },
+                    drops: { material: 'Abyss Essence', chance: 0.7, quantity: 1 },
+                    fragment: { color: 'Amethyst', chance: 0.25 } },
                 { name: 'Ancient Dragon', sprite: '🐲', level: 18, hp: 1000, attack: 70, defense: 35, speed: 6, exp: 1800, gold: 1800, isElite: true,
                     elementalResist: { fire: 0.3, ice: 0.3, lightning: 0.5 }, desc: 'Elder dragon, slightly resistant to lightning',
-                    drops: { material: 'Dragon Scale', chance: 1.0, quantity: 3 } },
+                    drops: { material: 'Dragon Scale', chance: 1.0, quantity: 3 },
+                    fragment: { color: 'Ruby', chance: 0.25 } },
                 { name: 'Voraxis', sprite: '🔱', level: 20, hp: 2000, attack: 80, defense: 40, speed: 12, exp: 5000, gold: 5000, isElite: true,
                     elementalResist: { fire: 0.5, ice: 0.5, lightning: 0.3 }, desc: 'The final boss, very resistant to lightning',
-                    drops: { material: 'Ashen Core', chance: 1.0, quantity: 3 } }
+                    drops: { material: 'Ashen Core', chance: 1.0, quantity: 3 },
+                    fragment: { color: 'Amethyst', chance: 0.25 } }
             ]
         }
     };
@@ -6595,6 +6637,12 @@
             this.encounterStepsRemaining = 0;
             this.materials = {};
             this.gems = [];
+            this.fragments = {};
+            // Apothecary charm counters - "N battles remaining" for Loot/Gold/XP
+            // Charms brewed at the Apothecary (see APOTHECARY_RECIPES). Ward
+            // Incense reuses the existing encounterModifier/encounterStepsRemaining
+            // fields above instead of a new counter.
+            this.activeCharms = { loot: 0, gold: 0, xp: 0 };
         }
 
         addHero(hero) {
@@ -6721,6 +6769,25 @@
 
         addMaterial(materialName, quantity = 1) {
             this.materials[materialName] = (this.materials[materialName] || 0) + quantity;
+        }
+
+        addFragment(color, quantity = 1) {
+            if (!this.fragments) this.fragments = {};
+            this.fragments[color] = (this.fragments[color] || 0) + quantity;
+        }
+
+        hasFragments(color, amount) {
+            if (!this.fragments) return false;
+            return (this.fragments[color] || 0) >= amount;
+        }
+
+        consumeFragments(costObj) {
+            // costObj like { Ruby: 10 } or { Ruby: 5, Sapphire: 5 }
+            if (!this.fragments) this.fragments = {};
+            for (let [color, amount] of Object.entries(costObj)) {
+                this.fragments[color] = (this.fragments[color] || 0) - amount;
+                if (this.fragments[color] <= 0) delete this.fragments[color];
+            }
         }
 
         addGem(gem) {
@@ -7355,15 +7422,15 @@
                 { x: 320, y: 335, name: 'Ancient Spirit', sprite: '👤', type: 'quest_giver',
                     dialogue: ["I have watched over these mountains for centuries...", "Shadow Grove lies to the North. The spirits there are restless.", "Beware the shadow stalkers - they move between darkness."],
                     hint: "Follow the path North to find Shadow Grove.",
-                    quest: { id: 'brighthollow_shadow_grove', name: 'Shadows of the Grove', description: 'Defeat 3 shadow stalkers and collect 2 shadow essence.', type: 'special_location', targetLocation: 'Shadow Grove', goal: 5, reward: { gold: 800, item: 'Shadow Gem' } } },
+                    quest: { id: 'brighthollow_shadow_grove', name: 'Shadows of the Grove', description: 'Defeat 3 shadow stalkers and collect 2 shadow essence.', type: 'special_location', targetLocation: 'Shadow Grove', goal: 5, reward: { gold: 800, item: 'Amethyst Fragment x20' } } },
                 { x: 375, y: 325, name: 'Old Prospector', sprite: '⛏️', type: 'quest_giver',
                     dialogue: ["I spent years digging in those caves. Found some shiny rocks, but also... things.", "The Mystic Cave has strange crystals that glow at night.", "Deep within, I heard whispers. Not sure if it was the wind or something else."],
                     hint: "The crystals in Mystic Cave are worth a fortune - if you can survive the guardians.",
-                    quest: { id: 'brighthollow_crystal_hunter', name: 'Crystal Hunter', description: 'Collect 3 crystal shards from the Mystic Cave.', type: 'treasure_find', targetLocation: 'Mystic Cave', goal: 3, reward: { gold: 600, item: 'Crystal Gem' } } },
+                    quest: { id: 'brighthollow_crystal_hunter', name: 'Crystal Hunter', description: 'Collect 3 crystal shards from the Mystic Cave.', type: 'treasure_find', targetLocation: 'Mystic Cave', goal: 3, reward: { gold: 600, item: 'Topaz Fragment x18' } } },
                 { x: 203, y: 272, name: 'Goblin Scout', sprite: '👹', type: 'quest_giver',
                     dialogue: ["You not supposed to be here, human! ...Oh wait, you're an adventurer?", "The Goblin King has a huge treasure hoard. But he's really strong.", "His weakness? Fire. Lots and lots of fire."],
                     hint: "The Goblin King is weak to fire magic. Bring fire spells or napalm!",
-                    quest: { id: 'brighthollow_goblin_intel', name: 'Goblin Intelligence', description: 'Defeat 5 goblin warriors and bring back their ears for analysis.', type: 'monster_kill', targetMonster: 'Goblin Warrior', goal: 5, reward: { gold: 500, item: 'Fire Gem' } } },
+                    quest: { id: 'brighthollow_goblin_intel', name: 'Goblin Intelligence', description: 'Defeat 5 goblin warriors and bring back their ears for analysis.', type: 'monster_kill', targetMonster: 'Goblin Warrior', goal: 5, reward: { gold: 500, item: 'Ruby Fragment x15' } } },
                 { x: 220, y: 330, name: 'Mountain Guide', sprite: '🧗', type: 'quest_giver',
                     dialogue: ["I've guided travelers through these mountains for 20 years.", "The pass is safe during the day, but at night... things come out.", "Stick to the main road and you'll be fine."],
                     hint: "The central mountain pass connects all four regions. It's your highway to adventure!",
@@ -7399,7 +7466,7 @@
                 { x: 83, y: 87, name: 'Fire Mage', sprite: '🔥', type: 'quest_giver',
                     dialogue: ["The heat here is intense! Perfect for training.", "Fire elementals are immune to fire, so don't bother.", "They're weak to ice though. Bring your coldest spells."],
                     hint: "Fire elementals are weak to ice. Blizzaga works, but Firaga is useless!",
-                    quest: { id: 'sylvaris_fire_core', name: 'Fire Core Collection', description: 'Collect 3 fire cores from fire elementals.', type: 'treasure_find', targetLocation: 'Fire Grotto', goal: 3, reward: { gold: 2200, item: 'Fire Gem' } } },
+                    quest: { id: 'sylvaris_fire_core', name: 'Fire Core Collection', description: 'Collect 3 fire cores from fire elementals.', type: 'treasure_find', targetLocation: 'Fire Grotto', goal: 3, reward: { gold: 2200, item: 'Ruby Fragment x40' } } },
                 { x: 74, y: 88, name: 'Elf Sage', sprite: '🧝', type: 'quest_giver',
                     dialogue: ["Welcome to Sylvaris, child of man. The elder trees speak highly of you.", "The Ashveil Spire to the northeast is where the final battle awaits.", "You are not ready yet. Gain more power, learn more spells, then return."],
                     hint: "Before facing Voraxis, explore all four quadrants and complete their quests.",
@@ -10344,7 +10411,12 @@
         }
 
         showBattleItemMenu(hero) {
-            const usableItems = this.party.inventory.items.filter(i => i.type === 'consumable');
+            // Loot/Gold/XP Charms, the Traveler's Tonic, Ward Incense, and the
+            // Elemental Ward Tonic are party-wide overworld utility items with
+            // no sensible ally/enemy target - keep them out of the mid-battle
+            // item list (they're still usable from the main menu).
+            const overworldOnlyEffects = ['loot_boost', 'gold_boost', 'xp_boost', 'travel', 'encounter_ward', 'elemental_ward'];
+            const usableItems = this.party.inventory.items.filter(i => i.type === 'consumable' && !overworldOnlyEffects.includes(i.effect));
             if (usableItems.length === 0) {
                 this.log('No usable items!');
                 setTimeout(() => this.renderMainCommands(), 1500);
@@ -10360,7 +10432,7 @@
                     this.selectedCommand = 'item';
                     this.selectedItem = item;
                     this.waitingForTarget = true;
-                    const isAllyTarget = (item.effect === 'heal' || item.effect === 'restore_mp' || item.effect === 'full_restore');
+                    const isAllyTarget = (item.effect === 'heal' || item.effect === 'restore_mp' || item.effect === 'full_restore' || item.effect === 'revive');
                     if (isAllyTarget) {
                         this.log(`${hero.name} prepares to use ${item.name}. Select an ally.`);
                         this.highlightPartyTargets();
@@ -10385,11 +10457,12 @@
             const hero = this.party.heroes[this.selectedHeroIndex];
 
             if (this.selectedCommand === 'item' && this.selectedItem) {
-                const isAllyTarget = (this.selectedItem.effect === 'heal' || this.selectedItem.effect === 'restore_mp' || this.selectedItem.effect === 'full_restore');
+                const isAllyTarget = (this.selectedItem.effect === 'heal' || this.selectedItem.effect === 'restore_mp' || this.selectedItem.effect === 'full_restore' || this.selectedItem.effect === 'revive');
                 if (isAllyTarget) {
                     const target = this.party.heroes[index];
-                    if (!target || target.isDead) {
-                        this.log('Invalid ally target!');
+                    const validTarget = this.selectedItem.effect === 'revive' ? (target && target.isDead) : (target && !target.isDead);
+                    if (!validTarget) {
+                        this.log(this.selectedItem.effect === 'revive' ? 'That ally isn\'t fallen!' : 'Invalid ally target!');
                         return;
                     }
                     this.clearPartyHighlights();
@@ -10646,6 +10719,13 @@
                 window.game.audio.play('victory');
                 healSparkle(target); this.showDamage(target, 'FULL', true);
                 this.log(`${user.name} uses ${item.name} on ${target.name} - fully restored!`);
+            } else if (item.effect === 'revive') {
+                const reviveHp = Math.max(1, Math.floor(target.baseStats.maxHp * (item.power || 0.5)));
+                target.isDead = false;
+                target.currentHp = reviveHp;
+                window.game.audio.play('victory');
+                healSparkle(target); this.showDamage(target, reviveHp, true);
+                this.log(`${user.name} uses ${item.name} on ${target.name} - revived with ${reviveHp} HP!`);
             } else if (item.effect === 'damage_all') {
                 const livingMonsters = this.monsters.filter(m => m.isAlive());
                 if (livingMonsters.length === 0) return;
@@ -11231,7 +11311,10 @@
                     if (livingHeroes.length === 0) return;
                     const target = livingHeroes[Math.floor(Math.random() * livingHeroes.length)];
                     const targetIndex = this.party.heroes.indexOf(target);
-                    const damage = Math.floor(monster.attack * (0.9 + Math.random() * 0.2));
+                    let damage = Math.floor(monster.attack * (0.9 + Math.random() * 0.2));
+                    if (this.party.elementalWardBattles > 0) {
+                        damage = Math.floor(damage * 0.7);
+                    }
                     const actualDamage = target.takeDamage(damage);
                     window.game.audio.play('enemy_hit');
                     heroesHitThisPhase.push(target);
@@ -11417,6 +11500,29 @@
                 totalGold += m.goldReward;
             });
             totalGold = Math.floor(totalGold * goldMultiplier);
+            // Apothecary Gold/XP Charms: flat +50% for a set number of battles,
+            // ticking down once per battle regardless of how many monsters
+            // were in it.
+            const charms = this.party.activeCharms || { loot: 0, gold: 0, xp: 0 };
+            const lootBoostActive = charms.loot > 0;
+            if (charms.gold > 0) {
+                totalGold = Math.floor(totalGold * 1.5);
+                charms.gold--;
+                if (charms.gold === 0) this.log(`✨ Your Gold Charm's magic fades.`);
+            }
+            if (charms.xp > 0) {
+                totalExp = Math.floor(totalExp * 1.5);
+                charms.xp--;
+                if (charms.xp === 0) this.log(`✨ Your XP Charm's magic fades.`);
+            }
+            if (charms.loot > 0) {
+                charms.loot--;
+                if (charms.loot === 0) this.log(`✨ Your Loot Charm's magic fades.`);
+            }
+            if (this.party.elementalWardBattles > 0) {
+                this.party.elementalWardBattles--;
+                if (this.party.elementalWardBattles === 0) this.log(`✨ Your Elemental Ward Tonic's protection fades.`);
+            }
             this.party.gold += totalGold;
             window.game.updateGoldDisplays();
             this.log(`Gained ${totalGold} G and ${totalExp} EXP!`);
@@ -11442,8 +11548,9 @@
                 }
             });
             let materialsFound = [];
+            const lootChanceBonus = lootBoostActive ? 0.25 : 0;
             this.monsters.forEach(monster => {
-                if (monster.drops && Math.random() < monster.drops.chance) {
+                if (monster.drops && Math.random() < Math.min(1, monster.drops.chance + lootChanceBonus)) {
                     const materialName = monster.drops.material;
                     const quantity = monster.drops.quantity || 1;
                     if (monster.isBoss || (monster.drops.type === 'treasure')) {
@@ -11474,6 +11581,18 @@
                     if (window.game && window.game.checkItemBounties) {
                         window.game.checkItemBounties(materialName);
                     }
+                }
+                // Gem Fragments: a separate, independent roll from the trophy-material
+                // drop above. Kept deliberately uncommon (25%) so they feel like a
+                // nice bonus rather than a guaranteed farm - fragments are the only
+                // ingredient for the Gem Crafter's socket gems (see GEM_FRAGMENT_INFO
+                // / SOCKET_GEM_TIERS). Bosses get a small chance at a bonus fragment.
+                if (monster.fragment && Math.random() < Math.min(1, monster.fragment.chance + lootChanceBonus)) {
+                    const fragQty = monster.isBoss ? 2 : 1;
+                    this.party.addFragment(monster.fragment.color, fragQty);
+                    this.log(`💎 A ${monster.fragment.color} Gem Fragment glimmers among the remains! (+${fragQty})`);
+                    materialsFound.push({ name: `${monster.fragment.color} Fragment`, quantity: fragQty });
+                    this.showDropSparkles(FRAGMENT_COLOR_HEX[monster.fragment.color] || '#ffffff');
                 }
             });
             // Use dungeonMap.locationName rather than state.currentScreen, which is
@@ -12509,12 +12628,19 @@
             }
             if (this.party.gems && this.party.gems.length > 0) {
                 this.party.gems.forEach((gem, index) => {
-                    sellableItems.push({ ...gem, source: 'gems', gemIndex: index, displayName: `${gem.name} (Gem)`, price: Math.floor(gem.magic * 50) });
+                    sellableItems.push({ ...gem, source: 'gems', gemIndex: index, displayName: `${gem.name} (Gem)`, price: this.gemSellValue(gem) });
                 });
             }
             if (this.party.materials && Object.keys(this.party.materials).length > 0) {
                 for (let [material, quantity] of Object.entries(this.party.materials)) {
                     sellableItems.push({ name: material, type: 'material', source: 'materials', displayName: `${material} x${quantity}`, price: 25, quantity: quantity });
+                }
+            }
+            if (this.party.fragments && Object.keys(this.party.fragments).length > 0) {
+                for (let [color, quantity] of Object.entries(this.party.fragments)) {
+                    if (quantity > 0) {
+                        sellableItems.push({ name: `${color} Fragment`, color: color, type: 'fragment', source: 'fragments', displayName: `${GEM_FRAGMENT_INFO[color].icon} ${color} Fragment x${quantity}`, price: 10, quantity: quantity });
+                    }
                 }
             }
             if (sellableItems.length === 0) {
@@ -12526,7 +12652,8 @@
                 div.className = 'shop-item';
                 let sellPrice = 0;
                 if (item.source === 'materials') sellPrice = 15;
-                else if (item.source === 'gems') sellPrice = Math.floor((item.magic || 10) * 30);
+                else if (item.source === 'fragments') sellPrice = 10;
+                else if (item.source === 'gems') sellPrice = this.gemSellValue(item);
                 else sellPrice = Math.floor((item.price || 50) / 2);
                 div.innerHTML = `<span>${itemIconHTML(item, 20)}${item.displayName || item.name}</span><span class="item-price">${sellPrice} G</span>`;
                 div.onclick = () => this.selectSellItem(item, div);
@@ -12538,7 +12665,8 @@
             if (!this.party || !item) return;
             let sellPrice = 0;
             if (item.source === 'materials') sellPrice = 15;
-            else if (item.source === 'gems') sellPrice = Math.floor((item.magic || 10) * 30);
+            else if (item.source === 'fragments') sellPrice = 10;
+            else if (item.source === 'gems') sellPrice = this.gemSellValue(item);
             else sellPrice = Math.floor((item.price || 50) / 2);
             this.party.gold += sellPrice;
             window.game.updateGoldDisplays();
@@ -12546,6 +12674,11 @@
                 if (this.party.materials[item.name]) {
                     this.party.materials[item.name]--;
                     if (this.party.materials[item.name] <= 0) delete this.party.materials[item.name];
+                }
+            } else if (item.source === 'fragments') {
+                if (this.party.fragments && this.party.fragments[item.color]) {
+                    this.party.fragments[item.color]--;
+                    if (this.party.fragments[item.color] <= 0) delete this.party.fragments[item.color];
                 }
             } else if (item.source === 'gems') {
                 this.party.gems.splice(item.gemIndex, 1);
@@ -12596,10 +12729,13 @@
             let specialInfo = '';
             if (item.source === 'materials') {
                 sellPrice = 15;
-                specialInfo = '<p style="color: #888;">Crafting material used to make gems.</p>';
+                specialInfo = '<p style="color: #888;">Crafting material used by the Apothecary.</p>';
+            } else if (item.source === 'fragments') {
+                sellPrice = 10;
+                specialInfo = `<p style="color: #888;">Gem fragment - combine at the Gem Crafter to make socket gems.</p>`;
             } else if (item.source === 'gems') {
-                sellPrice = Math.floor((item.magic || 10) * 30);
-                stats = `MAG +${item.magic || 0} `;
+                sellPrice = this.gemSellValue(item);
+                stats = Object.entries(item.bonus || {}).map(([k, v]) => `${k.slice(0, 3).toUpperCase()} +${v} `).join('');
                 if (item.element) specialInfo = `<p style="color: #ffaa00;">Element: ${item.element}</p>`;
             } else {
                 sellPrice = Math.floor((item.price || 50) / 2);
@@ -14675,6 +14811,15 @@
          *      mislabeled "potion".
          */
         resolveRewardItemDefinition(itemName) {
+            // "<Color> Fragment" rewards (e.g. "Ruby Fragment") resolve straight
+            // to a fragment grant rather than searching shops/loot tables -
+            // this is how quests that used to hand out the old jewelry "Gems"
+            // (Fire Gem, Shadow Gem, Crystal Gem, etc.) now reward players,
+            // feeding directly into the Gem Crafter's fragment economy.
+            const fragMatch = /^(.+) Fragment$/.exec(itemName);
+            if (fragMatch && GEM_FRAGMENT_INFO[fragMatch[1]]) {
+                return { name: itemName, type: 'fragment', color: fragMatch[1] };
+            }
             if (this.shop) {
                 const catalogs = [
                     this.shop.getWeaponShopItems('sylvaris'),
@@ -14730,6 +14875,16 @@
             // updateQuestProgress only acts on this when a quest's own
             // `targets` list actually includes the item name.
             this.updateQuestProgress('treasure_find', 1, def.name);
+            if (def.type === 'fragment') {
+                this.party.addFragment(def.color, quantity);
+                return;
+            }
+            if (def.type === 'premade_gem') {
+                for (let i = 0; i < quantity; i++) {
+                    this.party.addGem({ ...def.gem, bonus: { ...def.gem.bonus }, fragmentCost: { ...def.gem.fragmentCost } });
+                }
+                return;
+            }
             if (def.type === 'material') {
                 this.party.addMaterial(def.name, quantity);
                 return;
@@ -14786,8 +14941,9 @@
             if (this.achievements) this.achievements.report('quest_completed', { quest: quest });
             let rewardMessage = `Received ${quest.reward.gold} G`;
             if (quest.reward.item) {
-                const quantity = quest.reward.quantity || this.parseQuestRewardItemName(quest.reward.item).qty;
-                rewardMessage += ` and ${quantity}x ${quest.reward.item}!`;
+                const parsedReward = this.parseQuestRewardItemName(quest.reward.item);
+                const quantity = quest.reward.quantity || parsedReward.qty;
+                rewardMessage += ` and ${quantity}x ${parsedReward.name}!`;
             } else {
                 rewardMessage += '!';
             }
@@ -15673,29 +15829,33 @@
             if (this.achievements) this.achievements.renderAchievementsPanel();
         }
 
-        /** Switches between the Items and Materials sub-tabs of the item menu. */
+        /** Switches between the Items, Materials, and Fragments sub-tabs of the item menu. */
         showMenuItemsTab(tab) {
             const itemsList = document.getElementById('menu-inventory-list');
             const materialsList = document.getElementById('menu-materials-list');
+            const fragmentsList = document.getElementById('menu-fragments-list');
             const itemsBtn = document.getElementById('menu-items-tab-btn');
             const materialsBtn = document.getElementById('menu-materials-tab-btn');
+            const fragmentsBtn = document.getElementById('menu-fragments-tab-btn');
             const details = document.getElementById('menu-item-details');
+            [itemsList, materialsList, fragmentsList].forEach(el => { if (el) el.style.display = 'none'; });
+            [itemsBtn, materialsBtn, fragmentsBtn].forEach(el => { if (el) { el.style.background = ''; el.style.color = ''; } });
             if (tab === 'materials') {
-                itemsList.style.display = 'none';
                 materialsList.style.display = 'block';
                 materialsBtn.style.background = 'var(--highlight)';
                 materialsBtn.style.color = '#000';
-                itemsBtn.style.background = '';
-                itemsBtn.style.color = '';
-                details.innerHTML = '<p>Materials are used to craft gems at the Gem Crafter.</p>';
+                details.innerHTML = '<p>Old monster trophies - bring these to the Apothecary to brew potions.</p>';
                 this.renderMenuMaterials();
+            } else if (tab === 'fragments') {
+                fragmentsList.style.display = 'block';
+                fragmentsBtn.style.background = 'var(--highlight)';
+                fragmentsBtn.style.color = '#000';
+                details.innerHTML = '<p>Gem Fragments - combine these at the Gem Crafter into socket gems.</p>';
+                this.renderMenuFragments();
             } else {
                 itemsList.style.display = 'block';
-                materialsList.style.display = 'none';
                 itemsBtn.style.background = 'var(--highlight)';
                 itemsBtn.style.color = '#000';
-                materialsBtn.style.background = '';
-                materialsBtn.style.color = '';
                 details.innerHTML = '<p>Select an item to use</p>';
                 this.renderMenuInventory();
             }
@@ -15717,6 +15877,27 @@
                 div.className = 'shop-item';
                 div.style.cursor = 'default';
                 div.innerHTML = `<span>${name}</span><span style="color: #888;">x${quantity}</span>`;
+                container.appendChild(div);
+            });
+        }
+
+        /** Renders the read-only list of gem fragments the party has collected. */
+        renderMenuFragments() {
+            const container = document.getElementById('menu-fragments-list');
+            if (!container) return;
+            container.innerHTML = '';
+            const fragments = this.party.fragments || {};
+            const entries = Object.entries(fragments).filter(([, q]) => q > 0);
+            if (entries.length === 0) {
+                container.innerHTML = '<p style="color: #888; text-align: center; padding: 20px;">No gem fragments yet. Monsters have a chance to drop them in battle!</p>';
+                return;
+            }
+            entries.forEach(([color, quantity]) => {
+                const div = document.createElement('div');
+                div.className = 'shop-item';
+                div.style.cursor = 'default';
+                div.style.borderLeft = `3px solid ${FRAGMENT_COLOR_HEX[color] || '#fff'}`;
+                div.innerHTML = `<span>${(GEM_FRAGMENT_INFO[color] && GEM_FRAGMENT_INFO[color].icon) || '💎'} ${color} Fragment</span><span style="color: #888;">x${quantity}</span>`;
                 container.appendChild(div);
             });
         }
@@ -16036,154 +16217,333 @@
         }
 
         showCraftingMenu() {
-            let menuHTML = '<div style="max-height: 400px; overflow-y: auto;">';
-            menuHTML += `
-                <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid var(--border-color); padding-bottom: 10px;">
-                    <button class="menu-button" onclick="window.game.showCraftingTab()" style="padding: 5px 15px; font-size: 14px;">💎 Craft Gems</button>
-                    <button class="menu-button" onclick="window.game.showApplyGemTab()" style="padding: 5px 15px; font-size: 14px;">🔨 Apply Gems</button>
-                </div>
-            `;
-            menuHTML += this.getCraftingTabHTML();
-            menuHTML += '</div>';
-            this.ui.showPopup('Gem Crafter', menuHTML, true);
+            this.showCraftingTab();
+        }
+
+        gemCrafterTabBar(active) {
+            const tab = (id, label, fn) => `<button class="menu-button" onclick="window.game.${fn}()" style="padding: 5px 15px; font-size: 14px; ${active === id ? 'background: var(--highlight); color: #000;' : ''}">${label}</button>`;
+            return `<div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid var(--border-color); padding-bottom: 10px; flex-wrap: wrap;">
+                ${tab('craft', '💎 Combine Fragments', 'showCraftingTab')}
+                ${tab('apply', '🔨 Apply / Remove', 'showApplyGemTab')}
+            </div>`;
         }
 
         showCraftingTab() {
-            let menuHTML = '<div style="max-height: 400px; overflow-y: auto;">';
-            menuHTML += `
-                <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid var(--border-color); padding-bottom: 10px;">
-                    <button class="menu-button" onclick="window.game.showCraftingTab()" style="padding: 5px 15px; font-size: 14px; background: var(--highlight); color: #000;">💎 Craft Gems</button>
-                    <button class="menu-button" onclick="window.game.showApplyGemTab()" style="padding: 5px 15px; font-size: 14px;">🔨 Apply Gems</button>
-                </div>
-            `;
+            let menuHTML = '<div style="max-height: 420px; overflow-y: auto;">';
+            menuHTML += this.gemCrafterTabBar('craft');
             menuHTML += this.getCraftingTabHTML();
             menuHTML += '</div>';
             this.ui.showPopup('Gem Crafter', menuHTML, true);
         }
 
         showApplyGemTab() {
-            let menuHTML = '<div style="max-height: 400px; overflow-y: auto;">';
-            menuHTML += `
-                <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid var(--border-color); padding-bottom: 10px;">
-                    <button class="menu-button" onclick="window.game.showCraftingTab()" style="padding: 5px 15px; font-size: 14px;">💎 Craft Gems</button>
-                    <button class="menu-button" onclick="window.game.showApplyGemTab()" style="padding: 5px 15px; font-size: 14px; background: var(--highlight); color: #000;">🔨 Apply Gems</button>
-                </div>
-            `;
+            let menuHTML = '<div style="max-height: 420px; overflow-y: auto;">';
+            menuHTML += this.gemCrafterTabBar('apply');
             menuHTML += this.getApplyGemTabHTML();
             menuHTML += '</div>';
             this.ui.showPopup('Gem Crafter', menuHTML, true);
         }
 
+        gemSellValue(gem) {
+            const bonusSum = Object.values(gem.bonus || {}).reduce((a, b) => a + b, 0);
+            return Math.floor(bonusSum * 12) + 20;
+        }
+
+        formatGemBonus(gem) {
+            const labels = { attack: 'ATK', defense: 'DEF', magic: 'MAG', speed: 'SPD' };
+            let parts = Object.entries(gem.bonus || {}).map(([k, v]) => `+${v} ${labels[k] || k}`);
+            if (gem.element) parts.push(`${gem.element.toUpperCase()} dmg`);
+            return parts.join(', ');
+        }
+
         getCraftingTabHTML() {
-            let html = '<h3 style="color: var(--highlight);">Available Materials:</h3>';
+            const frags = this.party.fragments || {};
+            let html = '<h3 style="color: var(--highlight);">Your Gem Fragments:</h3>';
             html += '<div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px;">';
-            if (Object.keys(this.party.materials).length === 0) {
-                html += '<p style="color: #888;">No materials yet. Defeat monsters to collect materials!</p>';
-            } else {
-                for (let [material, quantity] of Object.entries(this.party.materials)) {
-                    html += `<div style="background: rgba(0,0,0,0.3); padding: 5px 10px; border-radius: 4px;">${material}: ${quantity}</div>`;
-                }
-            }
+            const colors = Object.keys(GEM_FRAGMENT_INFO);
+            let anyFrags = false;
+            colors.forEach(color => {
+                const qty = frags[color] || 0;
+                if (qty > 0) anyFrags = true;
+                html += `<div style="background: rgba(0,0,0,0.3); padding: 5px 10px; border-radius: 4px; border-left: 3px solid ${FRAGMENT_COLOR_HEX[color]};">${GEM_FRAGMENT_INFO[color].icon} ${color}: ${qty}</div>`;
+            });
             html += '</div>';
-            html += '<h3 style="color: var(--highlight);">Craft Gems:</h3>';
-            for (let [gemName, recipe] of Object.entries(GEM_RECIPES)) {
-                const canCraft = this.party.hasMaterials(recipe.materials);
-                html += `
-                    <div class="shop-item" onclick="window.game.craftGem('${gemName}')" 
-                         style="${canCraft ? '' : 'opacity: 0.5; cursor: not-allowed;'}"
-                         ${canCraft ? '' : 'disabled'}>
-                        <div>
-                            <span style="color: var(--highlight);">💎 ${gemName}</span>
-                            <div style="font-size: 11px; color: #888;">${recipe.result.desc}</div>
+            if (!anyFrags) {
+                html += '<p style="color: #888;">No fragments yet - monsters have a chance to drop them in battle!</p>';
+            }
+
+            html += '<h3 style="color: var(--highlight);">Socket Gems (single color):</h3>';
+            colors.forEach(color => {
+                html += `<div style="margin-bottom: 10px; border-left: 3px solid ${FRAGMENT_COLOR_HEX[color]}; padding-left: 8px;">`;
+                SOCKET_GEM_TIERS[color].forEach(tierDef => {
+                    const have = frags[color] || 0;
+                    const canCraft = have >= tierDef.cost;
+                    html += `
+                        <div class="shop-item" onclick="window.game.craftPureGem('${color}', ${tierDef.tier})"
+                             style="${canCraft ? '' : 'opacity: 0.5; cursor: not-allowed;'}">
+                            <div>
+                                <span style="color: var(--highlight);">${GEM_FRAGMENT_INFO[color].icon} ${tierDef.name}</span>
+                                <div style="font-size: 11px; color: #888;">${tierDef.desc}</div>
+                                <div style="font-size: 11px; color: #6cf;">${this.formatGemBonus(tierDef)}</div>
+                            </div>
+                            <div style="text-align: right; color: ${canCraft ? '#fff' : '#f88'};">${tierDef.cost} ${color}</div>
                         </div>
-                        <div style="text-align: right;">
-                            ${Object.entries(recipe.materials).map(([m, q]) => `${m}: ${q}`).join('<br>')}
+                    `;
+                });
+                html += '</div>';
+            });
+
+            html += '<h3 style="color: var(--highlight);">Hybrid Gems (two colors):</h3>';
+            HYBRID_GEM_RECIPES.forEach((recipe, index) => {
+                const canCraft = Object.entries(recipe.cost).every(([c, q]) => (frags[c] || 0) >= q);
+                html += `
+                    <div class="shop-item" onclick="window.game.craftHybridGem(${index})"
+                         style="${canCraft ? '' : 'opacity: 0.5; cursor: not-allowed;'}">
+                        <div>
+                            <span style="color: var(--highlight);">💠 ${recipe.name}</span>
+                            <div style="font-size: 11px; color: #888;">${recipe.desc}</div>
+                            <div style="font-size: 11px; color: #6cf;">${this.formatGemBonus(recipe)}</div>
+                        </div>
+                        <div style="text-align: right; color: ${canCraft ? '#fff' : '#f88'};">
+                            ${Object.entries(recipe.cost).map(([c, q]) => `${q} ${c}`).join(' + ')}
                         </div>
                     </div>
                 `;
-            }
+            });
             return html;
         }
 
         getApplyGemTabHTML() {
             let html = '<h3 style="color: var(--highlight);">Your Gems:</h3>';
             if (this.party.gems.length === 0) {
-                html += '<p style="color: #888; margin-bottom: 20px;">No gems crafted yet. Visit the Craft tab to make some!</p>';
+                html += '<p style="color: #888; margin-bottom: 20px;">No gems ready to socket. Combine fragments in the Combine tab first!</p>';
             } else {
                 html += '<div style="margin-bottom: 20px;">';
                 this.party.gems.forEach((gem, index) => {
+                    const selected = this.selectedGemIndex === index;
                     html += `
-                        <div class="shop-item" onclick="window.game.selectGemForWeapon(${index})">
-                            <span style="color: var(--highlight);">💎 ${gem.name}</span>
-                            <span style="color: #888;">${gem.desc}</span>
+                        <div class="shop-item" onclick="window.game.selectGemForSocket(${index})" style="${selected ? 'background: rgba(255,215,0,0.15); border-left: 3px solid gold;' : ''}">
+                            <div>
+                                <span style="color: var(--highlight);">💎 ${gem.name}</span>
+                                <div style="font-size: 11px; color: #888;">${gem.desc}</div>
+                                <div style="font-size: 11px; color: #6cf;">${this.formatGemBonus(gem)}</div>
+                            </div>
+                            <div>${selected ? '✅' : ''}</div>
                         </div>
                     `;
                 });
                 html += '</div>';
+                html += '<p style="color: #888; margin-bottom: 15px;">Select a gem above, then click a weapon or armor slot below to socket it.</p>';
             }
             html += '<h3 style="color: var(--highlight);">Your Party:</h3>';
             this.party.heroes.forEach((hero, heroIndex) => {
                 const weapon = hero.equipment.weapon;
-                const weaponName = weapon ? weapon.name : 'No weapon equipped';
-                const hasGem = weapon && weapon.gem;
-                html += `
-                    <div class="shop-item" onclick="window.game.selectHeroForGem(${heroIndex})" style="flex-direction: column; align-items: flex-start;">
-                        <div style="display: flex; justify-content: space-between; width: 100%;">
-                            <span style="color: var(--highlight);">${hero.name} (${hero.heroClass})</span>
-                            <span>${weapon ? '⚔️' : '❌'}</span>
+                const armor = hero.equipment.armor;
+                html += `<div style="margin-bottom: 15px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 6px;">`;
+                html += `<div style="color: var(--highlight); margin-bottom: 6px;">${hero.name} (${hero.heroClass})</div>`;
+                [['weapon', '⚔️ Weapon', weapon], ['armor', '🛡️ Armor', armor]].forEach(([slotType, label, item]) => {
+                    if (!item) {
+                        html += `<div style="font-size: 12px; color: #666; padding: 4px 0;">${label}: none equipped</div>`;
+                        return;
+                    }
+                    const canApply = this.selectedGemIndex !== undefined && !item.gem;
+                    html += `<div class="shop-item" style="font-size: 12px; ${canApply ? '' : (item.gem ? '' : 'opacity: 0.6;')}"
+                                  onclick="${canApply ? `window.game.applyGemToSlot(${heroIndex}, '${slotType}')` : ''}">
+                        <div>
+                            <span>${label}: ${item.name}</span>
+                            ${item.gem ? `<div style="color: #6cf;">💎 ${item.gem.name} (${this.formatGemBonus(item.gem)})</div>` : ''}
                         </div>
-                        <div style="font-size: 12px; color: #888; margin-top: 5px;">
-                            Weapon: ${weaponName}
-                            ${hasGem ? `<br>Gem: ${weapon.gem.name} (+${weapon.gem.magic} MAG)` : ''}
-                        </div>
-                    </div>
-                `;
+                        ${item.gem ? `<button class="menu-button" style="padding: 2px 8px; font-size: 11px;" onclick="event.stopPropagation(); window.game.removeSocketGem(${heroIndex}, '${slotType}')">Remove</button>` : ''}
+                    </div>`;
+                });
+                html += `</div>`;
             });
-            html += '<p style="color: #888; margin-top: 15px;">Click a gem, then click a hero to apply it to their weapon.</p>';
             return html;
         }
 
-        selectGemForWeapon(gemIndex) {
-            this.selectedGemIndex = gemIndex;
-            this.ui.showPopup('Gem Selected', 'Now choose a hero to apply this gem to.');
+        selectGemForSocket(gemIndex) {
+            this.selectedGemIndex = (this.selectedGemIndex === gemIndex) ? undefined : gemIndex;
             this.showApplyGemTab();
         }
 
-        selectHeroForGem(heroIndex) {
+        applyGemToSlot(heroIndex, slotType) {
             if (this.selectedGemIndex === undefined) {
                 this.ui.showPopup('No Gem Selected', 'Please select a gem first.');
                 return;
             }
             const hero = this.party.heroes[heroIndex];
+            const item = hero.equipment[slotType];
             const gem = this.party.gems[this.selectedGemIndex];
-            if (!hero.equipment.weapon) {
-                this.ui.showPopup('No Weapon', `${hero.name} needs to equip a weapon first!`);
+            if (!item) {
+                this.ui.showPopup('Nothing Equipped', `${hero.name} has no ${slotType} equipped!`);
                 return;
             }
-            if (hero.equipment.weapon.gem) {
-                const confirmApply = confirm(`${hero.equipment.weapon.name} already has a gem. Replace it?`);
-                if (!confirmApply) return;
-                this.party.gems.push(hero.equipment.weapon.gem);
+            if (item.gem) {
+                this.ui.showPopup('Slot Occupied', `${item.name} already has a gem socketed. Remove it first.`);
+                return;
             }
-            hero.equipment.weapon.gem = gem;
-            hero.equipment.weapon.magic = (hero.equipment.weapon.magic || 0) + gem.magic;
-            hero.equipment.weapon.element = gem.element || null;
+            // Snapshot exactly what we add so removeSocketGem() can precisely
+            // reverse it later, and snapshot any pre-existing element so a
+            // weapon like Flametongue doesn't lose its innate element on removal.
+            item.gem = gem;
+            item.gemAppliedBonus = { ...gem.bonus };
+            item.preGemElement = (item.element !== undefined) ? item.element : null;
+            for (let [stat, amount] of Object.entries(gem.bonus || {})) {
+                item[stat] = (item[stat] || 0) + amount;
+            }
+            if (gem.element && slotType === 'weapon') {
+                item.element = gem.element;
+            }
             this.party.gems.splice(this.selectedGemIndex, 1);
             this.selectedGemIndex = undefined;
-            this.ui.showPopup('Gem Applied!', `${gem.name} socketed into ${hero.equipment.weapon.name}!`);
+            this.ui.showPopup('Gem Socketed!', `${gem.name} socketed into ${item.name}!`);
             this.showApplyGemTab();
         }
 
-        craftGem(gemName) {
-            const recipe = GEM_RECIPES[gemName];
+        removeSocketGem(heroIndex, slotType) {
+            const hero = this.party.heroes[heroIndex];
+            const item = hero.equipment[slotType];
+            if (!item || !item.gem) return;
+            const gem = item.gem;
+            // Reverse exactly the stats this gem added.
+            for (let [stat, amount] of Object.entries(item.gemAppliedBonus || gem.bonus || {})) {
+                item[stat] = (item[stat] || 0) - amount;
+            }
+            if (slotType === 'weapon') {
+                item.element = item.preGemElement || null;
+            }
+            delete item.gem;
+            delete item.gemAppliedBonus;
+            delete item.preGemElement;
+            // Breaking a gem out of its socket only returns a portion of the
+            // fragments it cost to make - never the whole gem's worth back.
+            const costObj = gem.fragmentCost || {};
+            let refundParts = [];
+            for (let [color, amount] of Object.entries(costObj)) {
+                const refund = Math.max(1, Math.floor(amount / 2));
+                this.party.addFragment(color, refund);
+                refundParts.push(`${refund} ${color}`);
+            }
+            this.ui.showPopup('Gem Removed', `${gem.name} was pried loose from ${item.name}, shattering partway.\nRecovered: ${refundParts.join(', ') || 'nothing'}.`);
+            this.showApplyGemTab();
+        }
+
+        craftPureGem(color, tier) {
+            const tierDef = SOCKET_GEM_TIERS[color] && SOCKET_GEM_TIERS[color].find(t => t.tier === tier);
+            if (!tierDef) return;
+            if (!this.party.hasFragments(color, tierDef.cost)) {
+                this.ui.showPopup('Not Enough Fragments', `You need ${tierDef.cost} ${color} fragments!`);
+                return;
+            }
+            this.party.consumeFragments({ [color]: tierDef.cost });
+            this.party.addGem({
+                name: tierDef.name, element: tierDef.element || null, bonus: { ...tierDef.bonus },
+                desc: tierDef.desc, fragmentCost: { [color]: tierDef.cost }
+            });
+            this.ui.showPopup('Gem Crafted!', `You crafted a ${tierDef.name}!`);
+            this.showCraftingTab();
+        }
+
+        craftHybridGem(recipeIndex) {
+            const recipe = HYBRID_GEM_RECIPES[recipeIndex];
             if (!recipe) return;
-            if (!this.party.hasMaterials(recipe.materials)) {
-                this.ui.showPopup('Missing Materials', 'You don\'t have enough materials!');
+            const canCraft = Object.entries(recipe.cost).every(([c, q]) => this.party.hasFragments(c, q));
+            if (!canCraft) {
+                this.ui.showPopup('Not Enough Fragments', `You need ${Object.entries(recipe.cost).map(([c, q]) => `${q} ${c}`).join(' + ')}!`);
+                return;
+            }
+            this.party.consumeFragments(recipe.cost);
+            this.party.addGem({
+                name: recipe.name, element: recipe.element || null, bonus: { ...recipe.bonus },
+                desc: recipe.desc, fragmentCost: { ...recipe.cost }
+            });
+            this.ui.showPopup('Gem Crafted!', `You crafted a ${recipe.name}!`);
+            this.showCraftingTab();
+        }
+
+        // =================================================================
+        //                          APOTHECARY
+        // =================================================================
+
+        showApothecaryMenu() {
+            const materials = this.party.materials || {};
+            let html = '<div style="max-height: 420px; overflow-y: auto;">';
+            html += '<h3 style="color: var(--highlight);">Your Materials:</h3>';
+            html += '<div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px;">';
+            const materialEntries = Object.entries(materials);
+            if (materialEntries.length === 0) {
+                html += '<p style="color: #888;">No materials yet. Defeat monsters to collect trophies!</p>';
+            } else {
+                materialEntries.forEach(([name, qty]) => {
+                    html += `<div style="background: rgba(0,0,0,0.3); padding: 5px 10px; border-radius: 4px;">${name}: ${qty}</div>`;
+                });
+            }
+            html += '</div>';
+
+            const charms = this.party.activeCharms || { loot: 0, gold: 0, xp: 0 };
+            const activeParts = [];
+            if (charms.loot > 0) activeParts.push(`🍀 Loot Charm (${charms.loot} battles)`);
+            if (charms.gold > 0) activeParts.push(`🪙 Gold Charm (${charms.gold} battles)`);
+            if (charms.xp > 0) activeParts.push(`📘 XP Charm (${charms.xp} battles)`);
+            if (this.party.elementalWardBattles > 0) activeParts.push(`🛡️ Elemental Ward (${this.party.elementalWardBattles} battles)`);
+            if (this.party.encounterStepsRemaining > 0) activeParts.push(`🕯️ Ward Incense (${this.party.encounterStepsRemaining} steps)`);
+            if (activeParts.length > 0) {
+                html += `<div style="margin-bottom: 15px; padding: 8px; background: rgba(255,215,0,0.1); border-radius: 4px; font-size: 12px; color: #ffd700;">Active: ${activeParts.join(' | ')}</div>`;
+            }
+
+            html += '<h3 style="color: var(--highlight);">Brew Potions:</h3>';
+            APOTHECARY_RECIPES.forEach(recipe => {
+                const hasMaterials = Object.entries(recipe.materials).every(([m, q]) => (materials[m] || 0) >= q);
+                const hasExtras = !recipe.consumesItems || Object.entries(recipe.consumesItems).every(([n, q]) => {
+                    const invItem = this.party.inventory.items.find(i => i.name === n);
+                    return invItem && invItem.quantity >= q;
+                });
+                const canBrew = hasMaterials && hasExtras;
+                const costParts = [
+                    ...Object.entries(recipe.materials).map(([m, q]) => `${m} x${q}`),
+                    ...(recipe.consumesItems ? Object.entries(recipe.consumesItems).map(([n, q]) => `${n} x${q}`) : [])
+                ];
+                html += `
+                    <div class="shop-item" onclick="window.game.brewPotion('${recipe.id}')" style="${canBrew ? '' : 'opacity: 0.5; cursor: not-allowed;'}">
+                        <div>
+                            <span style="color: var(--highlight);">${recipe.icon} ${recipe.name}</span>
+                            <div style="font-size: 11px; color: #888;">${recipe.desc}</div>
+                        </div>
+                        <div style="text-align: right; font-size: 11px; color: ${canBrew ? '#fff' : '#f88'};">${costParts.join('<br>')}</div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            this.ui.showPopup('Apothecary', html, true);
+        }
+
+        brewPotion(recipeId) {
+            const recipe = APOTHECARY_RECIPES.find(r => r.id === recipeId);
+            if (!recipe) return;
+            const hasMaterials = this.party.hasMaterials(recipe.materials);
+            const hasExtras = !recipe.consumesItems || Object.entries(recipe.consumesItems).every(([n, q]) => {
+                const invItem = this.party.inventory.items.find(i => i.name === n);
+                return invItem && invItem.quantity >= q;
+            });
+            if (!hasMaterials || !hasExtras) {
+                this.ui.showPopup('Missing Ingredients', 'You don\'t have everything this recipe needs!');
                 return;
             }
             this.party.consumeMaterials(recipe.materials);
-            this.party.addGem({ ...recipe.result });
-            this.ui.showPopup('Gem Crafted!', `You crafted a ${gemName}!`);
+            if (recipe.consumesItems) {
+                for (let [name, qty] of Object.entries(recipe.consumesItems)) {
+                    const invItem = this.party.inventory.items.find(i => i.name === name);
+                    if (invItem) {
+                        invItem.quantity -= qty;
+                        if (invItem.quantity <= 0) {
+                            this.party.inventory.items = this.party.inventory.items.filter(i => i !== invItem);
+                        }
+                    }
+                }
+            }
+            this.party.addItem({ ...recipe.result });
+            this.ui.showPopup('Potion Brewed!', `You brewed a ${recipe.name}!`);
+            this.showApothecaryMenu();
         }
 
         renderNPCs() {
@@ -16196,7 +16556,8 @@
                 { name: 'King\'s Herald', title: 'Bounty Giver', icon: '👑', type: 'bounty', dialogue: ["I place bounties on powerful monsters. Bring me proof!", "Defeat a Dragon and I'll reward you handsomely.", "Voraxis has a huge bounty on his head."] },
                 { name: 'Wizard', title: 'Spell Weaver', icon: '🔮', type: 'spellcraft', dialogue: ["I can combine spells to create new ones.", "Bring me two spells and I'll merge them.", "Fire and Ice can become something greater!"] },
                 { name: 'Explorer', title: 'Map Maker', icon: '🧭', type: 'map', dialogue: ["I can mark hidden locations on your map for a fee.", "For 200 gold, I'll reveal a secret cave.", "I've heard rumors of hidden treasures."] },
-                { name: 'Gem Crafter', title: 'Material Specialist', icon: '💎', type: 'crafting', dialogue: ["Bring me monster materials and I'll craft powerful gems!", "Gems can be socketed into weapons for elemental power.", "A weapon with a fire gem deals extra fire damage with each hit!"] }
+                { name: 'Gem Crafter', title: 'Fragment Specialist', icon: '💎', type: 'crafting', dialogue: ["Bring me gem fragments and I'll craft powerful socket gems!", "Gems can be socketed into weapons AND armor now.", "Careful - if you pry a gem back out, you'll only recover part of the fragments."] },
+                { name: 'Apothecary', title: 'Potion Brewer', icon: '🧪', type: 'apothecary', dialogue: ["Don't sell me short - these old trophies make fine potions!", "A goblin ear and a bit of hide can go a long way in the right brew.", "I can whip up something for travel, luck, or a bit of peace and quiet."] }
             ];
             npcs.forEach(npc => {
                 const div = document.createElement('div');
@@ -16215,6 +16576,7 @@
                 case 'spellcraft': this.showSpellcraftMenu(); break;
                 case 'map': this.showMapSecrets(); break;
                 case 'crafting': this.showCraftingMenu(); break;
+                case 'apothecary': this.showApothecaryMenu(); break;
                 default: this.talkToNPC(npc);
             }
         }
@@ -17049,6 +17411,13 @@
                 case 'heal': return `+${item.power} HP`;
                 case 'restore_mp': return `+${item.power} MP`;
                 case 'full_restore': return 'Full HP/MP All';
+                case 'revive': return `Revive (${Math.floor((item.power || 0.5) * 100)}% HP)`;
+                case 'loot_boost': return `+25% drops, ${item.power} battles`;
+                case 'gold_boost': return `+50% gold, ${item.power} battles`;
+                case 'xp_boost': return `+50% EXP, ${item.power} battles`;
+                case 'elemental_ward': return `-30% dmg taken, ${item.power} battles`;
+                case 'encounter_ward': return `-70% encounters, ${item.power} steps`;
+                case 'travel': return 'Instant travel';
                 default: return '';
             }
         }
@@ -17118,6 +17487,39 @@
                 return;
             }
 
+            const partyWideEffects = ['loot_boost', 'gold_boost', 'xp_boost', 'encounter_ward', 'elemental_ward'];
+            if (partyWideEffects.includes(item.effect)) {
+                details.innerHTML = '<h4 style="color: var(--highlight);">' + item.name + '</h4>' +
+                    '<p>' + (item.desc || this.getItemEffectDesc(item)) + '</p>' +
+                    '<p style="color: #888;">Quantity: ' + item.quantity + '</p>' +
+                    '<button class="menu-button" onclick="window.game.usePartyItem(\'' + item.name + '\')" style="margin-top: 15px; width: 100%;">Use</button>' +
+                    '<button class="menu-button" onclick="window.game.renderMenuInventory()" style="margin-top: 15px; width: 100%; padding: 5px;">⬅️ Back to Items</button>';
+                this.selectedMenuItem = item;
+                return;
+            }
+
+            if (item.effect === 'travel') {
+                const towns = [
+                    { key: 'Brighthollow', label: 'Brighthollow' },
+                    { key: 'Duskmere', label: 'Duskmere' },
+                    { key: 'Sylvaris', label: 'Sylvaris' },
+                    { key: 'Guild', label: 'Guild Hall' }
+                ];
+                details.innerHTML = '<h4 style="color: var(--highlight);">' + item.name + '</h4>' +
+                    '<p>' + (item.desc || 'Instantly travel to a hub town') + '</p>' +
+                    '<p style="color: #888;">Quantity: ' + item.quantity + '</p>' +
+                    '<p style="color: var(--highlight); margin-top: 10px;">Choose a destination:</p>' +
+                    '<div style="display: flex; flex-direction: column; gap: 5px; margin-top: 10px;">' +
+                        towns.map(function(t) {
+                            return '<button class="shop-item" onclick="window.game.useTravelTonic(\'' + t.key + '\')">' +
+                                '<span>' + t.label + '</span></button>';
+                        }).join('') +
+                    '</div>' +
+                    '<button class="menu-button" onclick="window.game.renderMenuInventory()" style="margin-top: 15px; width: 100%; padding: 5px;">⬅️ Back to Items</button>';
+                this.selectedMenuItem = item;
+                return;
+            }
+
             details.innerHTML = '<h4 style="color: var(--highlight);">' + item.name + '</h4>' +
                 '<p>' + (item.desc || this.getItemEffectDesc(item)) + '</p>' +
                 '<p style="color: #888;">Quantity: ' + item.quantity + '</p>' +
@@ -17166,9 +17568,102 @@
                     const restored = hero.currentMp - oldMp;
                     this.ui.showPopup('Item Used', `${hero.name} recovered ${restored} MP!`);
                     break;
+                case 'revive':
+                    if (!hero.isDead) {
+                        this.ui.showPopup('Not Needed', `${hero.name} isn't fallen!`);
+                        // Refund the item since nothing happened.
+                        const refundItem = this.party.inventory.items.find(i => i.name === item.name);
+                        if (refundItem) refundItem.quantity++;
+                        else this.party.addItem({ ...item, quantity: 1 });
+                        break;
+                    }
+                    const reviveHp = Math.max(1, Math.floor(hero.baseStats.maxHp * (item.power || 0.5)));
+                    hero.isDead = false;
+                    hero.currentHp = reviveHp;
+                    this.ui.showPopup('Item Used', `${hero.name} was revived with ${reviveHp} HP!`);
+                    break;
             }
             this.renderMenuInventory();
             this.ui.updateWorldHUD(this.party);
+            this.selectedMenuItem = null;
+        }
+
+        /** Consumes a party-wide utility item (Loot/Gold/XP Charm, Ward Incense,
+         *  Elemental Ward Tonic) that doesn't target a specific hero. */
+        usePartyItem(itemName) {
+            const item = this.selectedMenuItem;
+            if (!item) return;
+            const inventoryItem = this.party.inventory.items.find(i => i.name === item.name);
+            if (!inventoryItem || inventoryItem.quantity <= 0) {
+                this.ui.showPopup('Error', 'Item no longer available!');
+                this.renderMenuInventory();
+                return;
+            }
+            inventoryItem.quantity--;
+            if (inventoryItem.quantity <= 0) {
+                this.party.inventory.items = this.party.inventory.items.filter(i => i.name !== item.name);
+            }
+            if (!this.party.activeCharms) this.party.activeCharms = { loot: 0, gold: 0, xp: 0 };
+            let message = '';
+            switch (item.effect) {
+                case 'loot_boost':
+                    this.party.activeCharms.loot = item.power;
+                    message = `Drop chances boosted for the next ${item.power} battles!`;
+                    break;
+                case 'gold_boost':
+                    this.party.activeCharms.gold = item.power;
+                    message = `Gold earnings boosted for the next ${item.power} battles!`;
+                    break;
+                case 'xp_boost':
+                    this.party.activeCharms.xp = item.power;
+                    message = `EXP earnings boosted for the next ${item.power} battles!`;
+                    break;
+                case 'elemental_ward':
+                    this.party.elementalWardBattles = item.power;
+                    message = `The party is warded against harm for the next ${item.power} battles!`;
+                    break;
+                case 'encounter_ward':
+                    this.party.encounterModifier = 0.3;
+                    this.party.encounterStepsRemaining = item.power;
+                    message = `Encounter rate reduced for the next ${item.power} steps!`;
+                    break;
+                default:
+                    message = `${item.name} used.`;
+            }
+            this.ui.showPopup('Item Used', message);
+            this.renderMenuInventory();
+            this.selectedMenuItem = null;
+        }
+
+        /** Traveler's Tonic: instant travel to one of the 4 hub towns, reusing
+         *  the same destinations as the existing teleport-scroll system. */
+        useTravelTonic(townKey) {
+            const item = this.selectedMenuItem;
+            if (!item) return;
+            const inventoryItem = this.party.inventory.items.find(i => i.name === item.name);
+            if (!inventoryItem || inventoryItem.quantity <= 0) {
+                this.ui.showPopup('Error', 'Item no longer available!');
+                this.renderMenuInventory();
+                return;
+            }
+            const targets = {
+                Brighthollow: { x: 360, y: 360 },
+                Duskmere: { x: 60, y: 260 },
+                Sylvaris: { x: 70, y: 70 },
+                Guild: { x: 200, y: 270 }
+            };
+            const dest = targets[townKey];
+            if (!dest) return;
+            inventoryItem.quantity--;
+            if (inventoryItem.quantity <= 0) {
+                this.party.inventory.items = this.party.inventory.items.filter(i => i.name !== item.name);
+            }
+            this.world.playerX = dest.x;
+            this.world.playerY = dest.y;
+            this.party.updatePositions(dest.x, dest.y);
+            this.audio.play('magic');
+            if (this.renderer) this.renderer.renderWorld(this.world);
+            this.ui.showPopup('Teleported!', `You arrive at ${townKey}!`);
             this.selectedMenuItem = null;
         }
 
@@ -17459,6 +17954,9 @@
                     pathHistory: this.party.pathHistory,
                     materials: this.party.materials || {},
                     gems: this.party.gems || [],
+                    fragments: this.party.fragments || {},
+                    activeCharms: this.party.activeCharms || { loot: 0, gold: 0, xp: 0 },
+                    elementalWardBattles: this.party.elementalWardBattles || 0,
                     heroes: this.party.heroes.map(h => ({
                         name: h.name,
                         heroClass: h.heroClass,
@@ -17558,6 +18056,9 @@
                 this.party.stepCounter = saveData.party.stepCounter || 0;
                 this.party.materials = saveData.party.materials || {};
                 this.party.gems = saveData.party.gems || [];
+                this.party.fragments = saveData.party.fragments || {};
+                this.party.activeCharms = saveData.party.activeCharms || { loot: 0, gold: 0, xp: 0 };
+                this.party.elementalWardBattles = saveData.party.elementalWardBattles || 0;
                 if (saveData.party.positions) {
                     this.party.positions = saveData.party.positions;
                     if (!this.party.worldPositions) {
@@ -18132,46 +18633,144 @@ const UPGRADE_BENEFITS = {
 };
 
 // =====================================================================
-//                      GEM CRAFTING RECIPES
+//                  GEM FRAGMENTS & SOCKET GEM CRAFTING
 // =====================================================================
+// Gem Fragments (Ruby/Sapphire/Topaz/Emerald/Amethyst) are the loose
+// currency monsters drop (~25% chance, see Monster.fragment / battle end
+// handling). They're combined at the Gem Crafter into Socket Gems, which
+// can be applied to EITHER a weapon or a piece of armor and later removed
+// again (breaking the gem back into a partial fragment refund - see
+// removeSocketGem()). This replaces the old material-based GEM_RECIPES
+// system entirely; the legacy trophy materials (Goblin Ear, Orc Hide,
+// etc.) are now used by the Apothecary instead (see APOTHECARY_RECIPES).
 
-/**
- * Recipes for crafting elemental gems from materials
- */
-const GEM_RECIPES = {
-    'Fire Gem': {
-        materials: { 'Goblin Ear': 3, 'Orc Hide': 1, 'Boar Hide': 2 },
-        result: { name: 'Fire Gem', magic: 8, element: 'fire', desc: 'Adds fire damage to attacks' }
-    },
-    'Ice Gem': {
-        materials: { 'Wolf Fang': 3, 'Bone Fragment': 2, 'Spider Silk': 1 },
-        result: { name: 'Ice Gem', magic: 8, element: 'ice', desc: 'Adds ice damage to attacks' }
-    },
-    'Lightning Gem': {
-        materials: { 'Dark Steel': 2, 'Orc Hide': 2, 'Scorpion Stinger': 1 },
-        result: { name: 'Lightning Gem', magic: 8, element: 'lightning', desc: 'Adds lightning damage to attacks' }
-    },
-    'Crystal Gem': {
-        materials: { 'Crystal Shard': 2, 'Soul Essence': 1, 'Spider Silk': 2 },
-        result: { name: 'Crystal Gem', magic: 18, defense: 8, element: 'lightning', desc: 'Electric crystal gem' }
-    },
-    'Shadow Gem': {
-        materials: { 'Shadow Essence': 2, 'Dark Steel': 2, 'Bone Fragment': 3 },
-        result: { name: 'Shadow Gem', magic: 15, defense: 10, element: 'fire', desc: 'Grants dark fire damage' }
-    },
-    'Dragon Gem': {
-        materials: { 'Dragon Scale': 3, 'Dark Steel': 3, 'Fire Core': 1 },
-        result: { name: 'Dragon Gem', magic: 20, attack: 15, element: 'fire', desc: 'Powerful fire enhancement' }
-    },
-    'Mystic Gem': {
-        materials: { 'Bone Fragment': 5, 'Wolf Fang': 3, 'Goblin Ear': 3, 'Golden Idol': 1 },
-        result: { name: 'Mystic Gem', magic: 18, defense: 10, desc: 'Balanced enhancement gem' }
-    },
-    'Pharaoh\'s Gem': {
-        materials: { 'Mummy Wrapping': 3, 'Golden Idol': 1, 'Golem Core': 1 },
-        result: { name: 'Pharaoh\'s Gem', magic: 25, element: 'ice', desc: 'Ancient iced gem' }
-    }
+const FRAGMENT_COLOR_HEX = {
+    Ruby: '#ff5555', Sapphire: '#55aaff', Topaz: '#ffd23f', Emerald: '#4ecb71', Amethyst: '#b57bff'
 };
+
+const GEM_FRAGMENT_INFO = {
+    Ruby:     { icon: '🔴', element: 'fire',     desc: 'A shard pulsing with inner fire.' },
+    Sapphire: { icon: '🔵', element: 'ice',      desc: 'A shard cold to the touch.' },
+    Topaz:    { icon: '🟡', element: 'lightning',desc: 'A shard that crackles with static.' },
+    Emerald:  { icon: '🟢', element: null,       desc: 'A shard humming with vital energy.' },
+    Amethyst: { icon: '🟣', element: null,       desc: 'A shard swirling with arcane mist.' }
+};
+
+// Pure single-color gems, 4 tiers each. Cost is fragments of that ONE color.
+const SOCKET_GEM_TIERS = {
+    Ruby: [
+        { tier: 1, cost: 8,  name: 'Lesser Ruby Gem',   element: 'fire', bonus: { attack: 4,  magic: 1 }, desc: 'A small fire-touched gem. Adds fire damage to attacks.' },
+        { tier: 2, cost: 18, name: 'Ruby Gem',          element: 'fire', bonus: { attack: 8,  magic: 3 }, desc: 'A polished fire gem. Adds fire damage to attacks.' },
+        { tier: 3, cost: 32, name: 'Greater Ruby Gem',  element: 'fire', bonus: { attack: 14, magic: 5 }, desc: 'A radiant fire gem. Adds strong fire damage to attacks.' },
+        { tier: 4, cost: 50, name: 'Flawless Ruby Gem', element: 'fire', bonus: { attack: 22, magic: 8 }, desc: 'A flawless core of living flame.' }
+    ],
+    Sapphire: [
+        { tier: 1, cost: 8,  name: 'Lesser Sapphire Gem',   element: 'ice', bonus: { defense: 4,  magic: 1 }, desc: 'A small frost-touched gem. Adds ice damage to attacks.' },
+        { tier: 2, cost: 18, name: 'Sapphire Gem',          element: 'ice', bonus: { defense: 8,  magic: 3 }, desc: 'A polished ice gem. Adds ice damage to attacks.' },
+        { tier: 3, cost: 32, name: 'Greater Sapphire Gem',  element: 'ice', bonus: { defense: 14, magic: 5 }, desc: 'A radiant ice gem. Adds strong ice damage to attacks.' },
+        { tier: 4, cost: 50, name: 'Flawless Sapphire Gem', element: 'ice', bonus: { defense: 22, magic: 8 }, desc: 'A flawless core of eternal frost.' }
+    ],
+    Topaz: [
+        { tier: 1, cost: 8,  name: 'Lesser Topaz Gem',   element: 'lightning', bonus: { speed: 2, attack: 2 },  desc: 'A small storm-touched gem. Adds lightning damage to attacks.' },
+        { tier: 2, cost: 18, name: 'Topaz Gem',          element: 'lightning', bonus: { speed: 4, attack: 5 },  desc: 'A polished lightning gem. Adds lightning damage to attacks.' },
+        { tier: 3, cost: 32, name: 'Greater Topaz Gem',  element: 'lightning', bonus: { speed: 6, attack: 9 },  desc: 'A radiant lightning gem. Adds strong lightning damage.' },
+        { tier: 4, cost: 50, name: 'Flawless Topaz Gem', element: 'lightning', bonus: { speed: 9, attack: 14 }, desc: 'A flawless core of captured lightning.' }
+    ],
+    Emerald: [
+        { tier: 1, cost: 8,  name: 'Lesser Emerald Gem',   bonus: { defense: 3,  attack: 2 },  desc: 'A small vital gem. Bolsters defense and strength.' },
+        { tier: 2, cost: 18, name: 'Emerald Gem',          bonus: { defense: 7,  attack: 4 },  desc: 'A polished vital gem. Bolsters defense and strength.' },
+        { tier: 3, cost: 32, name: 'Greater Emerald Gem',  bonus: { defense: 12, attack: 7 },  desc: 'A radiant vital gem. Greatly bolsters defense and strength.' },
+        { tier: 4, cost: 50, name: 'Flawless Emerald Gem', bonus: { defense: 18, attack: 11 }, desc: 'A flawless core of vital energy.' }
+    ],
+    Amethyst: [
+        { tier: 1, cost: 8,  name: 'Lesser Amethyst Gem',   bonus: { magic: 4,  speed: 1 }, desc: 'A small arcane gem. Sharpens magic and reflexes.' },
+        { tier: 2, cost: 18, name: 'Amethyst Gem',          bonus: { magic: 8,  speed: 2 }, desc: 'A polished arcane gem. Sharpens magic and reflexes.' },
+        { tier: 3, cost: 32, name: 'Greater Amethyst Gem',  bonus: { magic: 14, speed: 4 }, desc: 'A radiant arcane gem. Greatly sharpens magic and reflexes.' },
+        { tier: 4, cost: 50, name: 'Flawless Amethyst Gem', bonus: { magic: 22, speed: 6 }, desc: 'A flawless core of pure arcane mist.' }
+    ]
+};
+
+// Hybrid gems: 5 fragments of each of two colors (10 total). One fixed
+// recipe per color pair - a simpler, single-tier alternative to the pure
+// gems above, themed as a fusion of both colors' properties.
+const HYBRID_GEM_RECIPES = [
+    { colors: ['Ruby', 'Sapphire'], cost: { Ruby: 5, Sapphire: 5 }, name: 'Steam Gem',        element: null,        bonus: { attack: 6, defense: 6 },            desc: 'Roiling steam trapped in crystal - balances offense and defense.' },
+    { colors: ['Ruby', 'Topaz'],    cost: { Ruby: 5, Topaz: 5 },    name: 'Ember Storm Gem',  element: 'fire',      bonus: { attack: 9, speed: 3 },              desc: 'Fire and lightning fused - fast, hard-hitting flame damage.' },
+    { colors: ['Ruby', 'Emerald'],  cost: { Ruby: 5, Emerald: 5 },  name: 'Molten Guard Gem', element: 'fire',      bonus: { attack: 7, defense: 7 },            desc: 'A gem of molten rock - fire damage with a sturdy shell.' },
+    { colors: ['Ruby', 'Amethyst'], cost: { Ruby: 5, Amethyst: 5 }, name: 'Cinder Mind Gem',  element: 'fire',      bonus: { attack: 6, magic: 6 },              desc: 'Flame woven with arcane mist - fire damage with a magic edge.' },
+    { colors: ['Sapphire', 'Topaz'],    cost: { Sapphire: 5, Topaz: 5 },    name: 'Frostbolt Gem',    element: 'ice', bonus: { defense: 6, speed: 3, magic: 3 }, desc: 'Frost charged with static - chilling, quick, and precise.' },
+    { colors: ['Sapphire', 'Emerald'],  cost: { Sapphire: 5, Emerald: 5 },  name: 'Glacial Ward Gem', element: 'ice', bonus: { defense: 12, magic: 3 },          desc: 'A ward of eternal ice - excellent protection.' },
+    { colors: ['Sapphire', 'Amethyst'], cost: { Sapphire: 5, Amethyst: 5 }, name: 'Mystic Frost Gem', element: 'ice', bonus: { magic: 8, defense: 4 },           desc: 'Frost bound to arcane mist - potent magic with a cold edge.' },
+    { colors: ['Topaz', 'Emerald'],  cost: { Topaz: 5, Emerald: 5 },  name: 'Charged Aegis Gem', element: null,        bonus: { defense: 8, speed: 4, attack: 3 }, desc: 'A storm-charged shield gem - fast and well-defended.' },
+    { colors: ['Topaz', 'Amethyst'], cost: { Topaz: 5, Amethyst: 5 }, name: 'Arcane Storm Gem',  element: 'lightning', bonus: { magic: 7, speed: 4, attack: 3 },  desc: 'Lightning bound to arcane mist - swift, powerful spellwork.' },
+    { colors: ['Emerald', 'Amethyst'], cost: { Emerald: 5, Amethyst: 5 }, name: 'Verdant Rune Gem', element: null,     bonus: { defense: 7, magic: 7 },           desc: 'A balanced rune of nature and mist.' }
+];
+
+function findHybridRecipe(colorA, colorB) {
+    return HYBRID_GEM_RECIPES.find(r => r.colors.includes(colorA) && r.colors.includes(colorB));
+}
+
+// =====================================================================
+//                          APOTHECARY RECIPES
+// =====================================================================
+// Where the legacy monster trophies (Goblin Ear, Orc Hide, Bone Fragment,
+// etc.) go now that the Gem Crafter runs on fragments instead. Some
+// recipes also consume an existing basic consumable (Potion/Ether) as an
+// ingredient, per the "use what you've already got" idea - a Greater
+// Potion is a Potion brewed up further with a couple of trophies, not a
+// totally separate item chain.
+const APOTHECARY_RECIPES = [
+    {
+        id: 'loot_charm', name: 'Loot Charm', icon: '🍀',
+        desc: 'Battle-tested trinket that makes drops a little more generous. Lasts 5 battles.',
+        materials: { 'Goblin Ear': 3, 'Rat Tail': 2 },
+        result: { name: 'Loot Charm', type: 'consumable', effect: 'loot_boost', power: 5, icon: '🍀', desc: 'Boosts material/fragment drop chance for 5 battles.' }
+    },
+    {
+        id: 'travelers_tonic', name: "Traveler's Tonic", icon: '🧭',
+        desc: 'A swirling brew that yanks you straight to a hub town you already know.',
+        materials: { 'Stolen Goods': 2, 'Nomad Goods': 2 },
+        result: { name: "Traveler's Tonic", type: 'consumable', effect: 'travel', power: 0, icon: '🧭', desc: 'Instantly travel to Brighthollow, Duskmere, Sylvaris, or the Guild.' }
+    },
+    {
+        id: 'ward_incense', name: 'Ward Incense', icon: '🕯️',
+        desc: 'A slow-burning incense that keeps most monsters at a distance for a while.',
+        materials: { 'Swamp Moss': 3, 'Spider Silk': 2 },
+        result: { name: 'Ward Incense', type: 'consumable', effect: 'encounter_ward', power: 40, icon: '🕯️', desc: 'Cuts random encounter rate by 70% for the next 40 steps.' }
+    },
+    {
+        id: 'gold_charm', name: 'Gold Charm', icon: '🪙',
+        desc: 'A charm that makes coin purses feel a little heavier after a fight. Lasts 5 battles.',
+        materials: { 'Stolen Goods': 3, 'Boar Hide': 2 },
+        result: { name: 'Gold Charm', type: 'consumable', effect: 'gold_boost', power: 5, icon: '🪙', desc: 'Boosts gold earned from battle by 50% for 5 battles.' }
+    },
+    {
+        id: 'xp_charm', name: 'XP Charm', icon: '📘',
+        desc: 'Bottled focus - sharpens the mind so lessons from battle stick better. Lasts 5 battles.',
+        materials: { 'Bone Fragment': 3, 'Soul Essence': 1 },
+        result: { name: 'XP Charm', type: 'consumable', effect: 'xp_boost', power: 5, icon: '📘', desc: 'Boosts EXP earned from battle by 50% for 5 battles.' }
+    },
+    {
+        id: 'greater_potion', name: 'Greater Potion', icon: '🧪',
+        desc: 'A pair of Potions, boiled down with a couple of trophies into something stronger.',
+        materials: { 'Ghoul Claw': 2, 'Rotten Flesh': 1 },
+        consumesItems: { 'Potion': 2 },
+        result: { name: 'Greater Potion', type: 'consumable', effect: 'heal', power: 150, icon: '🧪', desc: 'Restores 150 HP to one ally.' }
+    },
+    {
+        id: 'elemental_ward_tonic', name: 'Elemental Ward Tonic', icon: '🛡️',
+        desc: 'A frost-and-ash brew that wards the whole party against harm for a few fights.',
+        materials: { 'Ice Crystal': 2, 'Ashen Shard': 1, 'Dragon Scale': 1 },
+        result: { name: 'Elemental Ward Tonic', type: 'consumable', effect: 'elemental_ward', power: 3, icon: '🛡️', desc: 'Reduces damage taken by the whole party by 30% for 3 battles.' }
+    },
+    {
+        id: 'second_wind_tonic', name: 'Second Wind Tonic', icon: '💫',
+        desc: 'An Ether, spiked with a demon horn and a whisper of soul essence.',
+        materials: { 'Demon Horn': 1, 'Soul Essence': 1 },
+        consumesItems: { 'Ether': 1 },
+        result: { name: 'Second Wind Tonic', type: 'consumable', effect: 'revive', power: 0.5, icon: '💫', desc: 'Revives a fallen ally with 50% HP.' }
+    }
+];
 
 // =====================================================================
 //                    QUEST-ONLY REWARD ITEM DEFINITIONS
@@ -18235,16 +18834,19 @@ const QUEST_REWARD_ITEMS = {
     'Royal Signet': { type: 'jewelry', defense: 5, price: 250, desc: 'A signet ring marking the bearer as a friend of the Brighthollow crown.' },
     'Desert Rose Pendant': { type: 'jewelry', magic: 6, price: 300, desc: 'A pendant carved in the shape of a desert rose, gift of a grateful royal advisor.' },
 
-    // --- Gems (given as wearable jewelry so they show up in Equipment > Jewelry) ---
-    'Fire Gem': { type: 'jewelry', magic: 8, element: 'fire', price: 400, desc: 'Adds fire damage to attacks.' },
-    'Ice Gem': { type: 'jewelry', magic: 8, element: 'ice', price: 400, desc: 'Adds ice damage to attacks.' },
-    'Lightning Gem': { type: 'jewelry', magic: 8, element: 'lightning', price: 400, desc: 'Adds lightning damage to attacks.' },
-    'Crystal Gem': { type: 'jewelry', magic: 18, defense: 8, element: 'lightning', price: 900, desc: 'Electric crystal gem.' },
-    'Shadow Gem': { type: 'jewelry', magic: 15, defense: 10, element: 'fire', price: 800, desc: 'Grants dark fire damage.' },
-    'Dragon Gem': { type: 'jewelry', magic: 20, attack: 15, element: 'fire', price: 1200, desc: 'Powerful fire enhancement.' },
-    'Mystic Gem': { type: 'jewelry', magic: 18, defense: 10, price: 1000, desc: 'Balanced enhancement gem.' },
-    'Pharaoh\'s Gem': { type: 'jewelry', magic: 25, element: 'ice', price: 1400, desc: 'Ancient iced gem.' },
-    'Perfect Gem': { type: 'jewelry', magic: 35, attack: 15, defense: 15, price: 3000, desc: 'A flawless gem of immense power.' },
+    // --- Legacy jewelry "Gems" removed. These used to collide with the Gem
+    // Crafter's own socket gems (same names, two unrelated systems) - see the
+    // gem fragment / socket gem overhaul. Quest rewards that used to hand out
+    // 'Fire Gem', 'Shadow Gem', 'Crystal Gem' etc. now grant Gem Fragments
+    // directly (resolved below via the "<Color> Fragment" pattern), and the
+    // one-of-a-kind 'Perfect Gem' endgame reward is now 'Prismatic Gem', a
+    // premade top-tier socket gem (see type: 'premade_gem' handling in
+    // grantQuestRewardItem()).
+    'Prismatic Gem': {
+        type: 'premade_gem',
+        desc: 'A flawless gem holding every color at once - the Gem Crafter has never seen its like.',
+        gem: { name: 'Prismatic Gem', element: null, bonus: { attack: 15, defense: 15, magic: 20, speed: 5 }, desc: 'A flawless gem holding every color at once.', fragmentCost: { Ruby: 25, Sapphire: 25, Topaz: 25, Emerald: 25, Amethyst: 25 } }
+    },
 
     // --- Materials / trophies (no equip slot fits - kept as crafting materials) ---
     'Explorer\'s Map': { type: 'material' },
@@ -18588,7 +19190,7 @@ const QUEST_DATA = [
         },
         progress: 0,
         goal: 5,
-        reward: { gold: 800, item: 'Shadow Gem' },
+        reward: { gold: 800, item: 'Amethyst Fragment x20' },
         npc: 'Ancient Spirit',
         town: 'brighthollow',
         dialogue: {
@@ -18604,7 +19206,7 @@ const QUEST_DATA = [
     type: 'treasure_find',
     targetLocation: 'Mystic Cave',
     goal: 3,
-    reward: { gold: 600, item: 'Crystal Gem' }
+    reward: { gold: 600, item: 'Topaz Fragment x18' }
 },
     {
         id: 'brighthollow_mini_boss',
@@ -19354,7 +19956,7 @@ const QUEST_DATA = [
         quadrant: 'chaos',
         goal: 3,
         progress: 0,
-        reward: { gold: 9000, item: 'Perfect Gem' },
+        reward: { gold: 9000, item: 'Prismatic Gem' },
         npc: 'Legend',
         town: 'sylvaris',
         dialogue: {
@@ -19710,11 +20312,11 @@ const QUEST_DATA = [
     { id: 'chaos_ice_dragon', name: 'Ice Dragon Slayer', description: 'Defeat the Ice Dragon and collect its heart.', type: 'boss_defeat', targetMonster: 'Ice Dragon', goal: 1, reward: { gold: 3500, item: 'Dragon Scale Mail' }, quadrant: 'chaos', progress: 0 },
     { id: 'duskmere_crystal_heart', name: 'Crystal Heart', description: 'Defeat the Crystal Golem and retrieve the Crystal Heart.', type: 'boss_defeat', targetMonster: 'Crystal Golem', goal: 1, reward: { gold: 1500, item: 'Crystal Armor' }, quadrant: 'duskmere', progress: 0 },
     { id: 'sylvaris_ancient_wisdom', name: 'Ancient Wisdom', description: 'Collect ancient tomes from each region\'s library.', type: 'treasure_find', targets: ['Brighthollow Tome', 'Duskmere Tome', 'Sylvaris Tome'], goal: 3, reward: { gold: 3000, item: 'Sage\'s Staff' }, quadrant: 'sylvaris', progress: 0 },
-    { id: 'sylvaris_fire_core', name: 'Fire Core Collection', description: 'Collect 3 fire cores from fire elementals.', type: 'treasure_find', targetLocation: 'Fire Grotto', goal: 3, reward: { gold: 2200, item: 'Fire Gem' }, quadrant: 'sylvaris', progress: 0 },
+    { id: 'sylvaris_fire_core', name: 'Fire Core Collection', description: 'Collect 3 fire cores from fire elementals.', type: 'treasure_find', targetLocation: 'Fire Grotto', goal: 3, reward: { gold: 2200, item: 'Ruby Fragment x40' }, quadrant: 'sylvaris', progress: 0 },
     { id: 'duskmere_dread_knight_intel', name: 'Dread Knight Intelligence', description: 'Defeat 3 dark knights and bring back their steel.', type: 'monster_kill', targetMonster: 'Dark Knight', goal: 3, reward: { gold: 1800, item: 'Darksteel Sword' }, quadrant: 'duskmere', progress: 0 },
     { id: 'sylvaris_desert_survivor', name: 'Desert Survivor', description: 'Survive 5 encounters in the desert without using items.', type: 'no_item_battle', goal: 5, reward: { gold: 2000, item: 'Nomad\'s Cloak' }, quadrant: 'sylvaris', progress: 0 },
     { id: 'sylvaris_elemental_trials', name: 'Elemental Trials', description: 'Defeat the Fire, Ice, and Lightning guardians in the Sunken Temple.', type: 'elemental_kills', goal: 3, reward: { gold: 2500, item: 'Elemental Crown' }, quadrant: 'sylvaris', progress: 0 },
-    { id: 'brighthollow_goblin_intel', name: 'Goblin Intelligence', description: 'Defeat 5 goblin warriors and bring back their ears for analysis.', type: 'monster_kill', targetMonster: 'Goblin Warrior', goal: 5, reward: { gold: 500, item: 'Fire Gem' }, quadrant: 'brighthollow', progress: 0 },
+    { id: 'brighthollow_goblin_intel', name: 'Goblin Intelligence', description: 'Defeat 5 goblin warriors and bring back their ears for analysis.', type: 'monster_kill', targetMonster: 'Goblin Warrior', goal: 5, reward: { gold: 500, item: 'Ruby Fragment x15' }, quadrant: 'brighthollow', progress: 0 },
     { id: 'chaos_abyssal_hunter', name: 'Abyssal Hunter', description: 'Defeat 10 abyssal demons and collect their essence.', type: 'monster_kill', targetMonster: 'Abyssal Demon', goal: 10, reward: { gold: 4000, item: 'Void Shield' }, quadrant: 'chaos', progress: 0 },
     { id: 'chaos_legendary_weapons', name: 'Legendary Arsenal', description: 'Collect all four legendary weapons from the regional bosses.', type: 'treasure_find', targets: ['Goblin Crown', 'Darksteel Plate', 'Pharaoh\'s Staff', 'Ashen Core'], goal: 4, reward: { gold: 10000, item: 'Blade of Dawn' }, quadrant: 'chaos', progress: 0 },
     { id: 'duskmere_trade_route', name: 'Secure the Trade Route', description: 'Clear 10 monsters from the roads around Duskmere.', type: 'monster_kill', targetMonster: 'any', goal: 10, reward: { gold: 1200, item: 'Merchant\'s Badge' }, quadrant: 'duskmere', progress: 0 },
