@@ -11461,11 +11461,14 @@
                         this.log(`📦 Obtained: ${materialName} x${quantity}`);
                     }
                     materialsFound.push({ name: materialName, quantity: quantity });
-                    // Use dungeonMap.locationName rather than state.currentScreen, which
-                    // is unreliable during battle (it always reads 'battle' there) - this
-                    // is why the Shadow Grove essence-collection progress never used to count.
-                    if (window.game.dungeonMap && window.game.dungeonMap.locationName === 'Shadow Grove' && materialName === 'Shadow Essence') {
-                        window.game.updateQuestProgress('special_location', 1, null, { location: 'Shadow Grove' });
+                    // Shadow Essence only ever drops from Shadow Stalkers, and those
+                    // spawn region-wide (not just inside the Shadow Grove dungeon), so
+                    // track the material itself rather than gating on the player's
+                    // current location - that gate used to silently drop essence
+                    // picked up from a Shadow Stalker fought anywhere outside the
+                    // Shadow Grove cave specifically.
+                    if (materialName === 'Shadow Essence') {
+                        window.game.updateQuestProgress('special_location', 1, null, { location: 'Shadow Grove', subtype: 'essence' });
                     }
                     this.showDropSparkles('#c0c0c0');
                     if (window.game && window.game.checkItemBounties) {
@@ -11651,11 +11654,15 @@
                 this.monsters.forEach(monster => {
                     window.game.updateQuestProgress('monster_kill', 1, monster.name);
                     window.game.trackMonsterKill(monster.name, monster.isBoss);
-                    // Use dungeonMap.locationName rather than state.currentScreen, which
-                    // is unreliable during battle (it always reads 'battle' there) - this
-                    // is why the Shadow Grove stalker-kill progress never used to count.
-                    if (window.game.dungeonMap && window.game.dungeonMap.locationName === 'Shadow Grove') {
-                        window.game.updateQuestProgress('special_location', 1, null, { location: 'Shadow Grove' });
+                    // Shadow Stalkers are part of the whole Brighthollow region's
+                    // monster pool, not exclusive to the Shadow Grove dungeon - they
+                    // (and Elite Shadow Stalkers) can spawn in any Brighthollow
+                    // encounter, including out on the open world map. So this tracks
+                    // the actual monster killed rather than gating on being inside
+                    // the Shadow Grove location, which used to silently drop kills
+                    // that happened anywhere else in the region.
+                    if (monster.name === 'Shadow Stalker' || monster.name === 'Elite Shadow Stalker') {
+                        window.game.updateQuestProgress('special_location', 1, null, { location: 'Shadow Grove', subtype: 'stalker' });
                     }
                     if (this.lastSpellElement) {
                         window.game.trackElementalKill(this.lastSpellElement);
@@ -14359,7 +14366,23 @@
                         }
                     } else if (type === 'special_location' && extraData && extraData.location) {
                         if (quest.targetLocation === extraData.location) {
-                            quest.progress += amount;
+                            // Track the two sub-objectives (stalkers defeated / essence
+                            // collected) separately, mirroring the elemental_kills
+                            // fireKills/iceKills pattern below - previously this just
+                            // added everything into one combined progress number, so
+                            // a quest asking for "3 stalkers + 2 essence" only ever
+                            // showed a single confusing "X/5" instead of showing each
+                            // half's real count.
+                            if (extraData.subtype === 'stalker') {
+                                quest.stalkerCount = (quest.stalkerCount || 0) + amount;
+                            } else if (extraData.subtype === 'essence') {
+                                quest.essenceCount = (quest.essenceCount || 0) + amount;
+                            } else {
+                                quest.progress += amount;
+                            }
+                            if (extraData.subtype === 'stalker' || extraData.subtype === 'essence') {
+                                quest.progress = (quest.stalkerCount || 0) + (quest.essenceCount || 0);
+                            }
                             changed = true;
                         }
                     } else if (type === 'cave_encounters') {
@@ -14488,6 +14511,9 @@
             if (quest.type === 'elemental_kills' && active) {
                 progressMessage = `<p><strong>Fire Kills:</strong> ${active.fireKills || 0}/${quest.goal/2}</p>
                                    <p><strong>Ice Kills:</strong> ${active.iceKills || 0}/${quest.goal/2}</p>`;
+            } else if (quest.goals && quest.goals.stalkers && quest.goals.essence) {
+                progressMessage = `<p><strong>Shadow Stalkers Defeated:</strong> ${(active && active.stalkerCount) || 0}/${quest.goals.stalkers.required}</p>
+                                   <p><strong>Shadow Essence Found:</strong> ${(active && active.essenceCount) || 0}/${quest.goals.essence.required}</p>`;
             }
             let actionButton = '';
             if (!isAccepted) {
@@ -14805,10 +14831,19 @@
                     `;
                 } else {
                     const progress = activeQuest ? activeQuest.progress : 0;
+                    const questDef = QUEST_DATA.find(q => q.id === npc.quest.id);
+                    let breakdownHTML = '';
+                    if (questDef && questDef.goals && questDef.goals.stalkers && questDef.goals.essence) {
+                        breakdownHTML = `
+                            <p>Shadow Stalkers Defeated: ${(activeQuest && activeQuest.stalkerCount) || 0}/${questDef.goals.stalkers.required}</p>
+                            <p>Shadow Essence Found: ${(activeQuest && activeQuest.essenceCount) || 0}/${questDef.goals.essence.required}</p>
+                        `;
+                    }
                     questHTML = `
                         <div style="background: rgba(100,100,255,0.1); padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 4px solid #4466ff;">
                             <h4 style="color: #88aaff; margin-bottom: 10px;">📋 Quest in Progress</h4>
                             <p><strong>${npc.quest.name}</strong></p>
+                            ${breakdownHTML}
                             <p>Progress: ${progress}/${npc.quest.goal}</p>
                         </div>
                     `;
