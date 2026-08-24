@@ -7371,7 +7371,7 @@
                 { x: 150, y: 340, name: 'Signpost', sprite: '🗺️', type: 'quest_giver',
                     dialogue: ["North: Duskmere and the swamps", "East: Brighthollow and the starting lands", "South: Mountains (blocked)", "West: More mountains"],
                     hint: "This crossroads is the heart of the world. Every path leads somewhere interesting.",
-                    quest: { id: 'brighthollow_explorer', name: 'Regional Explorer', description: 'Visit all locations in the Brighthollow region.', type: 'discover_locations', targets: ['Mystic Cave', 'Shadow Grove', 'Goblin Keep'], goal: 3, reward: { gold: 1000, item: 'Explorer\'s Map' } } },
+                    quest: { id: 'brighthollow_explorer', name: 'Regional Explorer', description: 'Visit all locations in the Brighthollow region.', type: 'visit_locations', targets: ['Mystic Cave', 'Shadow Grove', 'Goblin Keep'], goal: 3, reward: { gold: 1000, item: 'Explorer\'s Map' } } },
                 { x: 103, y: 251, name: 'Wandering Merchant', sprite: '💰', type: 'quest_giver',
                     dialogue: ["Trade has been slow lately. Too many monsters on the roads.", "I heard the Dark Fortress to the south has valuable treasures.", "If you're heading there, stock up on holy water. The undead hate it."],
                     hint: "The Dark Fortress is guarded by dark knights. They resist ice but are weak to fire.",
@@ -11453,7 +11453,7 @@
                         if (window.game && window.game.legendaryWeapons) {
                             if (window.game.legendaryWeapons.hasOwnProperty(materialName)) {
                                 window.game.legendaryWeapons[materialName] = true;
-                                window.game.updateQuestProgress('treasure_find', 1, null, { treasure: materialName });
+                                window.game.updateQuestProgress('treasure_find', 1, materialName);
                             }
                         }
                     } else {
@@ -11642,6 +11642,11 @@
             // Captured before this.monsters is cleared below - used after the fight to mark
             // a dungeon boss as defeated so its tile doesn't just re-trigger the fight again.
             const wasBossFight = !defeat && this.monsters.some(m => m.isBoss);
+            // Captured here too, before this.monsters is cleared, to drive the
+            // cave_encounters quest hook below (dungeon type + whether any monster
+            // in the fight was elite).
+            const wasEliteFight = !defeat && this.monsters.some(m => m.isElite);
+            const fightDungeonType = window.game.dungeonMap ? window.game.dungeonMap.type : null;
             const autoBtn = document.getElementById('auto-battle-btn');
             if (autoBtn) {
                 autoBtn.style.background = '#4a4a6a';
@@ -11677,6 +11682,15 @@
                 if (this.magicOnlyBattle) {
                     window.game.updateQuestProgress('magic_only_battle', 1);
                 }
+                // cave_encounters quests (Clear the Mystic Cave, Abyssal Depths, Dragon's
+                // Lair, etc.) had no working trigger anywhere in the game before this -
+                // the only code that fired this type lived in an unused function nothing
+                // ever calls. This fires on every battle won, and updateQuestProgress
+                // itself filters by dungeon type / elite / region as each quest requires.
+                const questQuadrant = { CORNELIA: 'brighthollow', PRAVOCA: 'duskmere', ELFHEIM: 'sylvaris', CHAOS: 'chaos' }[getCurrentWorldQuadrant()];
+                window.game.updateQuestProgress('cave_encounters', 1, null, {
+                    location: fightDungeonType, isElite: wasEliteFight, quadrant: questQuadrant
+                });
                 const allFullHealth = this.party.heroes.every(h => h.currentHp === h.baseStats.maxHp);
                 if (allFullHealth) {
                     window.game.trackPerfectBattle();
@@ -14386,7 +14400,24 @@
                             changed = true;
                         }
                     } else if (type === 'cave_encounters') {
-                        if (!quest.targetLocation || quest.targetLocation === extraData?.location) {
+                        // Previously the only place that fired 'cave_encounters' was an
+                        // orphaned exploreCave() function that nothing in the game ever
+                        // calls (a leftover from before dungeons were walkable) - so
+                        // every quest of this type was completely stuck at 0 regardless
+                        // of how many dungeon battles were fought. The real trigger now
+                        // lives in endBattle(). This also adds support for targetElite
+                        // (several of these quests require elite encounters specifically,
+                        // which was never checked before) and a special case for
+                        // 'mountain_pass', which isn't a real dungeon location - it's
+                        // treated as "any battle won while in the Brighthollow region".
+                        let locationMatches = true;
+                        if (quest.targetLocation === 'mountain_pass') {
+                            locationMatches = extraData && extraData.quadrant === 'brighthollow';
+                        } else if (quest.targetLocation) {
+                            locationMatches = extraData && extraData.location === quest.targetLocation;
+                        }
+                        const eliteMatches = !quest.targetElite || (extraData && extraData.isElite);
+                        if (locationMatches && eliteMatches) {
                             quest.progress += amount;
                             changed = true;
                         }
@@ -14405,8 +14436,34 @@
                             changed = true;
                         }
                     } else if (type === 'treasure_find') {
-                        quest.progress += amount;
-                        changed = true;
+                        // Previously this always did a blind quest.progress += amount
+                        // for every treasure_find event anywhere, regardless of the
+                        // quest's own targetLocation or targets list - so location-
+                        // specific treasure quests (Mystic Cave, Fire Grotto) counted
+                        // loot from ANY dungeon, and distinct-collection quests (the
+                        // three regional tomes, the four legendary weapons) could in
+                        // theory over/undercount since nothing checked which specific
+                        // item was found. Also fixes: receiving a tome as a quest
+                        // reward never notified this system at all, so "Ancient Wisdom"
+                        // (collect all 3 tomes) could never progress no matter what.
+                        if (quest.targetLocation) {
+                            if (extraData && extraData.location === quest.targetLocation) {
+                                quest.progress += amount;
+                                changed = true;
+                            }
+                        } else if (quest.targets) {
+                            if (target && quest.targets.includes(target)) {
+                                quest.foundTargets = quest.foundTargets || [];
+                                if (!quest.foundTargets.includes(target)) {
+                                    quest.foundTargets.push(target);
+                                    quest.progress = quest.foundTargets.length;
+                                    changed = true;
+                                }
+                            }
+                        } else {
+                            quest.progress += amount;
+                            changed = true;
+                        }
                     } else if (type === 'boss_defeat' && target) {
                         if (quest.targetMonster === target) {
                             quest.progress += amount;
@@ -14552,7 +14609,7 @@
             }
             const quest = { ...questData, progress: 0, id: questData.id, completedNotified: false };
             if (quest.type === 'elemental_kills') { quest.fireKills = 0; quest.iceKills = 0; }
-            if (quest.type === 'discover_locations') { quest.visited = []; }
+            if (quest.type === 'visit_locations') { quest.visited = []; }
             if (quest.type === 'battle_streak') { quest.currentStreak = 0; }
             this.quests.push(quest);
             this.ui.showPopup('Quest Accepted', `Started: ${quest.name}`);
@@ -14589,7 +14646,7 @@
                 if (this.quests.length >= 30) { skippedCount++; return; }
                 const quest = { ...questData, progress: 0, id: questData.id, completedNotified: false };
                 if (quest.type === 'elemental_kills') { quest.fireKills = 0; quest.iceKills = 0; }
-                if (quest.type === 'discover_locations') { quest.visited = []; }
+                if (quest.type === 'visit_locations') { quest.visited = []; }
                 if (quest.type === 'battle_streak') { quest.currentStreak = 0; }
                 this.quests.push(quest);
                 acceptedCount++;
@@ -14667,6 +14724,12 @@
             const parsed = this.parseQuestRewardItemName(rewardItemRaw);
             const quantity = explicitQuantity || parsed.qty;
             const def = this.resolveRewardItemDefinition(parsed.name);
+            // Notifies any treasure_find quest tracking a distinct set of named
+            // targets (e.g. "collect all 3 regional tomes") that this specific
+            // item was obtained. No-ops for every other quest since
+            // updateQuestProgress only acts on this when a quest's own
+            // `targets` list actually includes the item name.
+            this.updateQuestProgress('treasure_find', 1, def.name);
             if (def.type === 'material') {
                 this.party.addMaterial(def.name, quantity);
                 return;
@@ -14881,7 +14944,7 @@
             }
             const quest = { ...questData, progress: 0, id: questData.id, completedNotified: false };
             if (quest.type === 'elemental_kills') { quest.fireKills = 0; quest.iceKills = 0; }
-            if (quest.type === 'discover_locations') { quest.visited = []; }
+            if (quest.type === 'visit_locations') { quest.visited = []; }
             if (quest.type === 'battle_streak') { quest.currentStreak = 0; }
             this.quests.push(quest);
             this.ui.showPopup('Quest Accepted', `Started: ${quest.name}`);
@@ -15341,7 +15404,7 @@
                     foundNames.push(item.name);
                 }
             }
-            this.updateQuestProgress('treasure_find', 1);
+            this.updateQuestProgress('treasure_find', 1, null, { location: this.dungeonMap ? this.dungeonMap.locationName : null });
             this.updateQuestProgress('retrieve_item', 1, null, { location: this.dungeonMap ? this.dungeonMap.locationName : null });
             const itemsText = foundNames.length ? `\nFound: ${foundNames.join(', ')}` : '';
             this.ui.showPopup('🎁 Chest Opened!', `You found ${goldFound} gold!${itemsText}`);
@@ -15372,7 +15435,7 @@
                     foundNames.push(item.name);
                 }
             }
-            this.updateQuestProgress('treasure_find', 1);
+            this.updateQuestProgress('treasure_find', 1, null, { location: this.dungeonMap ? this.dungeonMap.locationName : null });
             this.updateQuestProgress('retrieve_item', 1, null, { location: this.dungeonMap ? this.dungeonMap.locationName : null });
             this.ui.showPopup('🌟 Treasure Vault!', `You found ${goldFound} gold!\nFound: ${foundNames.join(', ')}`);
             this.checkDungeonProximity();
@@ -19655,7 +19718,7 @@ const QUEST_DATA = [
     { id: 'chaos_abyssal_hunter', name: 'Abyssal Hunter', description: 'Defeat 10 abyssal demons and collect their essence.', type: 'monster_kill', targetMonster: 'Abyssal Demon', goal: 10, reward: { gold: 4000, item: 'Void Shield' }, quadrant: 'chaos', progress: 0 },
     { id: 'chaos_legendary_weapons', name: 'Legendary Arsenal', description: 'Collect all four legendary weapons from the regional bosses.', type: 'treasure_find', targets: ['Goblin Crown', 'Darksteel Plate', 'Pharaoh\'s Staff', 'Ashen Core'], goal: 4, reward: { gold: 10000, item: 'Blade of Dawn' }, quadrant: 'chaos', progress: 0 },
     { id: 'duskmere_trade_route', name: 'Secure the Trade Route', description: 'Clear 10 monsters from the roads around Duskmere.', type: 'monster_kill', targetMonster: 'any', goal: 10, reward: { gold: 1200, item: 'Merchant\'s Badge' }, quadrant: 'duskmere', progress: 0 },
-    { id: 'brighthollow_explorer', name: 'Regional Explorer', description: 'Visit all locations in the Brighthollow region.', type: 'discover_locations', targets: ['Mystic Cave', 'Shadow Grove', 'Goblin Keep'], goal: 3, reward: { gold: 1000, item: 'Explorer\'s Map' }, quadrant: 'brighthollow', progress: 0 },
+    { id: 'brighthollow_explorer', name: 'Regional Explorer', description: 'Visit all locations in the Brighthollow region.', type: 'visit_locations', targets: ['Mystic Cave', 'Shadow Grove', 'Goblin Keep'], goal: 3, reward: { gold: 1000, item: 'Explorer\'s Map' }, quadrant: 'brighthollow', progress: 0 },
 ];
 
 
