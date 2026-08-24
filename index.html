@@ -15554,6 +15554,9 @@
             if (quest.type === 'elemental_kills' && active) {
                 progressMessage = `<p><strong>Fire Kills:</strong> ${active.fireKills || 0}/5</p>
                                    <p><strong>Ice Kills:</strong> ${active.iceKills || 0}/5</p>`;
+            } else if (quest.goals && quest.goals.stalkers && quest.goals.essence) {
+                progressMessage = `<p><strong>Shadow Stalkers Defeated:</strong> ${(active && active.stalkerCount) || 0}/${quest.goals.stalkers.required}</p>
+                                   <p><strong>Shadow Essence Found:</strong> ${(active && active.essenceCount) || 0}/${quest.goals.essence.required}</p>`;
             }
             details.innerHTML = `
                 <h3 style="color: var(--highlight);">${quest.name}</h3>
