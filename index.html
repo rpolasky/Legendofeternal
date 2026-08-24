@@ -755,6 +755,16 @@
             background: #000;
         }
 
+        #quest-compass-arrow {
+            position: absolute;
+            z-index: 20;
+            font-size: 30px;
+            color: #ffd700;
+            pointer-events: none;
+            filter: drop-shadow(0 0 6px rgba(255, 215, 0, 0.9)) drop-shadow(0 0 2px #000);
+            transition: left 0.25s ease, top 0.25s ease, transform 0.25s ease;
+        }
+
         #world-canvas {
             position: absolute;
             top: 0;
@@ -3542,6 +3552,7 @@
             <button class="menu-button" onclick="window.game.openWorldMap()" title="World Map">🗺️</button>
             <button class="menu-button" onclick="window.game.openLoreJournal()" title="Lore">📖</button>
             <button class="menu-button" onclick="window.game.openLegendaryJournal()" title="Legendary Weapons">⚔️</button>
+            <button class="menu-button" onclick="window.game.showQuestCompassMenu()" title="Track Quest">🧭</button>
             <button class="menu-button" onclick="nudgeCanvasZoom('world-canvas', 1.2)" title="Zoom In">➕</button>
             <button class="menu-button" onclick="nudgeCanvasZoom('world-canvas', 0.8)" title="Zoom Out">➖</button>
             <button class="menu-button" onclick="window.game.renderer.resetZoom(); resetAllCanvasZoom();" title="Reset View">🔄</button>
@@ -3592,6 +3603,7 @@
             <canvas id="world-canvas" width="1024" height="768"></canvas>
 
             <div class="location-indicator" id="location-indicator">Press ENTER to enter</div>
+            <div id="quest-compass-arrow" style="display: none;">➤</div>
         </div>
 
         <!-- ================================================================= -->
@@ -3921,6 +3933,7 @@
                     <button class="menu-button" onclick="window.game.openWorldMap()" style="padding: 6px; font-size: 12px;">🗺️ World Map</button>
                     <button class="menu-button" onclick="window.game.openLoreJournal()" style="padding: 6px; font-size: 12px;">📖 Lore</button>
                     <button class="menu-button" onclick="window.game.openLegendaryJournal()" style="padding: 6px; font-size: 12px;">⚔️ Legendary</button>
+                    <button class="menu-button" onclick="window.game.showQuestCompassMenu()" style="padding: 6px; font-size: 12px;">🧭 Track Quest</button>
                     <button class="menu-button" onclick="toggleFullscreen()" style="padding: 6px; font-size: 12px;">⛶ Fullscreen</button>
                     
                     <div class="audio-controls">
@@ -9403,6 +9416,7 @@
         }
 
         renderWorld(worldMap) {
+            if (window.game && window.game.updateQuestCompass) window.game.updateQuestCompass();
             if (!worldMap || !worldMap.tiles || !this.ctx) {
                 if (this.ctx) {
                     this.ctx.fillStyle = '#000';
@@ -14162,6 +14176,7 @@
             this.updateGoldDisplays();
             this.initAudio();
             this.unlockedLore = ['intro'];
+            this.trackedQuestId = null;
             this.state.isInitialized = true;
             this.state.switchScreen('world');
             if (this.renderer && this.world) {
@@ -16785,6 +16800,111 @@
             this.showShrineMenu();
         }
 
+        // =============================================================
+        //                     QUEST COMPASS
+        // =============================================================
+        /** Looks up a quest's real map coordinates, if it has any - checks
+         *  targetLocation first (most reliable), then falls back to the
+         *  first entry in a `targets` array that matches a real named
+         *  location (used by visit_locations-style quests). Returns null
+         *  for quests with only a vague quadrant and no concrete spot -
+         *  the compass simply won't show an arrow for those. */
+        getQuestTargetCoords(quest) {
+            if (!quest || !this.world || !this.world.locations) return null;
+            let locName = quest.targetLocation;
+            if (!locName && Array.isArray(quest.targets)) {
+                locName = quest.targets.find(t => this.world.locations.some(l => l.name === t));
+            }
+            if (!locName) return null;
+            const loc = this.world.locations.find(l => l.name === locName);
+            if (!loc) return null;
+            return { x: loc.x, y: loc.y, name: loc.name };
+        }
+
+        /** Sets (or clears, if questId is null) the tracked quest and
+         *  refreshes the compass immediately. Called from the Track Quest
+         *  popup - see showQuestCompassMenu(). */
+        trackQuest(questId) {
+            this.trackedQuestId = questId;
+            this.ui.closePopup();
+            this.updateQuestCompass();
+        }
+
+        showQuestCompassMenu() {
+            const active = this.quests.filter(q => q.progress < q.goal);
+            let html = '<div style="max-height: 420px; overflow-y: auto;">';
+            if (this.trackedQuestId) {
+                html += `<div class="shop-item" onclick="window.game.trackQuest(null)" style="margin-bottom: 10px; border-color: #888;">
+                    <span>🚫 Stop Tracking</span><span style="color: #888;">Clear compass</span>
+                </div>`;
+            }
+            if (active.length === 0) {
+                html += '<p style="color: #888; text-align: center; padding: 20px;">No active quests to track.</p>';
+            } else {
+                active.forEach(q => {
+                    const target = this.getQuestTargetCoords(q);
+                    const isTracked = this.trackedQuestId === q.id;
+                    html += `<div class="shop-item" onclick="window.game.trackQuest('${q.id}')" style="${isTracked ? 'border-color: var(--gold-color); background: rgba(255,215,0,0.08);' : ''}">
+                        <div><span>${isTracked ? '🧭 ' : ''}${q.name}</span><div style="font-size: 11px; color: #888;">${target ? '📍 ' + target.name : 'No known location'}</div></div>
+                        <span style="color: #888; font-size: 12px;">${q.progress}/${q.goal}</span>
+                    </div>`;
+                });
+            }
+            html += '</div>';
+            this.ui.showPopup('Track a Quest', html, true);
+        }
+
+        /** Positions and rotates the on-screen compass arrow to point at
+         *  the tracked quest's target, clamped to the edge of the world
+         *  viewport (TomTom-style) rather than drawn at its true distance.
+         *  Called every time the world renders (see Renderer.renderWorld),
+         *  and no-ops instantly whenever there's nothing to point at. */
+        updateQuestCompass() {
+            const arrow = document.getElementById('quest-compass-arrow');
+            if (!arrow) return;
+            if (!this.state || this.state.currentScreen !== 'world' || !this.trackedQuestId || !this.party || !this.world) {
+                arrow.style.display = 'none';
+                return;
+            }
+            const quest = this.quests.find(q => q.id === this.trackedQuestId);
+            if (!quest || quest.progress >= quest.goal) {
+                this.trackedQuestId = null;
+                arrow.style.display = 'none';
+                return;
+            }
+            const target = this.getQuestTargetCoords(quest);
+            if (!target) {
+                arrow.style.display = 'none';
+                return;
+            }
+            const dx = target.x - this.world.playerX;
+            const dy = target.y - this.world.playerY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < 3) {
+                arrow.style.display = 'none';
+                return;
+            }
+            const container = document.getElementById('world-screen');
+            if (!container) return;
+            const w = container.clientWidth || window.innerWidth;
+            const h = container.clientHeight || window.innerHeight;
+            const pad = 46;
+            const halfW = Math.max(10, w / 2 - pad);
+            const halfH = Math.max(10, h / 2 - pad);
+            const angle = Math.atan2(dy, dx);
+            const cosA = Math.cos(angle), sinA = Math.sin(angle);
+            let t = Infinity;
+            if (Math.abs(cosA) > 0.0001) t = Math.min(t, halfW / Math.abs(cosA));
+            if (Math.abs(sinA) > 0.0001) t = Math.min(t, halfH / Math.abs(sinA));
+            const px = w / 2 + cosA * t;
+            const py = h / 2 + sinA * t;
+            arrow.style.display = 'block';
+            arrow.style.left = px + 'px';
+            arrow.style.top = py + 'px';
+            arrow.style.transform = `translate(-50%, -50%) rotate(${angle * 180 / Math.PI}deg)`;
+            arrow.title = `${quest.name} - ${Math.round(dist)} tiles away (${target.name})`;
+        }
+
         renderNPCs() {
             const npcList = document.getElementById('npc-list');
             if (!npcList) return;
@@ -18271,6 +18391,7 @@
                 claimedBounties: Array.from(this.claimedBounties || []),
                 achievements: this.achievements ? this.achievements.toSaveData() : null,
                 unlockedLore: this.unlockedLore || ['intro'],
+                trackedQuestId: this.trackedQuestId || null,
                 state: {
                     flags: this.state.flags || {},
                     currentScreen: this.state.currentScreen
@@ -18448,6 +18569,7 @@
                 // Older saves predate the lore journal - default them to just
                 // the intro chapter rather than an empty journal.
                 this.unlockedLore = saveData.unlockedLore || ['intro'];
+                this.trackedQuestId = saveData.trackedQuestId || null;
                 if (!this.achievements) this.achievements = new AchievementManager();
                 this.achievements.loadSaveData(saveData.achievements);
                 this.renderer = new Renderer();
@@ -20780,7 +20902,7 @@ const QUEST_DATA = [
     {
         id: 'warrior_legendary_vision', name: 'A Storm in the Blood',
         description: "Rowan can't shake a vision of a lightning-wreathed blade. The goblin dens east of Brighthollow, near Mystic Cave, are the source - wolves have started gathering there too.",
-        type: 'monster_kill', targetMonster: 'Wolf', quadrant: 'brighthollow', goal: 5, progress: 0,
+        type: 'monster_kill', targetMonster: 'Wolf', targetLocation: 'Mystic Cave', quadrant: 'brighthollow', goal: 5, progress: 0,
         reward: { gold: 300, item: 'Storm-touched Shard' }, npc: 'Old Wayfarer', town: 'brighthollow',
         dialogue: {
             start: "You're not the first to feel something odd near the old goblin dens, east of town by Mystic Cave - wolves have been drawn there too, restless. Clear a few out and look for whatever's unsettling them.",
@@ -20791,7 +20913,7 @@ const QUEST_DATA = [
     {
         id: 'mage_legendary_vision', name: 'Embers in a Dream',
         description: "Mina keeps dreaming of a staff wreathed in patient flame. The burrows northwest of Brighthollow, past Shadow Grove, are where the dreams grow strongest.",
-        type: 'monster_kill', targetMonster: 'Giant Rat', quadrant: 'brighthollow', goal: 5, progress: 0,
+        type: 'monster_kill', targetMonster: 'Giant Rat', targetLocation: 'Shadow Grove', quadrant: 'brighthollow', goal: 5, progress: 0,
         reward: { gold: 300, item: 'Ember-touched Shard' }, npc: 'Old Wayfarer', town: 'brighthollow',
         dialogue: {
             start: "Rats have been swarming the old burrows northwest of town, out past Shadow Grove, where the ground stays warm year-round. Thin their numbers and see what's under there.",
@@ -20802,7 +20924,7 @@ const QUEST_DATA = [
     {
         id: 'paladin_legendary_vision', name: 'A Shield of Frost',
         description: "Pike wakes cold every night now, chasing the memory of a blade raised to shield, not strike. The bandit camp west of Brighthollow, along the road to Goblin Keep, is where the cold first crept in.",
-        type: 'monster_kill', targetMonster: 'Bandit', quadrant: 'brighthollow', goal: 5, progress: 0,
+        type: 'monster_kill', targetMonster: 'Bandit', targetLocation: 'Goblin Keep', quadrant: 'brighthollow', goal: 5, progress: 0,
         reward: { gold: 300, item: 'Frost-touched Shard' }, npc: 'Old Wayfarer', town: 'brighthollow',
         dialogue: {
             start: "Bandits have been squatting along the western road toward Goblin Keep, on a patch of ground that never quite thaws, even in summer. Clear them out and see for yourself.",
@@ -20813,7 +20935,7 @@ const QUEST_DATA = [
     {
         id: 'warrior_legendary_ore', name: 'Skyiron in the Deep',
         description: "The Duskmere smiths know Skyiron Ore on sight. The vein lies just west of town, near Crystal Caverns - Orcs have been guarding it. Bring back enough to forge with.",
-        type: 'monster_kill', targetMonster: 'Orc', quadrant: 'duskmere', goal: 6, progress: 0,
+        type: 'monster_kill', targetMonster: 'Orc', targetLocation: 'Crystal Caverns', quadrant: 'duskmere', goal: 6, progress: 0,
         reward: { gold: 500, item: 'Skyiron Ore x5' }, npc: 'Shrine Keeper', town: 'duskmere',
         dialogue: {
             start: "Skyiron doesn't turn up often - storm-forged ore, they call it. There's a vein just west of town, out by Crystal Caverns, but orcs have claimed it. Bring back all you can carry.",
@@ -20824,7 +20946,7 @@ const QUEST_DATA = [
     {
         id: 'mage_legendary_wood', name: 'Sunroot in the Swamp',
         description: "Sunroot Wood only grows where fire has burned deep underground for years. The grove is southwest of town, near Whispering Woods - Swamp Things guard it. Gather enough to forge with.",
-        type: 'monster_kill', targetMonster: 'Swamp Thing', quadrant: 'duskmere', goal: 6, progress: 0,
+        type: 'monster_kill', targetMonster: 'Swamp Thing', targetLocation: 'Whispering Woods', quadrant: 'duskmere', goal: 6, progress: 0,
         reward: { gold: 500, item: 'Sunroot Wood x5' }, npc: 'Shrine Keeper', town: 'duskmere',
         dialogue: {
             start: "There's a grove southwest of town, out in the marsh near Whispering Woods, that's stayed warm as long as anyone remembers. The Swamp Things there won't let it go easily.",
@@ -20835,7 +20957,7 @@ const QUEST_DATA = [
     {
         id: 'paladin_legendary_ore', name: 'Frostglass in the Dark',
         description: "Frostglass Ore stays cold no matter the forge. The vein lies southeast of town, along the road toward the old Dark Fortress - Wraiths guard it. Gather enough to work with.",
-        type: 'monster_kill', targetMonster: 'Wraith', quadrant: 'duskmere', goal: 6, progress: 0,
+        type: 'monster_kill', targetMonster: 'Wraith', targetLocation: 'Dark Fortress', quadrant: 'duskmere', goal: 6, progress: 0,
         reward: { gold: 500, item: 'Frostglass Ore x5' }, npc: 'Shrine Keeper', town: 'duskmere',
         dialogue: {
             start: "Frostglass never warms, not even near a forge - the local smiths gave up trying to work it years ago. There's a vein southeast of town, toward the old Dark Fortress, and the wraiths guarding it won't have given up either.",
@@ -20846,7 +20968,7 @@ const QUEST_DATA = [
     {
         id: 'warrior_legendary_tome', name: 'The Tempest Tome',
         description: "A Djinn is said to guard a tome of storm-runes, somewhere in the dunes northwest of town, past the Sand Crypts. Defeat enough of them to recover it.",
-        type: 'monster_kill', targetMonster: 'Djinn', quadrant: 'sylvaris', goal: 6, progress: 0,
+        type: 'monster_kill', targetMonster: 'Djinn', targetLocation: 'Sand Crypts', quadrant: 'sylvaris', goal: 6, progress: 0,
         reward: { gold: 900, item: 'Tempest Rune Tome' }, npc: 'Shrine Keeper', town: 'sylvaris',
         dialogue: {
             start: "The djinn of the dunes hoard more than gold - out past the Sand Crypts, northwest of town, one of them is said to carry a tome of storm-runes. Track it down.",
@@ -20857,7 +20979,7 @@ const QUEST_DATA = [
     {
         id: 'mage_legendary_tome', name: 'The Cinder Tome',
         description: "A Sand Worm's lair is said to hide a half-burned tome of ember-runes, just southeast of town near the Fire Grotto. Defeat enough of them to recover it.",
-        type: 'monster_kill', targetMonster: 'Sand Worm', quadrant: 'sylvaris', goal: 6, progress: 0,
+        type: 'monster_kill', targetMonster: 'Sand Worm', targetLocation: 'Fire Grotto', quadrant: 'sylvaris', goal: 6, progress: 0,
         reward: { gold: 900, item: 'Cinder Rune Tome' }, npc: 'Shrine Keeper', town: 'sylvaris',
         dialogue: {
             start: "Something in the sand worm burrows near the Fire Grotto, just southeast of town, is scorched black but still legible, according to the caravan traders. Worth a look.",
@@ -20868,7 +20990,7 @@ const QUEST_DATA = [
     {
         id: 'paladin_legendary_tome', name: 'The Frost Tome',
         description: "A Desert Scorpion's nest is said to hide a tome of frost-runes, southeast of town along the road to the Sunken Temple. Defeat enough of them to recover it.",
-        type: 'monster_kill', targetMonster: 'Desert Scorpion', quadrant: 'sylvaris', goal: 6, progress: 0,
+        type: 'monster_kill', targetMonster: 'Desert Scorpion', targetLocation: 'Sunken Temple', quadrant: 'sylvaris', goal: 6, progress: 0,
         reward: { gold: 900, item: 'Frost Rune Tome' }, npc: 'Shrine Keeper', town: 'sylvaris',
         dialogue: {
             start: "Strange, finding a frost-tome out here in the desert - but the scorpion nests along the road to the Sunken Temple, southeast of town, are said to guard exactly that.",
@@ -20879,7 +21001,7 @@ const QUEST_DATA = [
     {
         id: 'warrior_legendary_trial', name: "Trial of the Storm",
         description: "A Flame Knight in the Ashen Wastes, east of the Ashveil Spire near Dragon's Lair, carries the final piece of Stormbreaker, tempered in its own fire. Defeat enough of them to claim it.",
-        type: 'monster_kill', targetMonster: 'Flame Knight', quadrant: 'chaos', goal: 5, progress: 0,
+        type: 'monster_kill', targetMonster: 'Flame Knight', targetLocation: 'Dragon\'s Lair', quadrant: 'chaos', goal: 5, progress: 0,
         reward: { gold: 2000, item: 'Stormbreaker Edge' }, npc: 'Shrine Keeper', town: 'sylvaris',
         dialogue: {
             start: "The Ashen Wastes are no place for the unprepared - but east of the Ashveil Spire, near Dragon's Lair, a Flame Knight carries an edge of tempered storm-steel. It's the last piece.",
@@ -20890,7 +21012,7 @@ const QUEST_DATA = [
     {
         id: 'mage_legendary_trial', name: "Trial of the Ember",
         description: "An Abyssal Demon guards the final runes for Emberwoven Staff, in the Abyssal Depths south of the Ashveil Spire. Defeat enough of them to claim them.",
-        type: 'monster_kill', targetMonster: 'Abyssal Demon', quadrant: 'chaos', goal: 5, progress: 0,
+        type: 'monster_kill', targetMonster: 'Abyssal Demon', targetLocation: 'Abyssal Depths', quadrant: 'chaos', goal: 5, progress: 0,
         reward: { gold: 2000, item: 'Emberwoven Runes' }, npc: 'Shrine Keeper', town: 'sylvaris',
         dialogue: {
             start: "Deep in the Abyssal Depths, south of the Ashveil Spire, something has been guarding a set of binding runes that shouldn't have survived the heat around them. Worth the risk.",
@@ -20901,7 +21023,7 @@ const QUEST_DATA = [
     {
         id: 'paladin_legendary_trial', name: "Trial of the Glacier",
         description: "An Ice Demon carries the final edge for Glacial Aegis Blade, holed up in the Frost Cave west of the Ashveil Spire. Defeat enough of them to claim it.",
-        type: 'monster_kill', targetMonster: 'Ice Demon', quadrant: 'chaos', goal: 5, progress: 0,
+        type: 'monster_kill', targetMonster: 'Ice Demon', targetLocation: 'Frost Cave', quadrant: 'chaos', goal: 5, progress: 0,
         reward: { gold: 2000, item: 'Aegis Edge' }, npc: 'Shrine Keeper', town: 'sylvaris',
         dialogue: {
             start: "In the Frost Cave, west of the Ashveil Spire, an Ice Demon carries an edge forged in its own endless winter - by far the hardest-won of the three pieces.",
