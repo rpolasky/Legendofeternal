@@ -5,7 +5,7 @@
 // shell (manifest + icons). Bump CACHE_VERSION any time you ship an
 // updated index.html so installed devices pick up the new build instead
 // of continuing to serve the stale cached copy.
-const CACHE_VERSION = 'legend-of-eternal-v29';
+const CACHE_VERSION = 'legend-of-eternal-v31';
 const CORE_ASSETS = [
     './',
     './index.html',

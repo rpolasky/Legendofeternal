@@ -14038,6 +14038,7 @@
             this.selectedGemIndex = undefined;
             this.bounties = [];
             this.monsterKills = {};
+            this.claimedBounties = new Set();
             this.achievements = new AchievementManager();
             this.legendaryWeapons = {
                 'Goblin Crown': false,
@@ -16151,6 +16152,7 @@
                 this.ui.showPopup('Already Known', `${targetHero.name} already knows ${combination.result.name}!`);
                 return;
             }
+            if (!confirm(`Combine ${firstSpell.name} + ${secondSpell.name} into ${combination.result.name}?\nBoth original spells will be consumed - ${targetHero.name} will only know the new spell.`)) return;
             targetHero.spells = targetHero.spells.filter(s => s.name !== firstSpell.name && s.name !== secondSpell.name);
             targetHero.spells.push(combination.result);
             this.updateSpellCollectionQuest();
@@ -16207,6 +16209,7 @@
                 this.ui.showPopup('Already Known', 'You already know about this location.');
                 return;
             }
+            if (!confirm(`Pay 200 G to reveal ${secret.name}?`)) return;
             secret.revealed = true;
             this.party.gold -= 200;
             this.updateGoldDisplays();
@@ -16382,6 +16385,7 @@
                 this.ui.showPopup('Slot Occupied', `${item.name} already has a gem socketed. Remove it first.`);
                 return;
             }
+            if (!confirm(`Socket ${gem.name} into ${item.name}?\n(${this.formatGemBonus(gem)})`)) return;
             // Snapshot exactly what we add so removeSocketGem() can precisely
             // reverse it later, and snapshot any pre-existing element so a
             // weapon like Flametongue doesn't lose its innate element on removal.
@@ -16405,6 +16409,9 @@
             const item = hero.equipment[slotType];
             if (!item || !item.gem) return;
             const gem = item.gem;
+            const costObj = gem.fragmentCost || {};
+            const previewRefund = Object.entries(costObj).map(([color, amount]) => `${Math.max(1, Math.floor(amount / 2))} ${color}`).join(', ');
+            if (!confirm(`Remove ${gem.name} from ${item.name}?\nIt will break - you'll only recover: ${previewRefund || 'nothing'}.`)) return;
             // Reverse exactly the stats this gem added.
             for (let [stat, amount] of Object.entries(item.gemAppliedBonus || gem.bonus || {})) {
                 item[stat] = (item[stat] || 0) - amount;
@@ -16417,7 +16424,6 @@
             delete item.preGemElement;
             // Breaking a gem out of its socket only returns a portion of the
             // fragments it cost to make - never the whole gem's worth back.
-            const costObj = gem.fragmentCost || {};
             let refundParts = [];
             for (let [color, amount] of Object.entries(costObj)) {
                 const refund = Math.max(1, Math.floor(amount / 2));
@@ -16435,6 +16441,7 @@
                 this.ui.showPopup('Not Enough Fragments', `You need ${tierDef.cost} ${color} fragments!`);
                 return;
             }
+            if (!confirm(`Combine ${tierDef.cost} ${color} Fragments into a ${tierDef.name}?\n(${this.formatGemBonus(tierDef)})`)) return;
             this.party.consumeFragments({ [color]: tierDef.cost });
             this.party.addGem({
                 name: tierDef.name, element: tierDef.element || null, bonus: { ...tierDef.bonus },
@@ -16452,6 +16459,8 @@
                 this.ui.showPopup('Not Enough Fragments', `You need ${Object.entries(recipe.cost).map(([c, q]) => `${q} ${c}`).join(' + ')}!`);
                 return;
             }
+            const costText = Object.entries(recipe.cost).map(([c, q]) => `${q} ${c}`).join(' + ');
+            if (!confirm(`Combine ${costText} into a ${recipe.name}?\n(${this.formatGemBonus(recipe)})`)) return;
             this.party.consumeFragments(recipe.cost);
             this.party.addGem({
                 name: recipe.name, element: recipe.element || null, bonus: { ...recipe.bonus },
@@ -16529,6 +16538,11 @@
                 this.ui.showPopup('Missing Ingredients', 'You don\'t have everything this recipe needs!');
                 return;
             }
+            const costParts = [
+                ...Object.entries(recipe.materials).map(([m, q]) => `${q} ${m}`),
+                ...(recipe.consumesItems ? Object.entries(recipe.consumesItems).map(([n, q]) => `${q} ${n}`) : [])
+            ];
+            if (!confirm(`Brew a ${recipe.name}?\nUses: ${costParts.join(', ')}`)) return;
             this.party.consumeMaterials(recipe.materials);
             if (recipe.consumesItems) {
                 for (let [name, qty] of Object.entries(recipe.consumesItems)) {
@@ -16726,6 +16740,7 @@
                 this.ui.showPopup('Max Upgrade', 'This item cannot be upgraded further.');
                 return;
             }
+            if (!confirm(`Upgrade ${item.name} to +${currentUpgrade + 1} for ${item.upgradeCost} G?`)) return;
             this.party.gold -= item.upgradeCost;
             if (item.category === 'weapons') {
                 const actualItem = this.party.inventory.weapons[item.index];
@@ -16767,20 +16782,46 @@
             content.innerHTML = '';
             const monsterBounties = BOUNTY_DATA.filter(b => b.type === 'monster');
             monsterBounties.forEach((bounty) => {
-                const active = this.bounties.find(b => b.monster === bounty.monster);
-                const progress = active ? active.progress : 0;
-                const isComplete = active && progress >= bounty.required;
+                const kills = (this.monsterKills && this.monsterKills[bounty.monster]) || 0;
+                const claimKey = `monster:${bounty.monster}`;
+                const alreadyClaimed = this.claimedBounties && this.claimedBounties.has(claimKey);
+                const isComplete = kills >= bounty.required;
                 const div = document.createElement('div');
                 div.className = 'shop-item';
+                div.style.borderLeft = alreadyClaimed ? '4px solid #888' : (isComplete ? '4px solid #44ff44' : 'none');
+                div.style.opacity = alreadyClaimed ? '0.6' : '1';
                 div.innerHTML = `
                     <span>${bounty.icon} ${bounty.monster}</span>
                     <div>
-                        ${active ? `<span style="color: ${isComplete ? '#44ff44' : '#ffaa00'};">${progress}/${bounty.required}</span>` : ''}
-                        <span class="item-price" style="margin-left: 10px;">${bounty.reward} G</span>
+                        <span style="color: ${isComplete ? '#44ff44' : '#ffaa00'};">${Math.min(kills, bounty.required)}/${bounty.required}</span>
+                        ${alreadyClaimed ? `<span style="color: #888; margin-left: 10px;">✓ Claimed</span>` : `<span class="item-price" style="margin-left: 10px;">${bounty.reward} G</span>`}
                     </div>
                 `;
+                if (isComplete && !alreadyClaimed) {
+                    div.onclick = () => this.claimMonsterBounty(bounty);
+                }
                 content.appendChild(div);
             });
+        }
+
+        claimMonsterBounty(bounty) {
+            const kills = (this.monsterKills && this.monsterKills[bounty.monster]) || 0;
+            const claimKey = `monster:${bounty.monster}`;
+            if (kills < bounty.required) {
+                this.ui.showPopup('Not Yet', `You haven't defeated a ${bounty.monster} yet. Bring proof by defeating one!`);
+                return;
+            }
+            if (this.claimedBounties && this.claimedBounties.has(claimKey)) {
+                this.ui.showPopup('Already Claimed', `You've already claimed the bounty on ${bounty.monster}.`);
+                return;
+            }
+            if (!confirm(`Claim the bounty on ${bounty.monster} for ${bounty.reward} G?`)) return;
+            this.party.gold += bounty.reward;
+            if (!this.claimedBounties) this.claimedBounties = new Set();
+            this.claimedBounties.add(claimKey);
+            this.updateGoldDisplays();
+            this.ui.showPopup('Bounty Claimed!', `You received ${bounty.reward} gold for defeating the ${bounty.monster}!`);
+            this.showMonsterBounties();
         }
 
         showTreasureBounties() {
@@ -16830,6 +16871,7 @@
                 this.ui.showPopup('Item Not Found', `You don't have ${bounty.item}. Defeat the ${bounty.region} miniboss to obtain it!`);
                 return;
             }
+            if (!confirm(`Turn in ${bounty.item} to ${bounty.turnInNPC} for ${bounty.reward} G?\nThis will remove it from your inventory.`)) return;
             this.party.gold += bounty.reward;
             if (itemLocation === 'materials') {
                 this.party.materials[bounty.item]--;
@@ -17989,6 +18031,8 @@
                 completedQuestIds: Array.from(this.completedQuestIds || []),
                 bounties: this.bounties,
                 monsterKills: this.monsterKills,
+                legendaryWeapons: this.legendaryWeapons,
+                claimedBounties: Array.from(this.claimedBounties || []),
                 achievements: this.achievements ? this.achievements.toSaveData() : null,
                 unlockedLore: this.unlockedLore || ['intro'],
                 state: {
@@ -18145,6 +18189,10 @@
                 }
                 this.bounties = saveData.bounties || [];
                 this.monsterKills = saveData.monsterKills || {};
+                this.legendaryWeapons = saveData.legendaryWeapons || {
+                    'Goblin Crown': false, 'Darksteel Plate': false, 'Pharaoh\'s Staff': false, 'Ashen Core': false
+                };
+                this.claimedBounties = new Set(saveData.claimedBounties || []);
                 // Older saves predate the lore journal - default them to just
                 // the intro chapter rather than an empty journal.
                 this.unlockedLore = saveData.unlockedLore || ['intro'];
@@ -18250,6 +18298,10 @@
             this.quests = [];
             this.bounties = [];
             this.monsterKills = {};
+            this.claimedBounties = new Set();
+            this.legendaryWeapons = {
+                'Goblin Crown': false, 'Darksteel Plate': false, 'Pharaoh\'s Staff': false, 'Ashen Core': false
+            };
             this.achievements = new AchievementManager();
             this.start();
             // Save happens once the player closes the intro (see
