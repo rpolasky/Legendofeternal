@@ -3541,6 +3541,7 @@
             <button class="menu-button" onclick="window.game.toggleMenu()" title="Menu">📋</button>
             <button class="menu-button" onclick="window.game.openWorldMap()" title="World Map">🗺️</button>
             <button class="menu-button" onclick="window.game.openLoreJournal()" title="Lore">📖</button>
+            <button class="menu-button" onclick="window.game.openLegendaryJournal()" title="Legendary Weapons">⚔️</button>
             <button class="menu-button" onclick="nudgeCanvasZoom('world-canvas', 1.2)" title="Zoom In">➕</button>
             <button class="menu-button" onclick="nudgeCanvasZoom('world-canvas', 0.8)" title="Zoom Out">➖</button>
             <button class="menu-button" onclick="window.game.renderer.resetZoom(); resetAllCanvasZoom();" title="Reset View">🔄</button>
@@ -3919,6 +3920,7 @@
                     <button class="menu-button" onclick="window.game.loadGame()" style="padding: 6px; font-size: 12px;">📂 Load</button>
                     <button class="menu-button" onclick="window.game.openWorldMap()" style="padding: 6px; font-size: 12px;">🗺️ World Map</button>
                     <button class="menu-button" onclick="window.game.openLoreJournal()" style="padding: 6px; font-size: 12px;">📖 Lore</button>
+                    <button class="menu-button" onclick="window.game.openLegendaryJournal()" style="padding: 6px; font-size: 12px;">⚔️ Legendary</button>
                     <button class="menu-button" onclick="toggleFullscreen()" style="padding: 6px; font-size: 12px;">⛶ Fullscreen</button>
                     
                     <div class="audio-controls">
@@ -4068,6 +4070,13 @@
                 <h3 style="color: var(--highlight); flex-shrink: 0;">📖 The Story So Far</h3>
                 <div class="message" id="lore-content" style="overflow-y: auto; text-align: left; flex: 1; padding-right: 6px;"></div>
                 <button class="menu-button" onclick="window.game.closeLoreJournal()" style="flex-shrink: 0;">Close</button>
+            </div>
+        </div>
+        <div class="popup-overlay" id="legendary-overlay">
+            <div class="popup-box lore-box" id="legendary-box" style="max-width: 640px; width: 90%; max-height: 80vh; display: flex; flex-direction: column;">
+                <h3 style="color: var(--highlight); flex-shrink: 0;">⚔️ Legendary Weapons</h3>
+                <div class="message" id="legendary-content" style="overflow-y: auto; text-align: left; flex: 1; padding-right: 6px;"></div>
+                <button class="menu-button" onclick="window.game.closeLegendaryJournal()" style="flex-shrink: 0;">Close</button>
             </div>
         </div>
 
@@ -6170,14 +6179,17 @@
             if (this.equipment.weapon) {
                 stats.attack += this.equipment.weapon.attack || 0;
                 stats.magic += this.equipment.weapon.magic || 0;
+                stats.speed += this.equipment.weapon.speed || 0;
             }
             if (this.equipment.armor) {
                 stats.defense += this.equipment.armor.defense || 0;
                 stats.magic += this.equipment.armor.magic || 0;
+                stats.speed += this.equipment.armor.speed || 0;
             }
             if (this.equipment.shield && (this.heroClass === 'warrior' || this.heroClass === 'paladin')) {
                 stats.defense += this.equipment.shield.defense || 0;
                 stats.magic += this.equipment.shield.magic || 0;
+                stats.speed += this.equipment.shield.speed || 0;
             }
             if (this.equipment.jewelry && this.heroClass === 'mage') {
                 stats.magic += this.equipment.jewelry.magic || 0;
@@ -6283,12 +6295,23 @@
             return actual;
         }
 
+        /** Legendary weapons charge the Limit Break faster - 3 turns instead
+         *  of the usual 5. */
+        getLimitBreakMax() {
+            if (this.equipment.weapon && this.equipment.weapon.isLegendary) return 3;
+            return Hero.LIMIT_BREAK_MAX;
+        }
+
         isLimitBreakReady() {
-            return this.limitBreakCharge >= Hero.LIMIT_BREAK_MAX;
+            return this.limitBreakCharge >= this.getLimitBreakMax();
         }
 
         heal(amount) {
             const maxHp = this.getEffectiveStats().maxHp;
+            // Warrior legendary weapon: boosts HP recovered from any source.
+            if (this.equipment.weapon && this.equipment.weapon.healReceivedBonus) {
+                amount = Math.floor(amount * (1 + this.equipment.weapon.healReceivedBonus));
+            }
             this.currentHp = Math.min(maxHp, this.currentHp + amount);
         }
 
@@ -6296,6 +6319,15 @@
             if (this.currentMp < amount) return false;
             this.currentMp -= amount;
             return true;
+        }
+
+        /** Effective MP cost of casting a given spell, after the mage
+         *  legendary weapon's mana cost reduction (if equipped). Always
+         *  used instead of reading spell.cost directly so every casting
+         *  path - battle menu, world menu, buttons - agrees on the cost. */
+        getSpellCost(spell) {
+            const reduction = (this.equipment.weapon && this.equipment.weapon.manaCostReduction) || 0;
+            return Math.max(1, Math.ceil(spell.cost * (1 - reduction)));
         }
 
         addStatusEffect(effect) {
@@ -6333,11 +6365,20 @@
             return this.statusEffects.some(e => e.name === 'Poison');
         }
 
+        /** SPD's sole job in this game: raise crit chance. 0.5% per point of
+         *  effective speed, capped at +20% so heavily gemmed gear can't push
+         *  crit chance to absurd levels. */
+        getSpeedCritBonus() {
+            const speed = this.getEffectiveStats().speed || 0;
+            return Math.min(0.20, speed * 0.005);
+        }
+
         getCritChanceBonus() {
             let bonus = 0;
             this.statusEffects.forEach(e => {
                 if (e.critBonus) bonus += e.critBonus;
             });
+            bonus += this.getSpeedCritBonus();
             return bonus;
         }
 
@@ -10016,9 +10057,9 @@
                             <div class="bar"><div class="fill mp-fill" style="width: ${(hero.currentMp/stats.maxMp)*100}%"></div></div>
                         </div>
                     </div>
-                    <div class="hud-limit-row" title="Limit Break: ${hero.limitBreakCharge}/${Hero.LIMIT_BREAK_MAX}">
+                    <div class="hud-limit-row" title="Limit Break: ${hero.limitBreakCharge}/${hero.getLimitBreakMax()}">
                         <div class="hud-limit-label">LIMIT</div>
-                        <div class="hud-limit-bar"><div class="hud-limit-fill ${hero.isLimitBreakReady() ? 'ready' : ''}" style="width: ${(hero.limitBreakCharge/Hero.LIMIT_BREAK_MAX)*100}%"></div></div>
+                        <div class="hud-limit-bar"><div class="hud-limit-fill ${hero.isLimitBreakReady() ? 'ready' : ''}" style="width: ${(hero.limitBreakCharge/hero.getLimitBreakMax())*100}%"></div></div>
                     </div>
                     <div class="stat-bar exp-row">
                         EXP ${Math.floor((hero.experience/hero.experienceToNext)*100)}%
@@ -10364,9 +10405,10 @@
             hero.spells.forEach((spell) => {
                 const btn = document.createElement('button');
                 btn.className = 'cmd-btn';
-                btn.innerHTML = `${spell.name}<br><small>${spell.cost} MP</small>`;
+                const effCost = hero.getSpellCost(spell);
+                btn.innerHTML = `${spell.name}<br><small>${effCost} MP</small>`;
                 btn.onclick = () => {
-                    if (hero.currentMp < spell.cost) {
+                    if (hero.currentMp < hero.getSpellCost(spell)) {
                         this.log(`Not enough MP for ${spell.name}!`);
                         return;
                     }
@@ -10397,7 +10439,7 @@
                         this.log(`${hero.name} prepares ${spell.name}. Select an enemy.`);
                     }
                 };
-                if (hero.currentMp < spell.cost) btn.style.opacity = '0.5';
+                if (hero.currentMp < effCost) btn.style.opacity = '0.5';
                 commandArea.appendChild(btn);
             });
             const backBtn = document.createElement('button');
@@ -10589,13 +10631,9 @@
 
         executeAttack(hero, target) {
             this.magicOnlyBattle = false;
-            let critBonus = 0;
-            if (hero.statusEffects) {
-                hero.statusEffects.forEach(e => {
-                    if (e.critBonus) critBonus += e.critBonus;
-                });
-            }
-            let critChance = 0.05 + critBonus;
+            // Route through Hero.getCritChanceBonus() so status effects AND
+            // SPD-derived crit chance both apply consistently here.
+            let critChance = 0.05 + hero.getCritChanceBonus();
             let isCrit = Math.random() < critChance;
             let damage = hero.getAttackPower();
             let elementalDamage = 0;
@@ -10845,7 +10883,7 @@
         }
 
         executeMagic(caster, spell, target) {
-            if (!caster.useMp(spell.cost)) {
+            if (!caster.useMp(caster.getSpellCost(spell))) {
                 this.log("Not enough MP!");
                 return;
             }
@@ -10911,6 +10949,9 @@
             }
             if (spell.type === 'heal') {
                 let healAmt = spell.power + caster.getEffectiveStats().magic;
+                if (caster.equipment.weapon && caster.equipment.weapon.healingOutputBonus) {
+                    healAmt = Math.floor(healAmt * (1 + caster.equipment.weapon.healingOutputBonus));
+                }
                 if (target.equipment && target.equipment.shield && target.equipment.shield.healingBonus) {
                     const bonus = target.equipment.shield.healingBonus;
                     healAmt = Math.floor(healAmt * (1 + bonus));
@@ -11051,7 +11092,7 @@
         }
 
         executeMultiTargetSpell(caster, spell) {
-            if (!caster.useMp(spell.cost)) {
+            if (!caster.useMp(caster.getSpellCost(spell))) {
                 this.log("Not enough MP!");
                 return;
             }
@@ -11121,7 +11162,10 @@
             if (spell.type === 'all_heal') {
                 const livingHeroes = this.party.heroes.filter(h => !h.isDead);
                 if (livingHeroes.length === 0) return;
-                const totalHeal = spell.power + caster.getEffectiveStats().magic;
+                let totalHeal = spell.power + caster.getEffectiveStats().magic;
+                if (caster.equipment.weapon && caster.equipment.weapon.healingOutputBonus) {
+                    totalHeal = Math.floor(totalHeal * (1 + caster.equipment.weapon.healingOutputBonus));
+                }
                 const healPerTarget = Math.floor(totalHeal / livingHeroes.length);
                 window.game.audio.play('heal');
                 const partyArea = document.getElementById('party-battle-area');
@@ -11247,9 +11291,9 @@
             if (currentHero && !currentHero.isDead) {
                 if (this.pendingLimitBreakUsed) {
                     this.pendingLimitBreakUsed = false;
-                } else if (currentHero.limitBreakCharge < Hero.LIMIT_BREAK_MAX) {
+                } else if (currentHero.limitBreakCharge < currentHero.getLimitBreakMax()) {
                     currentHero.limitBreakCharge++;
-                    if (currentHero.limitBreakCharge >= Hero.LIMIT_BREAK_MAX) {
+                    if (currentHero.limitBreakCharge >= currentHero.getLimitBreakMax()) {
                         this.log(`⚡ ${currentHero.name}'s Limit Break is ready!`);
                     }
                 }
@@ -12469,7 +12513,7 @@
             uncommon: [
                 { name: 'Mega-Potion', type: 'consumable', effect: 'heal', power: 300, price: 400, desc: 'Restores 300 HP' },
                 { name: 'Hi-Elixir', type: 'consumable', effect: 'restore_mp', power: 200, price: 500, desc: 'Restores 200 MP' },
-                { name: 'Mythril Sword', type: 'weapon', attack: 22, price: 900, desc: 'Lightweight mythril blade' }
+                { name: 'Mythril Sword', type: 'weapon', attack: 28, price: 1300, desc: 'Lightweight mythril blade' }
             ],
             rare: [
                 { name: 'Sand Worm Tooth', type: 'material', price: 80, desc: 'Massive sand worm tooth' },
@@ -14195,6 +14239,85 @@
             // before popping the journal open, rather than fighting the
             // battle-exit transition for the player's attention.
             setTimeout(() => this.openLoreJournal(), 500);
+        }
+
+        /** Everything the Legendary journal needs to know about a hero's
+         *  progress is derived on the fly from state that already exists -
+         *  completedQuestIds for the vision stage, and party.materials for
+         *  every stage after that - rather than tracked separately, so
+         *  there's nothing new to keep in sync or lose on an old save. */
+        getLegendaryStage(heroClass) {
+            const def = LEGENDARY_WEAPONS[heroClass];
+            if (!def) return 0;
+            const mats = this.party.materials || {};
+            const hasFinished = this.party.inventory.weapons.some(w => w.name === def.finalItem.name) ||
+                this.party.heroes.some(h => h.equipment.weapon && h.equipment.weapon.name === def.finalItem.name);
+            if (hasFinished) return 5;
+            const hasPart1 = (mats[def.part1Name] || 0) > 0;
+            const hasPart2 = (mats[def.part2Name] || 0) > 0;
+            const hasPart3 = (mats[def.part3Name] || 0) > 0;
+            if (hasPart1 && hasPart2 && hasPart3) return 4; // ready to combine
+            if (hasPart2) return 3;
+            if (hasPart1) return 2;
+            if (this.completedQuestIds && this.completedQuestIds.has(def.visionQuestId)) return 1;
+            return 0;
+        }
+
+        renderLegendaryJournalContent() {
+            let html = '';
+            const classOrder = ['warrior', 'mage', 'paladin'];
+            classOrder.forEach((heroClass, idx) => {
+                const def = LEGENDARY_WEAPONS[heroClass];
+                const stage = this.getLegendaryStage(heroClass);
+                const stageLabels = [
+                    'Not yet begun',
+                    'The vision - head to Duskmere',
+                    'Hilt/rod forged - find the rune tome in Sylvaris',
+                    'Core/crystal imbued - the final piece awaits in the Ashen Wastes',
+                    'All three pieces in hand - return to the Shrine to combine them',
+                    `${def.weaponName} forged and ready`
+                ];
+                html += `<div style="margin-bottom: ${idx < 2 ? '22px' : '4px'}; padding-bottom: ${idx < 2 ? '18px' : '0'}; ${idx < 2 ? 'border-bottom: 1px solid rgba(255,215,0,0.2);' : ''}">`;
+                html += `<h4 style="color: var(--gold-color); margin-bottom: 8px;">${def.icon} ${def.heroName} - ${def.weaponName}</h4>`;
+                html += `<p style="color: #888; font-size: 12px; margin-bottom: 8px;">${stageLabels[stage]}</p>`;
+                if (stage >= 1) {
+                    html += `<p style="line-height: 1.6; margin-bottom: 8px; color: #d8c8f0;">${def.visionText}</p>`;
+                }
+                if (stage >= 2) {
+                    html += `<p style="line-height: 1.6; margin-bottom: 8px; color: #d8c8f0;">${def.part1FlavorText}</p>`;
+                }
+                if (stage >= 3) {
+                    html += `<p style="line-height: 1.6; margin-bottom: 8px; color: #d8c8f0;">${def.part2FlavorText}</p>`;
+                }
+                if (stage >= 4) {
+                    html += `<p style="line-height: 1.6; margin-bottom: 8px; color: #d8c8f0;">${def.part3FlavorText}</p>`;
+                }
+                if (stage >= 5) {
+                    html += `<p style="line-height: 1.6; margin-bottom: 8px; color: #ffd700;">${def.combineText}</p>`;
+                }
+                html += `<div style="display: flex; gap: 6px; font-size: 11px; margin-top: 6px;">`;
+                ['Vision', def.part1Name, def.part2Name, def.part3Name, 'Combined'].forEach((label, i) => {
+                    const done = stage > i;
+                    html += `<span style="padding: 2px 6px; border-radius: 3px; background: ${done ? 'rgba(255,215,0,0.25)' : 'rgba(0,0,0,0.3)'}; color: ${done ? '#ffd700' : '#666'};">${done ? '✅' : '⬜'} ${label}</span>`;
+                });
+                html += `</div></div>`;
+            });
+            html += `<p style="color: #666; text-align: center; font-style: italic; margin-top: 10px;">Talk to the Shrine Keeper in any guild hall to forge, imbue, or combine finished pieces.</p>`;
+            return html;
+        }
+
+        openLegendaryJournal() {
+            const content = document.getElementById('legendary-content');
+            if (content) content.innerHTML = this.renderLegendaryJournalContent();
+            const overlay = document.getElementById('legendary-overlay');
+            if (overlay) overlay.classList.add('active');
+            if (this.state) this.state.pause();
+        }
+
+        closeLegendaryJournal() {
+            const overlay = document.getElementById('legendary-overlay');
+            if (overlay) overlay.classList.remove('active');
+            if (this.state) this.state.resume();
         }
 
         openWorldMap() {
@@ -16408,6 +16531,10 @@
             const hero = this.party.heroes[heroIndex];
             const item = hero.equipment[slotType];
             if (!item || !item.gem) return;
+            if (item.isLegendary) {
+                this.ui.showPopup('Cannot Remove', `${item.name}'s power is bound into it - it can't be socketed or unsocketed.`);
+                return;
+            }
             const gem = item.gem;
             const costObj = gem.fragmentCost || {};
             const previewRefund = Object.entries(costObj).map(([color, amount]) => `${Math.max(1, Math.floor(amount / 2))} ${color}`).join(', ');
@@ -16560,6 +16687,104 @@
             this.showApothecaryMenu();
         }
 
+        /** The Shrine handles all 3 forge-side steps of the legendary weapon
+         *  questline (forge part1, imbue part2, combine into the finished
+         *  weapon) for all 3 heroes on one screen, gated purely by what's
+         *  already in party.materials - see getLegendaryStage(). */
+        showShrineMenu() {
+            const mats = this.party.materials || {};
+            let html = '<div style="max-height: 440px; overflow-y: auto;">';
+            const classOrder = ['warrior', 'mage', 'paladin'];
+            classOrder.forEach(heroClass => {
+                const def = LEGENDARY_WEAPONS[heroClass];
+                const stage = this.getLegendaryStage(heroClass);
+                html += `<div style="margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid rgba(255,215,0,0.15);">`;
+                html += `<h4 style="color: var(--gold-color); margin-bottom: 6px;">${def.icon} ${def.heroName} - ${def.weaponName}</h4>`;
+                if (stage === 0) {
+                    html += `<p style="color: #888; font-size: 12px;">${def.heroName} hasn't had the vision yet. Nothing to do here.</p>`;
+                } else if (stage === 5) {
+                    html += `<p style="color: #ffd700; font-size: 12px;">✅ ${def.weaponName} has been forged.</p>`;
+                } else {
+                    // Forge Part 1
+                    const rawHave = mats[def.rawMaterial] || 0;
+                    const canForge1 = stage === 1 && rawHave >= def.rawMaterialQty;
+                    if (stage <= 1) {
+                        html += `<div class="shop-item" onclick="${canForge1 ? `window.game.forgeLegendaryPart1('${heroClass}')` : ''}" style="${canForge1 ? '' : 'opacity: 0.5; cursor: not-allowed;'}">
+                            <div><span>🔨 Forge ${def.part1Name}</span><div style="font-size: 11px; color: #888;">Shapes the raw material into the weapon's first piece.</div></div>
+                            <div style="text-align: right; font-size: 11px; color: ${rawHave >= def.rawMaterialQty ? '#fff' : '#f88'};">${def.rawMaterial} x${def.rawMaterialQty}<br>(have ${rawHave})</div>
+                        </div>`;
+                    }
+                    // Forge/Imbue Part 2
+                    if (stage <= 2) {
+                        const tomeHave = mats[def.tomeMaterial] || 0;
+                        const hasPart1 = (mats[def.part1Name] || 0) > 0;
+                        const canForge2 = stage === 2 && hasPart1 && tomeHave >= def.tomeMaterialQty;
+                        html += `<div class="shop-item" onclick="${canForge2 ? `window.game.forgeLegendaryPart2('${heroClass}')` : ''}" style="${canForge2 ? '' : 'opacity: 0.5; cursor: not-allowed;'}">
+                            <div><span>✨ Imbue ${def.part2Name}</span><div style="font-size: 11px; color: #888;">Weaves the rune tome's power into a second piece.</div></div>
+                            <div style="text-align: right; font-size: 11px; color: ${tomeHave >= def.tomeMaterialQty ? '#fff' : '#f88'};">${def.tomeMaterial} x${def.tomeMaterialQty}<br>${hasPart1 ? '(have hilt)' : '(need part 1 first)'}</div>
+                        </div>`;
+                    }
+                    // Combine
+                    if (stage === 4) {
+                        html += `<div class="shop-item" onclick="window.game.combineLegendaryWeapon('${heroClass}')">
+                            <div><span>⚒️ Forge ${def.weaponName}</span><div style="font-size: 11px; color: #ffd700;">All three pieces are in hand. Combine them into the finished weapon!</div></div>
+                            <div style="text-align: right; font-size: 11px; color: #fff;">Uses all 3 parts</div>
+                        </div>`;
+                    } else if (stage === 3) {
+                        html += `<p style="color: #888; font-size: 12px;">${def.part2Name} is imbued. The final piece, ${def.part3Name}, awaits in the Ashen Wastes.</p>`;
+                    }
+                }
+                html += `</div>`;
+            });
+            html += '</div>';
+            this.ui.showPopup('Shrine of Forging', html, true);
+        }
+
+        forgeLegendaryPart1(heroClass) {
+            const def = LEGENDARY_WEAPONS[heroClass];
+            if (!def) return;
+            if (!this.party.hasMaterials({ [def.rawMaterial]: def.rawMaterialQty })) {
+                this.ui.showPopup('Not Enough Material', `You need ${def.rawMaterialQty} ${def.rawMaterial}.`);
+                return;
+            }
+            if (!confirm(`Forge ${def.part1Name}?\nUses: ${def.rawMaterialQty} ${def.rawMaterial}`)) return;
+            this.party.consumeMaterials({ [def.rawMaterial]: def.rawMaterialQty });
+            this.party.addMaterial(def.part1Name, 1);
+            this.ui.showPopup(`${def.part1Name} Forged!`, def.part1FlavorText);
+            this.showShrineMenu();
+        }
+
+        forgeLegendaryPart2(heroClass) {
+            const def = LEGENDARY_WEAPONS[heroClass];
+            if (!def) return;
+            const hasPart1 = this.party.hasMaterials({ [def.part1Name]: 1 });
+            const hasTome = this.party.hasMaterials({ [def.tomeMaterial]: def.tomeMaterialQty });
+            if (!hasPart1 || !hasTome) {
+                this.ui.showPopup('Missing Ingredients', `You need ${def.part1Name} and ${def.tomeMaterialQty} ${def.tomeMaterial}.`);
+                return;
+            }
+            if (!confirm(`Imbue ${def.part2Name}?\nUses: ${def.tomeMaterialQty} ${def.tomeMaterial}`)) return;
+            this.party.consumeMaterials({ [def.tomeMaterial]: def.tomeMaterialQty });
+            this.party.addMaterial(def.part2Name, 1);
+            this.ui.showPopup(`${def.part2Name} Imbued!`, def.part2FlavorText);
+            this.showShrineMenu();
+        }
+
+        combineLegendaryWeapon(heroClass) {
+            const def = LEGENDARY_WEAPONS[heroClass];
+            if (!def) return;
+            const requirements = { [def.part1Name]: 1, [def.part2Name]: 1, [def.part3Name]: 1 };
+            if (!this.party.hasMaterials(requirements)) {
+                this.ui.showPopup('Missing Pieces', `You need all three pieces: ${def.part1Name}, ${def.part2Name}, ${def.part3Name}.`);
+                return;
+            }
+            if (!confirm(`Forge ${def.weaponName}?\nThis will use up ${def.part1Name}, ${def.part2Name}, and ${def.part3Name}.`)) return;
+            this.party.consumeMaterials(requirements);
+            this.party.addItem({ ...def.finalItem, gem: { ...def.finalItem.gem } });
+            this.ui.showPopup(`${def.weaponName} Forged!`, `${def.combineText}\n\nCheck ${def.heroName}'s equipment menu to wield it.`);
+            this.showShrineMenu();
+        }
+
         renderNPCs() {
             const npcList = document.getElementById('npc-list');
             if (!npcList) return;
@@ -16571,7 +16796,8 @@
                 { name: 'Wizard', title: 'Spell Weaver', icon: '🔮', type: 'spellcraft', dialogue: ["I can combine spells to create new ones.", "Bring me two spells and I'll merge them.", "Fire and Ice can become something greater!"] },
                 { name: 'Explorer', title: 'Map Maker', icon: '🧭', type: 'map', dialogue: ["I can mark hidden locations on your map for a fee.", "For 200 gold, I'll reveal a secret cave.", "I've heard rumors of hidden treasures."] },
                 { name: 'Gem Crafter', title: 'Fragment Specialist', icon: '💎', type: 'crafting', dialogue: ["Bring me gem fragments and I'll craft powerful socket gems!", "Gems can be socketed into weapons AND armor now.", "Careful - if you pry a gem back out, you'll only recover part of the fragments."] },
-                { name: 'Apothecary', title: 'Potion Brewer', icon: '🧪', type: 'apothecary', dialogue: ["Don't sell me short - these old trophies make fine potions!", "A goblin ear and a bit of hide can go a long way in the right brew.", "I can whip up something for travel, luck, or a bit of peace and quiet."] }
+                { name: 'Apothecary', title: 'Potion Brewer', icon: '🧪', type: 'apothecary', dialogue: ["Don't sell me short - these old trophies make fine potions!", "A goblin ear and a bit of hide can go a long way in the right brew.", "I can whip up something for travel, luck, or a bit of peace and quiet."] },
+                { name: 'Shrine Keeper', title: 'Legendary Forge', icon: '⚔️', type: 'shrine', dialogue: ["Three heroes, three destinies, three weapons waiting to be found.", "Bring me the pieces as you find them - ore, tome, trial-won edge - and I'll shape them.", "A finished legendary weapon isn't just steel. It remembers what it took to make it."] }
             ];
             npcs.forEach(npc => {
                 const div = document.createElement('div');
@@ -16591,6 +16817,7 @@
                 case 'map': this.showMapSecrets(); break;
                 case 'crafting': this.showCraftingMenu(); break;
                 case 'apothecary': this.showApothecaryMenu(); break;
+                case 'shrine': this.showShrineMenu(); break;
                 default: this.talkToNPC(npc);
             }
         }
@@ -17247,7 +17474,7 @@
                 '<div><strong>ATK:</strong> ' + stats.attack + ' (Base: ' + hero.baseStats.attack + ')</div>' +
                 '<div><strong>DEF:</strong> ' + stats.defense + ' (Base: ' + hero.baseStats.defense + ')</div>' +
                 '<div><strong>MAG:</strong> ' + stats.magic + '</div>' +
-                '<div><strong>SPD:</strong> ' + stats.speed + '</div>' +
+                '<div><strong>SPD:</strong> ' + stats.speed + ' (+' + Math.round(hero.getSpeedCritBonus() * 100) + '% Crit)</div>' +
                 '<div><strong>EXP:</strong> ' + hero.experience + '/' + hero.experienceToNext + '</div>';
             document.getElementById('current-weapon').textContent = hero.equipment.weapon ? hero.equipment.weapon.name : 'None';
             document.getElementById('current-armor').textContent = hero.equipment.armor ? hero.equipment.armor.name : 'None';
@@ -17769,8 +17996,8 @@
                 this.ui.showPopup('Cannot Cast', hero.name + ' is unconscious!');
                 return;
             }
-            if (hero.currentMp < spell.cost) {
-                this.ui.showPopup('Not Enough MP', hero.name + ' needs ' + spell.cost + ' MP to cast ' + spell.name + '!');
+            if (hero.currentMp < hero.getSpellCost(spell)) {
+                this.ui.showPopup('Not Enough MP', hero.name + ' needs ' + hero.getSpellCost(spell) + ' MP to cast ' + spell.name + '!');
                 return;
             }
             var isUsable = (spell.type === 'heal' || spell.type === 'all_heal' || 
@@ -17802,7 +18029,7 @@
             var hero = this.party.heroes[heroIndex];
             var spell = hero.spells[spellIndex];
             var targetHTML = '<h3 style="color: var(--highlight);">' + hero.name + ' casts ' + spell.name + '</h3>' +
-                '<p style="color: #888;">Select a target to heal (MP Cost: ' + spell.cost + '):</p>' +
+                '<p style="color: #888;">Select a target to heal (MP Cost: ' + hero.getSpellCost(spell) + '):</p>' +
                 '<div style="display: flex; flex-direction: column; gap: 5px; margin-top: 10px; max-height: 300px; overflow-y: auto;">';
             for (var i = 0; i < this.party.heroes.length; i++) {
                 var target = this.party.heroes[i];
@@ -17835,16 +18062,20 @@
                 this.ui.showPopup('Cannot Heal', target.name + ' is unconscious and cannot be healed!');
                 return;
             }
-            if (caster.currentMp < spell.cost) {
-                this.ui.showPopup('Not Enough MP', caster.name + ' needs ' + spell.cost + ' MP to cast ' + spell.name + '!');
+            var effCost = caster.getSpellCost(spell);
+            if (caster.currentMp < effCost) {
+                this.ui.showPopup('Not Enough MP', caster.name + ' needs ' + effCost + ' MP to cast ' + spell.name + '!');
                 return;
             }
             var healAmount = spell.power + caster.getEffectiveStats().magic;
+            if (caster.equipment.weapon && caster.equipment.weapon.healingOutputBonus) {
+                healAmount = Math.floor(healAmount * (1 + caster.equipment.weapon.healingOutputBonus));
+            }
             if (target.equipment && target.equipment.shield && target.equipment.shield.healingBonus) {
                 var bonus = target.equipment.shield.healingBonus;
                 healAmount = Math.floor(healAmount * (1 + bonus));
             }
-            caster.currentMp -= spell.cost;
+            caster.currentMp -= effCost;
             var oldHp = target.currentHp;
             target.heal(healAmount);
             var actualHeal = target.currentHp - oldHp;
@@ -17864,17 +18095,21 @@
                 this.ui.showPopup('Error', 'Invalid spell!');
                 return;
             }
-            if (caster.currentMp < spell.cost) {
-                this.ui.showPopup('Not Enough MP', caster.name + ' needs ' + spell.cost + ' MP to cast ' + spell.name + '!');
+            var allHealEffCost = caster.getSpellCost(spell);
+            if (caster.currentMp < allHealEffCost) {
+                this.ui.showPopup('Not Enough MP', caster.name + ' needs ' + allHealEffCost + ' MP to cast ' + spell.name + '!');
                 return;
             }
-            caster.currentMp -= spell.cost;
+            caster.currentMp -= allHealEffCost;
             var totalHeal = 0;
             var healCount = 0;
             for (var i = 0; i < this.party.heroes.length; i++) {
                 var target = this.party.heroes[i];
                 if (!target.isDead) {
                     var healAmount = spell.power + caster.getEffectiveStats().magic;
+                    if (caster.equipment.weapon && caster.equipment.weapon.healingOutputBonus) {
+                        healAmount = Math.floor(healAmount * (1 + caster.equipment.weapon.healingOutputBonus));
+                    }
                     if (target.equipment && target.equipment.shield && target.equipment.shield.healingBonus) {
                         var bonus = target.equipment.shield.healingBonus;
                         healAmount = Math.floor(healAmount * (1 + bonus));
@@ -17899,7 +18134,7 @@
             var hero = this.party.heroes[heroIndex];
             var spell = hero.spells[spellIndex];
             var targetHTML = '<h3 style="color: var(--highlight);">' + hero.name + ' casts ' + spell.name + '</h3>' +
-                '<p style="color: #888;">Select a target to cure poison (MP Cost: ' + spell.cost + '):</p>' +
+                '<p style="color: #888;">Select a target to cure poison (MP Cost: ' + hero.getSpellCost(spell) + '):</p>' +
                 '<div style="display: flex; flex-direction: column; gap: 5px; margin-top: 10px; max-height: 300px; overflow-y: auto;">';
             var hasPoisoned = false;
             for (var i = 0; i < this.party.heroes.length; i++) {
@@ -17941,11 +18176,12 @@
                 this.ui.showPopup('Not Poisoned', target.name + ' is not poisoned!');
                 return;
             }
-            if (caster.currentMp < spell.cost) {
-                this.ui.showPopup('Not Enough MP', caster.name + ' needs ' + spell.cost + ' MP to cast ' + spell.name + '!');
+            var curePoisonEffCost = caster.getSpellCost(spell);
+            if (caster.currentMp < curePoisonEffCost) {
+                this.ui.showPopup('Not Enough MP', caster.name + ' needs ' + curePoisonEffCost + ' MP to cast ' + spell.name + '!');
                 return;
             }
-            caster.currentMp -= spell.cost;
+            caster.currentMp -= curePoisonEffCost;
             target.curePoison();
             if (this.audio) this.audio.play('heal');
             this.ui.closePopup();
@@ -18483,6 +18719,16 @@
  * Spells that can be created through combining other spells
  */
 const CRAFTED_SPELLS = {
+    // Tier 1 combos - built purely from Brighthollow's own starter tomes, so
+    // the Spell Weaver has something worth doing before anyone's been to
+    // Duskmere. Deliberately weaker than the real Tier 2 tomes (Fira/Might/
+    // Cura etc. at 65-120 power) so buying those later still feels like a
+    // genuine upgrade, not a redundant purchase.
+    'Flarespark': { name: 'Flarespark', cost: 7, power: 48, type: 'damage', element: 'fire', tier: 1, crafted: true },
+    'Frostshock': { name: 'Frostshock', cost: 7, power: 48, type: 'damage', element: 'ice', tier: 1, crafted: true },
+    'War Focus': { name: 'War Focus', cost: 7, power: 1.65, type: 'buff', stat: 'attack', duration: 4, tier: 1, crafted: true },
+    'Blessing': { name: 'Blessing', cost: 8, power: 90, type: 'heal', tier: 1, crafted: true },
+
     // Mage - Tier 3 Single Target (requires two Tier 2 spells)
     'Firaga': { name: 'Firaga', cost: 25, power: 90, type: 'damage', element: 'fire', tier: 3, crafted: true },
     'Blizzaga': { name: 'Blizzaga', cost: 25, power: 90, type: 'damage', element: 'ice', tier: 3, crafted: true },
@@ -18571,6 +18817,15 @@ function resolveTomeSpell(spell) {
  * Recipes for combining spells to create new ones
  */
 const SPELL_COMBINATIONS = [
+    // Tier 1 combinations - all built from spells sold in Brighthollow's own
+    // Magic Shop (Fire/Ice/Spark/Bolster/Focus/Cure/Protect), so the Wizard's
+    // Spell Weaver is worth a visit right from the first town instead of
+    // sitting dead until someone's bought a Tier 2 tome in Duskmere.
+    { spell1: 'Fire', spell2: 'Spark', result: CRAFTED_SPELLS['Flarespark'] },
+    { spell1: 'Ice', spell2: 'Spark', result: CRAFTED_SPELLS['Frostshock'] },
+    { spell1: 'Bolster', spell2: 'Focus', result: CRAFTED_SPELLS['War Focus'] },
+    { spell1: 'Cure', spell2: 'Protect', result: CRAFTED_SPELLS['Blessing'] },
+
     // Fire combinations
     { 
         spell1: 'Fire 2', 
@@ -18913,8 +19168,134 @@ const QUEST_REWARD_ITEMS = {
     'Duskmere Tome': { type: 'material', desc: 'Trade ledgers and regional histories recovered from Crystal Caverns.' },
     'Sylvaris Tome': { type: 'material', desc: 'Ancient scholarly notes recovered from the Sunken Temple.' },
 
+    // --- Legendary weapon questline materials (see LEGENDARY_WEAPONS) ---
+    'Storm-touched Shard': { type: 'material', desc: 'A shard that hums faintly with trapped lightning. Rowan felt it calling.' },
+    'Ember-touched Shard': { type: 'material', desc: 'A shard that stays warm no matter the weather. Mina felt it calling.' },
+    'Frost-touched Shard': { type: 'material', desc: 'A shard that never quite thaws. Pike felt it calling.' },
+    'Skyiron Ore': { type: 'material', desc: 'Storm-forged ore, heavier than it should be. The Shrine Keeper could forge something with enough of this.' },
+    'Sunroot Wood': { type: 'material', desc: 'Wood from a root that grew too close to buried fire. Warm to the touch even weeks later.' },
+    'Frostglass Ore': { type: 'material', desc: 'Ore veined with ice that never melts, no matter the forge.' },
+    'Tempest Rune Tome': { type: 'material', desc: 'A tome of storm-runes, recovered from a djinn\'s hoard.' },
+    'Cinder Rune Tome': { type: 'material', desc: 'A tome of ember-runes, half-burned but still legible.' },
+    'Frost Rune Tome': { type: 'material', desc: 'A tome of frost-runes, cold enough to numb bare hands.' },
+    'Stormbreaker Hilt': { type: 'material', desc: 'The forged hilt of a legendary blade. Two pieces remain.' },
+    'Stormbreaker Core': { type: 'material', desc: 'A rune-imbued core, thick with captured lightning. One piece remains.' },
+    'Stormbreaker Edge': { type: 'material', desc: 'A blade-edge tempered in the Ashen Wastes. Ready to be combined.' },
+    'Emberwoven Rod': { type: 'material', desc: 'The forged rod of a legendary staff. Two pieces remain.' },
+    'Emberwoven Crystal': { type: 'material', desc: 'A rune-imbued crystal, warm with captured fire. One piece remains.' },
+    'Emberwoven Runes': { type: 'material', desc: 'A set of binding runes tempered in the Ashen Wastes. Ready to be combined.' },
+    'Aegis Hilt': { type: 'material', desc: 'The forged hilt of a legendary blade. Two pieces remain.' },
+    'Aegis Core': { type: 'material', desc: 'A rune-imbued core, cold with captured frost. One piece remains.' },
+    'Aegis Edge': { type: 'material', desc: 'A blade-edge tempered in the Ashen Wastes. Ready to be combined.' },
+
     // --- Consumables ---
     'Holy Water': { type: 'consumable', effect: 'heal', power: 80, price: 150, desc: 'Purified water. Restores 80 HP.' }
+};
+
+// =====================================================================
+//                       LEGENDARY WEAPONS
+// =====================================================================
+/**
+ * The per-hero legendary weapon questline. Each class works through the
+ * same 5-stage arc across the world's zones:
+ *   1. vision  (Brighthollow) - unlocks the Legendary journal tab
+ *   2. part1   (Duskmere)     - gather raw material, forge at the Shrine
+ *   3. part2   (Sylvaris)     - gather a rune tome, imbue at the Shrine
+ *   4. part3   (Ashen Wastes) - a trial quest, the part is the reward itself
+ *   5. combine (Shrine)       - once all 3 parts are held, forge the weapon
+ * Progress lives in game.legendaryProgress[heroClass] = 0-5 (see
+ * advanceLegendaryStage / showShrineMenu). This table is the single source
+ * of truth for quest IDs, material names, and the finished weapon's stats -
+ * nothing here is duplicated elsewhere.
+ */
+const LEGENDARY_WEAPONS = {
+    warrior: {
+        heroClass: 'warrior',
+        heroName: 'Rowan',
+        weaponName: 'Stormbreaker',
+        element: 'lightning',
+        icon: '⚡',
+        visionQuestId: 'warrior_legendary_vision',
+        part1QuestId: 'warrior_legendary_ore',
+        part2QuestId: 'warrior_legendary_tome',
+        part3QuestId: 'warrior_legendary_trial',
+        rawMaterial: 'Skyiron Ore',
+        rawMaterialQty: 5,
+        tomeMaterial: 'Tempest Rune Tome',
+        tomeMaterialQty: 1,
+        part1Name: 'Stormbreaker Hilt',
+        part2Name: 'Stormbreaker Core',
+        part3Name: 'Stormbreaker Edge',
+        visionText: "A shard of storm-touched metal you looted from a goblin nest hums faintly whenever Rowan holds it - and once, just for a moment, you swear it showed him a blade of pure lightning, waiting to be forged. The pull is toward Duskmere.",
+        part1FlavorText: "The Duskmere smiths recognize Skyiron Ore on sight - \"storm-forged,\" they call it, rare enough that most never touch a shard. At the Shrine, enough of it takes shape as a hilt that hums the same way the vision-shard did.",
+        part2FlavorText: "The Tempest Rune Tome's runes don't sit still on the page - they crawl, slowly, toward the hilt whenever it's nearby. At the Shrine, tome and hilt become a core that crackles faintly even at rest.",
+        part3FlavorText: "In the Ashen Wastes, a Flame Knight's fall leaves behind an edge of tempered storm-steel - the last piece, waiting only to be joined to the rest.",
+        combineText: "The Shrine Keeper sets all three pieces on the anvil without a word. When the light fades, Stormbreaker is whole - and Rowan can feel the storm in it, waiting.",
+        finalItem: {
+            name: 'Stormbreaker', type: 'weapon', attack: 42, warriorOnly: true, isLegendary: true,
+            element: 'lightning', gem: { name: 'Bound Storm Essence', element: 'lightning', bonus: {} },
+            healReceivedBonus: 0.25, price: 0,
+            desc: 'A legendary blade humming with captured lightning. Healing Rowan receives is empowered by its stormlight (+25%). Charges Limit Break in 3 turns instead of 5.'
+        }
+    },
+    mage: {
+        heroClass: 'mage',
+        heroName: 'Mina',
+        weaponName: 'Emberwoven Staff',
+        element: 'fire',
+        icon: '🔥',
+        visionQuestId: 'mage_legendary_vision',
+        part1QuestId: 'mage_legendary_wood',
+        part2QuestId: 'mage_legendary_tome',
+        part3QuestId: 'mage_legendary_trial',
+        rawMaterial: 'Sunroot Wood',
+        rawMaterialQty: 5,
+        tomeMaterial: 'Cinder Rune Tome',
+        tomeMaterialQty: 1,
+        part1Name: 'Emberwoven Rod',
+        part2Name: 'Emberwoven Crystal',
+        part3Name: 'Emberwoven Runes',
+        visionText: "Mina keeps dreaming of a staff wreathed in low, steady flame - not the wild fire of a spell gone wrong, but something patient and controlled. She doesn't know what it means yet. Something in Duskmere might.",
+        part1FlavorText: "Sunroot Wood grows only where fire has burned deep underground for years. At the Shrine, it's carefully shaped into a rod that stays warm long after the forge cools.",
+        part2FlavorText: "The Cinder Rune Tome's pages are half-burned but still legible - and once bound to the rod at the Shrine, its runes sink in like ink into old parchment, leaving behind a crystal that glows like a coal.",
+        part3FlavorText: "Deep in the Ashen Wastes, an Abyssal Demon guards a set of binding runes that shouldn't have survived the heat around them - but somehow did, waiting for their true purpose.",
+        combineText: "The Shrine Keeper binds rod, crystal, and runes together with practiced hands. When the glow settles, Emberwoven Staff is whole - and Mina swears she can feel it thinking alongside her.",
+        finalItem: {
+            name: 'Emberwoven Staff', type: 'weapon', magic: 38, defense: 10, mageOnly: true, isLegendary: true,
+            element: 'fire', gem: { name: 'Bound Ember Essence', element: 'fire', bonus: {} },
+            manaCostReduction: 0.20, price: 0,
+            desc: 'A legendary staff woven from ember-touched roots. Reduces Mina\'s spell MP costs by 20% and grants +10 DEF. Charges Limit Break in 3 turns instead of 5.'
+        }
+    },
+    paladin: {
+        heroClass: 'paladin',
+        heroName: 'Pike',
+        weaponName: 'Glacial Aegis Blade',
+        element: 'ice',
+        icon: '❄️',
+        visionQuestId: 'paladin_legendary_vision',
+        part1QuestId: 'paladin_legendary_ore',
+        part2QuestId: 'paladin_legendary_tome',
+        part3QuestId: 'paladin_legendary_trial',
+        rawMaterial: 'Frostglass Ore',
+        rawMaterialQty: 5,
+        tomeMaterial: 'Frost Rune Tome',
+        tomeMaterialQty: 1,
+        part1Name: 'Aegis Hilt',
+        part2Name: 'Aegis Core',
+        part3Name: 'Aegis Edge',
+        visionText: "Pike wakes cold, every time - and every time, the same image lingers: a blade wreathed in frost, raised not to strike but to shield. A prayer given a shape. It feels like it's waiting somewhere west, in Duskmere.",
+        part1FlavorText: "Frostglass Ore stays cold no matter how long it sits in a forge - the Duskmere smiths have never managed to work it themselves. At the Shrine, it finally takes the shape from Pike's dream: a hilt that shields as much as it strikes.",
+        part2FlavorText: "The Frost Rune Tome is cold enough to numb bare hands, but its runes settle into the hilt at the Shrine like they belong there, leaving behind a core that pulses with quiet, protective frost.",
+        part3FlavorText: "An Ice Demon in the Ashen Wastes carries an edge tempered in its own endless winter - the last piece, and by far the hardest-won.",
+        combineText: "The Shrine Keeper lays hilt, core, and edge together and steps back. When the frost clears, Glacial Aegis Blade rests on the anvil - and Pike feels steadier just holding it.",
+        finalItem: {
+            name: 'Glacial Aegis Blade', type: 'weapon', attack: 26, magic: 16, defense: 14, paladinOnly: true, isLegendary: true,
+            element: 'ice', gem: { name: 'Bound Glacial Essence', element: 'ice', bonus: {} },
+            healingOutputBonus: 0.25, price: 0,
+            desc: 'A legendary blade wreathed in eternal frost. Boosts Pike\'s healing spells by 25% and grants +14 DEF. Charges Limit Break in 3 turns instead of 5.'
+        }
+    }
 };
 
 // =====================================================================
@@ -19168,7 +19549,7 @@ const QUEST_DATA = [
         quadrant: 'brighthollow',
         goal: 2,
         progress: 0,
-        reward: { gold: 600, item: 'Mythril Sword' },
+        reward: { gold: 600, item: 'Goblin Axe' },
         npc: 'Explorer',
         town: 'brighthollow',
         dialogue: {
@@ -19269,7 +19650,7 @@ const QUEST_DATA = [
         quadrant: 'brighthollow',
         goal: 1,
         progress: 0,
-        reward: { gold: 1500, item: 'Great Axe' },
+        reward: { gold: 1500, item: 'Flametongue Blade' },
         npc: 'King',
         town: 'brighthollow',
         dialogue: {
@@ -19486,7 +19867,7 @@ const QUEST_DATA = [
         progress: 0,
         fireKills: 0,
         iceKills: 0,
-        reward: { gold: 1400, item: 'Archmage Staff' },
+        reward: { gold: 1400, item: 'Glacial Scepter' },
         npc: 'Archmage',
         town: 'duskmere',
         dialogue: {
@@ -19521,7 +19902,7 @@ const QUEST_DATA = [
         quadrant: 'duskmere',
         goal: 1,
         progress: 0,
-        reward: { gold: 3000, item: 'Dark Blade' },
+        reward: { gold: 3000, item: 'Hellfire Greatsword' },
         npc: 'King',
         town: 'duskmere',
         dialogue: {
@@ -20373,6 +20754,145 @@ const QUEST_DATA = [
     { id: 'chaos_legendary_weapons', name: 'Legendary Arsenal', description: 'Collect all four legendary weapons from the regional bosses.', type: 'treasure_find', targets: ['Goblin Crown', 'Darksteel Plate', 'Pharaoh\'s Staff', 'Ashen Core'], goal: 4, reward: { gold: 10000, item: 'Blade of Dawn' }, quadrant: 'chaos', progress: 0 },
     { id: 'duskmere_trade_route', name: 'Secure the Trade Route', description: 'Clear 10 monsters from the roads around Duskmere.', type: 'monster_kill', targetMonster: 'any', goal: 10, reward: { gold: 1200, item: 'Merchant\'s Badge' }, quadrant: 'duskmere', progress: 0 },
     { id: 'brighthollow_explorer', name: 'Regional Explorer', description: 'Visit all locations in the Brighthollow region.', type: 'visit_locations', targets: ['Mystic Cave', 'Shadow Grove', 'Goblin Keep'], goal: 3, reward: { gold: 1000, item: 'Explorer\'s Map' }, quadrant: 'brighthollow', progress: 0 },
+
+    // =============================================================
+    // LEGENDARY WEAPON QUESTLINE (see LEGENDARY_WEAPONS)
+    // 4 tracked quests per hero (vision -> gather -> tome -> trial); the
+    // forge/imbue/combine steps themselves happen at the Shrine screen,
+    // not as quests, once the matching materials are in hand.
+    // =============================================================
+    {
+        id: 'warrior_legendary_vision', name: 'A Storm in the Blood',
+        description: "Rowan can't shake a vision of a lightning-wreathed blade. Investigate the goblin nest where the vision-shard was found.",
+        type: 'monster_kill', targetMonster: 'Wolf', quadrant: 'brighthollow', goal: 5, progress: 0,
+        reward: { gold: 300, item: 'Storm-touched Shard' }, npc: 'Old Wayfarer', town: 'brighthollow',
+        dialogue: {
+            start: "You're not the first to feel something odd near the old goblin dens - wolves have been drawn there too, restless. Clear a few out and look for whatever's unsettling them.",
+            progress: "The wolves near the dens are still restless. {progress}/5 cleared.",
+            complete: "Something about that shard isn't natural. Whatever it is, it wants to be found - and it wants to go west, toward Duskmere."
+        }
+    },
+    {
+        id: 'mage_legendary_vision', name: 'Embers in a Dream',
+        description: "Mina keeps dreaming of a staff wreathed in patient flame. Investigate the burrows where the dreams grew strongest.",
+        type: 'monster_kill', targetMonster: 'Giant Rat', quadrant: 'brighthollow', goal: 5, progress: 0,
+        reward: { gold: 300, item: 'Ember-touched Shard' }, npc: 'Old Wayfarer', town: 'brighthollow',
+        dialogue: {
+            start: "Rats have been swarming the old burrows near where the ground stays warm year-round. Thin their numbers and see what's under there.",
+            progress: "The burrows are still overrun. {progress}/5 cleared.",
+            complete: "The shard you found is warm to the touch, and won't cool. Mina says it's pulling her toward Duskmere."
+        }
+    },
+    {
+        id: 'paladin_legendary_vision', name: 'A Shield of Frost',
+        description: "Pike wakes cold every night now, chasing the memory of a blade raised to shield, not strike. Investigate the bandit camp where the cold first crept in.",
+        type: 'monster_kill', targetMonster: 'Bandit', quadrant: 'brighthollow', goal: 5, progress: 0,
+        reward: { gold: 300, item: 'Frost-touched Shard' }, npc: 'Old Wayfarer', town: 'brighthollow',
+        dialogue: {
+            start: "Bandits have been squatting near a patch of ground that never quite thaws, even in summer. Clear them out and see for yourself.",
+            progress: "The bandits still hold that frost-touched ground. {progress}/5 cleared.",
+            complete: "The shard doesn't warm in your hand, no matter how long you hold it. Pike says it's calling him toward Duskmere."
+        }
+    },
+    {
+        id: 'warrior_legendary_ore', name: 'Skyiron in the Deep',
+        description: "The Duskmere smiths know Skyiron Ore on sight. Defeat the Orcs guarding the vein and bring back enough to forge with.",
+        type: 'monster_kill', targetMonster: 'Orc', quadrant: 'duskmere', goal: 6, progress: 0,
+        reward: { gold: 500, item: 'Skyiron Ore x5' }, npc: 'Shrine Keeper', town: 'duskmere',
+        dialogue: {
+            start: "Skyiron doesn't turn up often - storm-forged ore, they call it. The orcs holding the vein won't give it up easy. Bring back all you can carry.",
+            progress: "Still not enough Skyiron in hand. {progress}/6 orcs cleared from the vein.",
+            complete: "That's enough to work with. Bring it to the Shrine when you're ready to forge."
+        }
+    },
+    {
+        id: 'mage_legendary_wood', name: 'Sunroot in the Swamp',
+        description: "Sunroot Wood only grows where fire has burned deep underground for years. Defeat the Swamp Things guarding the grove and gather enough to forge with.",
+        type: 'monster_kill', targetMonster: 'Swamp Thing', quadrant: 'duskmere', goal: 6, progress: 0,
+        reward: { gold: 500, item: 'Sunroot Wood x5' }, npc: 'Shrine Keeper', town: 'duskmere',
+        dialogue: {
+            start: "There's a grove in the swamp that's stayed warm as long as anyone remembers. The Swamp Things there won't let it go easily.",
+            progress: "Still not enough Sunroot Wood in hand. {progress}/6 cleared from the grove.",
+            complete: "That's enough to work with. Bring it to the Shrine when you're ready to forge."
+        }
+    },
+    {
+        id: 'paladin_legendary_ore', name: 'Frostglass in the Dark',
+        description: "Frostglass Ore stays cold no matter the forge. Defeat the Wraiths guarding the vein and gather enough to work with.",
+        type: 'monster_kill', targetMonster: 'Wraith', quadrant: 'duskmere', goal: 6, progress: 0,
+        reward: { gold: 500, item: 'Frostglass Ore x5' }, npc: 'Shrine Keeper', town: 'duskmere',
+        dialogue: {
+            start: "Frostglass never warms, not even near a forge - the local smiths gave up trying to work it years ago. The wraiths guarding the vein won't have.",
+            progress: "Still not enough Frostglass in hand. {progress}/6 wraiths cleared.",
+            complete: "That's enough to work with. Bring it to the Shrine when you're ready to forge."
+        }
+    },
+    {
+        id: 'warrior_legendary_tome', name: 'The Tempest Tome',
+        description: "A Djinn is said to guard a tome of storm-runes. Defeat enough of them to recover it.",
+        type: 'monster_kill', targetMonster: 'Djinn', quadrant: 'sylvaris', goal: 6, progress: 0,
+        reward: { gold: 900, item: 'Tempest Rune Tome' }, npc: 'Shrine Keeper', town: 'sylvaris',
+        dialogue: {
+            start: "The djinn of the dunes hoard more than gold - one of them is said to carry a tome of storm-runes. Track it down.",
+            progress: "Still no sign of the tome. {progress}/6 djinn defeated.",
+            complete: "The runes on this tome move like they're alive. Bring it and your hilt to the Shrine to imbue it."
+        }
+    },
+    {
+        id: 'mage_legendary_tome', name: 'The Cinder Tome',
+        description: "A Sand Worm's lair is said to hide a half-burned tome of ember-runes. Defeat enough of them to recover it.",
+        type: 'monster_kill', targetMonster: 'Sand Worm', quadrant: 'sylvaris', goal: 6, progress: 0,
+        reward: { gold: 900, item: 'Cinder Rune Tome' }, npc: 'Shrine Keeper', town: 'sylvaris',
+        dialogue: {
+            start: "Something in the sand worm burrows is scorched black but still legible, according to the caravan traders. Worth a look.",
+            progress: "Still no sign of the tome. {progress}/6 sand worms defeated.",
+            complete: "The runes on this tome are still warm. Bring it and your rod to the Shrine to imbue it."
+        }
+    },
+    {
+        id: 'paladin_legendary_tome', name: 'The Frost Tome',
+        description: "A Desert Scorpion's nest is said to hide a tome of frost-runes, cold enough to numb bare hands. Defeat enough of them to recover it.",
+        type: 'monster_kill', targetMonster: 'Desert Scorpion', quadrant: 'sylvaris', goal: 6, progress: 0,
+        reward: { gold: 900, item: 'Frost Rune Tome' }, npc: 'Shrine Keeper', town: 'sylvaris',
+        dialogue: {
+            start: "Strange, finding a frost-tome out here in the desert - but the scorpion nests near the old ruins are said to guard exactly that.",
+            progress: "Still no sign of the tome. {progress}/6 scorpions defeated.",
+            complete: "The runes on this tome are ice-cold to the touch. Bring it and your hilt to the Shrine to imbue it."
+        }
+    },
+    {
+        id: 'warrior_legendary_trial', name: "Trial of the Storm",
+        description: "A Flame Knight in the Ashen Wastes carries the final piece of Stormbreaker, tempered in its own fire. Defeat enough of them to claim it.",
+        type: 'monster_kill', targetMonster: 'Flame Knight', quadrant: 'chaos', goal: 5, progress: 0,
+        reward: { gold: 2000, item: 'Stormbreaker Edge' }, npc: 'Shrine Keeper', town: 'sylvaris',
+        dialogue: {
+            start: "The Ashen Wastes are no place for the unprepared - but a Flame Knight there carries an edge of tempered storm-steel. It's the last piece.",
+            progress: "The edge is still out there. {progress}/5 Flame Knights defeated.",
+            complete: "This is it - the last piece. Bring the hilt, core, and edge to the Shrine to finish what you started."
+        }
+    },
+    {
+        id: 'mage_legendary_trial', name: "Trial of the Ember",
+        description: "An Abyssal Demon in the Ashen Wastes guards the final runes for Emberwoven Staff. Defeat enough of them to claim them.",
+        type: 'monster_kill', targetMonster: 'Abyssal Demon', quadrant: 'chaos', goal: 5, progress: 0,
+        reward: { gold: 2000, item: 'Emberwoven Runes' }, npc: 'Shrine Keeper', town: 'sylvaris',
+        dialogue: {
+            start: "Something in the Ashen Wastes has been guarding a set of binding runes that shouldn't have survived the heat around them. Worth the risk.",
+            progress: "The runes are still out there. {progress}/5 Abyssal Demons defeated.",
+            complete: "This is it - the last piece. Bring the rod, crystal, and runes to the Shrine to finish what you started."
+        }
+    },
+    {
+        id: 'paladin_legendary_trial', name: "Trial of the Glacier",
+        description: "An Ice Demon in the Ashen Wastes carries the final edge for Glacial Aegis Blade, tempered in its own endless winter. Defeat enough of them to claim it.",
+        type: 'monster_kill', targetMonster: 'Ice Demon', quadrant: 'chaos', goal: 5, progress: 0,
+        reward: { gold: 2000, item: 'Aegis Edge' }, npc: 'Shrine Keeper', town: 'sylvaris',
+        dialogue: {
+            start: "An Ice Demon deep in the Ashen Wastes carries an edge forged in its own winter - by far the hardest-won of the three pieces.",
+            progress: "The edge is still out there. {progress}/5 Ice Demons defeated.",
+            complete: "This is it - the last piece. Bring the hilt, core, and edge to the Shrine to finish what you started."
+        }
+    },
 ];
 
 
