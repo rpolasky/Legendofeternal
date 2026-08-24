@@ -18408,6 +18408,22 @@
                     }
                 }
                 this.quests = saveData.quests || [];
+                // Active quests are stored as a snapshot copy of QUEST_DATA
+                // taken at accept-time (see acceptAllAvailableQuests), so
+                // any quest already in progress on an old save keeps its
+                // OLD flavor text forever even after QUEST_DATA's wording
+                // is updated in a later patch (e.g. adding location hints).
+                // Re-sync just the display text - never progress/goal/reward,
+                // which would risk breaking an in-flight quest - from the
+                // current QUEST_DATA on every load so wording fixes reach
+                // saves that already had the quest accepted.
+                this.quests.forEach(activeQuest => {
+                    const latest = QUEST_DATA.find(q => q.id === activeQuest.id);
+                    if (latest) {
+                        activeQuest.description = latest.description;
+                        if (latest.dialogue) activeQuest.dialogue = { ...latest.dialogue };
+                    }
+                });
                 // Older saves predate this field - reconstruct a best-effort
                 // completed set from the fact that finished quests are gone
                 // from `this.quests`, so any of the three story-intel quests
