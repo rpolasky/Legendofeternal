@@ -209,7 +209,8 @@
             overflow-y: hidden;
         }
         #hud-side-right #rail-minimap,
-        #hud-side-right #rail-location-party {
+        #hud-side-right #rail-location-party,
+        #hud-side-right #rail-battle-commands {
             flex: 1 1 auto;
             min-height: 0;
             overflow-y: auto;
@@ -1612,6 +1613,13 @@
             gap: 8px;
             align-content: center;
             align-self: center;
+            /* Item/spell lists can run long (many consumable stacks) and
+               used to overflow past the visible commands area with no way
+               to scroll down to the BACK button. Bounding the height and
+               letting it scroll internally keeps BACK reachable no matter
+               how many entries are listed. */
+            max-height: min(360px, 60vh);
+            overflow-y: auto;
         }
 
         .cmd-btn {
@@ -5779,7 +5787,14 @@
         }
         // Shrines carry no treasure chests - it's a place of ceremony, not
         // loot. Everything else about the floor generates identically.
-        const chestCount = isShrine ? 0 : Math.min(6 + floorIndex * 2, Math.floor(reachable.length / 6));
+        // Chest density and per-chest item count were previously
+        // (6 + floorIndex*2) chests capped at reachable/6, each holding
+        // `floorIndex` loot rolls - on a floor 3+ dungeon that could mean
+        // a dozen chests each handing out 3 items, which is how a single
+        // dungeon run was flooding the party with gear and gold. Trimmed
+        // both the chest count and the per-chest item cap so depth still
+        // rewards more, just not explosively.
+        const chestCount = isShrine ? 0 : Math.min(3 + floorIndex, Math.floor(reachable.length / 10));
         const chests = [];
         let placed = 0;
         for (let i = 0; i < reachable.length && placed < chestCount; i++) {
@@ -5792,7 +5807,7 @@
             }
             if (tooClose) continue;
             const room = carveRoomAround(grid, DUNGEON_FLOOR_WIDTH, DUNGEON_FLOOR_HEIGHT, t.x, t.y, 4);
-            chests.push({ x: room.centerX, y: room.centerY, opened: false, itemCount: floorIndex, room });
+            chests.push({ x: room.centerX, y: room.centerY, opened: false, itemCount: Math.min(2, floorIndex), room });
             placed++;
         }
 
@@ -6590,24 +6605,33 @@
             this.level++;
             const stats = this.baseStats;
 
+            // Defense growth rebalanced (was +2/+3/+0 for war/pal/mage): the
+            // damage formula subtracts a flat floor(defense/2) per hit, so
+            // defense compounds hard over many levels. At +2/+3 per level,
+            // Paladin was ending up MORE armored than Warrior by mid-game
+            // (a healer out-tanking the dedicated tank), and Mage's flat 0
+            // growth meant it never got any tougher than its starting
+            // squishiness no matter how many levels it earned. Trimmed
+            // War/Pal growth and gave Mage a small amount of its own.
             switch (this.heroClass) {
                 case 'warrior':
                     stats.maxHp += 15;
                     stats.maxMp += 2;
                     stats.attack += 3;
-                    stats.defense += 2;
+                    stats.defense += 1;
                     break;
                 case 'mage':
                     stats.maxHp += 8;
                     stats.maxMp += 8;
                     stats.magic += 4;
                     stats.attack += 1;
+                    stats.defense += 1;
                     break;
                 case 'paladin':
                     stats.maxHp += 12;
                     stats.maxMp += 4;
                     stats.attack += 2;
-                    stats.defense += 3;
+                    stats.defense += 1;
                     stats.magic += 2;
                     break;
             }
@@ -10266,7 +10290,16 @@
             heroes.forEach(heroDiv => {
                 heroDiv.style.border = '';
                 heroDiv.style.cursor = '';
+                heroDiv.style.backgroundColor = '';
                 heroDiv.onclick = null;
+                // onmouseover/onmouseout below don't reliably pair up on
+                // touch devices (a tap can fire mouseover without a
+                // matching mouseout), which used to leave the green
+                // hover tint stuck on a hero's box permanently. Clearing
+                // the handlers here - on every highlight teardown - fixes
+                // that regardless of which code path got us here.
+                heroDiv.onmouseover = null;
+                heroDiv.onmouseout = null;
             });
         }
 
@@ -12315,6 +12348,12 @@
                     if (window.game.triggerStoryBeat) {
                         window.game.triggerStoryBeat(window.game.dungeonMap.locationName);
                     }
+                    // Moved here from attemptDungeonBoss() - it was firing the
+                    // instant the fight STARTED (right after startEncounter),
+                    // so the quest showed "Complete" before a single round had
+                    // happened. Now it only fires once the boss is actually
+                    // dead.
+                    window.game.updateQuestProgress('boss_defeat', 1);
                 }
                 if (priorScreen !== 'world') {
                     window.game.state.switchScreen(priorScreen);
@@ -12840,6 +12879,46 @@
     //                    LOOT TABLES - QUADRANT BASED
     // =====================================================================
 
+    /** Rolls a single item from a quadrant's loot table, weighted by ITEM
+     *  TYPE rather than the raw uncommon/rare/legendary tiers: 70% potions/
+     *  materials/gem-fragment-style consumables, 20% ordinary weapons/
+     *  armor/shields, 10% rare-or-better gear (with only a small slice of
+     *  that last bucket landing on a true legendary). This is what actually
+     *  keeps chests from being a second gear shop - the old code rolled
+     *  tiers that mixed potions and equipment together, so "uncommon" loot
+     *  was just as likely to be a sword as a potion.
+     *  vaultMode shifts the odds toward gear (vaults are meant to feel like
+     *  a real reward room), dropping the potion/material bucket. */
+    function rollTieredLootItem(lootTable, vaultMode = false) {
+        if (!lootTable) return null;
+        const isConsumableOrMaterial = (i) => i.type === 'consumable' || i.type === 'material';
+        const common = [];
+        const gear = [];
+        const rare = [];
+        const legendary = lootTable.legendary || [];
+        (lootTable.uncommon || []).forEach(i => (isConsumableOrMaterial(i) ? common : gear).push(i));
+        (lootTable.rare || []).forEach(i => (isConsumableOrMaterial(i) ? common : rare).push(i));
+        let roll = Math.random();
+        let pool;
+        if (vaultMode) {
+            // 45% ordinary gear / 40% rare gear / 15% legendary
+            if (roll < 0.45 && gear.length) pool = gear;
+            else if (roll < 0.85 && rare.length) pool = rare;
+            else pool = legendary.length ? legendary : (rare.length ? rare : gear);
+        } else {
+            if (roll < 0.70 && common.length) pool = common;
+            else if (roll < 0.90 && gear.length) pool = gear;
+            else if (rare.length || legendary.length) {
+                // Within the last 10%, only 1 in 7 rolls (~1.4% overall) is a
+                // true legendary - the rest is ordinary rare-tier gear.
+                pool = (legendary.length && Math.random() < (1 / 7)) ? legendary : (rare.length ? rare : legendary);
+            }
+        }
+        if (!pool || !pool.length) pool = common.length ? common : (gear.length ? gear : (rare.length ? rare : legendary));
+        if (!pool || !pool.length) return null;
+        return pool[Math.floor(Math.random() * pool.length)];
+    }
+
     const LOOT_TABLES = {
         brighthollow: {
             uncommon: [
@@ -13349,25 +13428,30 @@
         }
 
         getShieldShopItems(town) {
+            // Gear prices raised ~50-60% across the board (see the matching
+            // note in getWeaponShopItems) - part of the two-pronged economy
+            // fix: trimmed the gold coming in from chests/vaults AND raised
+            // what gear actually costs, so there's a real reason to save up
+            // instead of maxing out a shop in one visit.
             const town1Shields = [
-                { name: 'Wooden Shield', type: 'shield', price: 80, defense: 3, desc: 'Simple wooden shield' },
-                { name: 'Buckler', type: 'shield', price: 120, defense: 5, desc: 'Small metal shield' },
-                { name: 'Healer\'s Targe', type: 'shield', price: 150, defense: 2, magic: 2, healerShield: true, desc: 'Increases healing received by 20%', healingBonus: 0.2 }
+                { name: 'Wooden Shield', type: 'shield', price: 120, defense: 3, desc: 'Simple wooden shield' },
+                { name: 'Buckler', type: 'shield', price: 180, defense: 5, desc: 'Small metal shield' },
+                { name: 'Healer\'s Targe', type: 'shield', price: 220, defense: 2, magic: 2, healerShield: true, desc: 'Increases healing received by 20%', healingBonus: 0.2 }
             ];
             const town2Shields = [
-                { name: 'Iron Shield', type: 'shield', price: 350, defense: 10, desc: 'Sturdy iron shield' },
-                { name: 'Kite Shield', type: 'shield', price: 500, defense: 14, desc: 'Large defensive shield' },
-                { name: 'Spiked Shield', type: 'shield', price: 450, defense: 12, attack: 3, desc: 'Deals damage when blocking' },
-                { name: 'Crystal Ward', type: 'shield', price: 400, defense: 4, magic: 6, healerShield: true, desc: 'Amplifies healing magic by 30%', healingBonus: 0.3 },
-                { name: 'Moon Targe', type: 'shield', price: 480, defense: 5, magic: 4, healerShield: true, desc: 'Grants 25% chance to recover MP when hit', mpRecoveryChance: 0.25 }
+                { name: 'Iron Shield', type: 'shield', price: 550, defense: 10, desc: 'Sturdy iron shield' },
+                { name: 'Kite Shield', type: 'shield', price: 780, defense: 14, desc: 'Large defensive shield' },
+                { name: 'Spiked Shield', type: 'shield', price: 700, defense: 12, attack: 3, desc: 'Deals damage when blocking' },
+                { name: 'Crystal Ward', type: 'shield', price: 620, defense: 4, magic: 6, healerShield: true, desc: 'Amplifies healing magic by 30%', healingBonus: 0.3 },
+                { name: 'Moon Targe', type: 'shield', price: 750, defense: 5, magic: 4, healerShield: true, desc: 'Grants 25% chance to recover MP when hit', mpRecoveryChance: 0.25 }
             ];
             const town3Shields = [
-                { name: 'Mythril Shield', type: 'shield', price: 1200, defense: 25, magic: 5, desc: 'Lightweight but strong' },
-                { name: 'Aegis', type: 'shield', price: 1800, defense: 30, magic: 8, desc: 'Legendary protective shield' },
-                { name: 'Dragon Shield', type: 'shield', price: 2000, defense: 35, desc: 'Forged from dragon scales' },
-                { name: 'Angels Ward', type: 'shield', price: 1600, defense: 10, magic: 12, healerShield: true, desc: 'Increases healing received by 50%', healingBonus: 0.5 },
-                { name: 'Sanctuary Shield', type: 'shield', price: 1900, defense: 12, magic: 10, healerShield: true, desc: 'Regenerate 10 HP per turn', regenHP: 10 },
-                { name: 'Prism Guard', type: 'shield', price: 2200, defense: 8, magic: 15, healerShield: true, desc: 'Converts 20% of damage to MP', mpConversion: 0.2 }
+                { name: 'Mythril Shield', type: 'shield', price: 1900, defense: 25, magic: 5, desc: 'Lightweight but strong' },
+                { name: 'Aegis', type: 'shield', price: 2900, defense: 30, magic: 8, desc: 'Legendary protective shield' },
+                { name: 'Dragon Shield', type: 'shield', price: 3200, defense: 35, desc: 'Forged from dragon scales' },
+                { name: 'Angels Ward', type: 'shield', price: 2500, defense: 10, magic: 12, healerShield: true, desc: 'Increases healing received by 50%', healingBonus: 0.5 },
+                { name: 'Sanctuary Shield', type: 'shield', price: 3000, defense: 12, magic: 10, healerShield: true, desc: 'Regenerate 10 HP per turn', regenHP: 10 },
+                { name: 'Prism Guard', type: 'shield', price: 3500, defense: 8, magic: 15, healerShield: true, desc: 'Converts 20% of damage to MP', mpConversion: 0.2 }
             ];
             switch(town) {
                 case 'brighthollow': return town1Shields;
@@ -13379,36 +13463,36 @@
 
         getJewelryShopItems(town) {
             const town1Jewelry = [
-                { name: 'Copper Ring', type: 'jewelry', price: 120, defense: 2, speed: 1, desc: 'Basic ring with minor protection' },
-                { name: 'Iron Necklace', type: 'jewelry', price: 150, defense: 3, desc: 'Simple iron chain necklace' },
-                { name: 'Glass Pendant', type: 'jewelry', price: 100, magic: 3, defense: 1, mageOnly: true, desc: 'Simple pendant for mages' },
-                { name: 'Warriors Torc', type: 'jewelry', price: 130, attack: 2, defense: 2, warriorOnly: true, desc: 'Neck ring that strengthens the wearer' },
-                { name: 'Holy Symbol', type: 'jewelry', price: 140, magic: 2, defense: 2, paladinOnly: true, desc: 'Simple symbol of faith' }
+                { name: 'Copper Ring', type: 'jewelry', price: 180, defense: 2, speed: 1, desc: 'Basic ring with minor protection' },
+                { name: 'Iron Necklace', type: 'jewelry', price: 220, defense: 3, desc: 'Simple iron chain necklace' },
+                { name: 'Glass Pendant', type: 'jewelry', price: 150, magic: 3, defense: 1, mageOnly: true, desc: 'Simple pendant for mages' },
+                { name: 'Warriors Torc', type: 'jewelry', price: 190, attack: 2, defense: 2, warriorOnly: true, desc: 'Neck ring that strengthens the wearer' },
+                { name: 'Holy Symbol', type: 'jewelry', price: 210, magic: 2, defense: 2, paladinOnly: true, desc: 'Simple symbol of faith' }
             ];
             const town2Jewelry = [
-                { name: 'Silver Pendant', type: 'jewelry', price: 350, magic: 4, defense: 4, desc: 'Silver pendant with balanced properties' },
-                { name: 'Gold Ring', type: 'jewelry', price: 400, defense: 5, speed: 2, desc: 'Prestigious gold ring' },
-                { name: 'Amber Brooch', type: 'jewelry', price: 380, magic: 3, defense: 3, desc: 'Warm amber with healing properties' },
-                { name: 'Mage Ring', type: 'jewelry', price: 500, magic: 10, speed: 2, mageOnly: true, desc: 'Increases spell power significantly' },
-                { name: 'Crystal Earring', type: 'jewelry', price: 600, magic: 12, defense: 4, mageOnly: true, desc: 'Crystal focus for advanced magic' },
-                { name: 'Berserker Pendant', type: 'jewelry', price: 550, attack: 8, defense: 3, warriorOnly: true, desc: 'Increases ferocity in battle' },
-                { name: 'Iron Will Ring', type: 'jewelry', price: 520, defense: 8, attack: 3, warriorOnly: true, desc: 'Grants unwavering determination' },
-                { name: 'Knights Cross', type: 'jewelry', price: 530, defense: 6, magic: 4, paladinOnly: true, desc: 'Blessed cross of the order' },
-                { name: 'Sapphire Amulet', type: 'jewelry', price: 580, magic: 7, defense: 5, paladinOnly: true, desc: 'Sapphire that glows with holy light' }
+                { name: 'Silver Pendant', type: 'jewelry', price: 550, magic: 4, defense: 4, desc: 'Silver pendant with balanced properties' },
+                { name: 'Gold Ring', type: 'jewelry', price: 620, defense: 5, speed: 2, desc: 'Prestigious gold ring' },
+                { name: 'Amber Brooch', type: 'jewelry', price: 600, magic: 3, defense: 3, desc: 'Warm amber with healing properties' },
+                { name: 'Mage Ring', type: 'jewelry', price: 780, magic: 10, speed: 2, mageOnly: true, desc: 'Increases spell power significantly' },
+                { name: 'Crystal Earring', type: 'jewelry', price: 950, magic: 12, defense: 4, mageOnly: true, desc: 'Crystal focus for advanced magic' },
+                { name: 'Berserker Pendant', type: 'jewelry', price: 850, attack: 8, defense: 3, warriorOnly: true, desc: 'Increases ferocity in battle' },
+                { name: 'Iron Will Ring', type: 'jewelry', price: 800, defense: 8, attack: 3, warriorOnly: true, desc: 'Grants unwavering determination' },
+                { name: 'Knights Cross', type: 'jewelry', price: 820, defense: 6, magic: 4, paladinOnly: true, desc: 'Blessed cross of the order' },
+                { name: 'Sapphire Amulet', type: 'jewelry', price: 900, magic: 7, defense: 5, paladinOnly: true, desc: 'Sapphire that glows with holy light' }
             ];
             const town3Jewelry = [
-                { name: 'Platinum Ring', type: 'jewelry', price: 1200, defense: 10, speed: 4, desc: 'Exquisite platinum craftsmanship' },
-                { name: 'Dragonbone Necklace', type: 'jewelry', price: 1500, attack: 5, defense: 8, magic: 5, desc: 'Fashioned from dragon remains' },
-                { name: 'Mystic Medallion', type: 'jewelry', price: 1400, magic: 8, defense: 6, speed: 2, desc: 'Hum with arcane energy' },
-                { name: 'Archmage Pendant', type: 'jewelry', price: 2000, magic: 22, defense: 8, speed: 3, mageOnly: true, desc: 'Worn by archmages of legend' },
-                { name: 'Sage Ring', type: 'jewelry', price: 1800, magic: 25, mageOnly: true, desc: 'Enhances magical power to its limits' },
-                { name: 'Elemental Gem', type: 'jewelry', price: 2200, magic: 28, mageOnly: true, desc: 'Focuses elemental energy' },
-                { name: 'Titans Band', type: 'jewelry', price: 2100, attack: 18, defense: 10, warriorOnly: true, desc: 'Grants the strength of giants' },
-                { name: 'Warlords Crown', type: 'jewelry', price: 2300, attack: 15, defense: 12, speed: 2, warriorOnly: true, desc: 'Commands respect on the battlefield' },
-                { name: 'Unyielding Torc', type: 'jewelry', price: 1900, defense: 20, attack: 8, warriorOnly: true, desc: 'Makes the wearer nearly unstoppable' },
-                { name: 'Divine Relic', type: 'jewelry', price: 2200, magic: 14, defense: 14, paladinOnly: true, desc: 'Ancient artifact of the church' },
-                { name: 'Paladins Vow', type: 'jewelry', price: 2000, defense: 16, magic: 10, paladinOnly: true, desc: 'Strengthens the wearer\'s conviction' },
-                { name: 'Seraphs Tear', type: 'jewelry', price: 2400, magic: 12, defense: 12, speed: 3, paladinOnly: true, desc: 'Tear-shaped gem with healing properties' }
+                { name: 'Platinum Ring', type: 'jewelry', price: 1900, defense: 10, speed: 4, desc: 'Exquisite platinum craftsmanship' },
+                { name: 'Dragonbone Necklace', type: 'jewelry', price: 2400, attack: 5, defense: 8, magic: 5, desc: 'Fashioned from dragon remains' },
+                { name: 'Mystic Medallion', type: 'jewelry', price: 2200, magic: 8, defense: 6, speed: 2, desc: 'Hum with arcane energy' },
+                { name: 'Archmage Pendant', type: 'jewelry', price: 3200, magic: 22, defense: 8, speed: 3, mageOnly: true, desc: 'Worn by archmages of legend' },
+                { name: 'Sage Ring', type: 'jewelry', price: 2900, magic: 25, mageOnly: true, desc: 'Enhances magical power to its limits' },
+                { name: 'Elemental Gem', type: 'jewelry', price: 3500, magic: 28, mageOnly: true, desc: 'Focuses elemental energy' },
+                { name: 'Titans Band', type: 'jewelry', price: 3400, attack: 18, defense: 10, warriorOnly: true, desc: 'Grants the strength of giants' },
+                { name: 'Warlords Crown', type: 'jewelry', price: 3700, attack: 15, defense: 12, speed: 2, warriorOnly: true, desc: 'Commands respect on the battlefield' },
+                { name: 'Unyielding Torc', type: 'jewelry', price: 3000, defense: 20, attack: 8, warriorOnly: true, desc: 'Makes the wearer nearly unstoppable' },
+                { name: 'Divine Relic', type: 'jewelry', price: 3500, magic: 14, defense: 14, paladinOnly: true, desc: 'Ancient artifact of the church' },
+                { name: 'Paladins Vow', type: 'jewelry', price: 3200, defense: 16, magic: 10, paladinOnly: true, desc: 'Strengthens the wearer\'s conviction' },
+                { name: 'Seraphs Tear', type: 'jewelry', price: 3800, magic: 12, defense: 12, speed: 3, paladinOnly: true, desc: 'Tear-shaped gem with healing properties' }
             ];
             switch(town) {
                 case 'brighthollow': return town1Jewelry;
@@ -13420,23 +13504,23 @@
 
         getWeaponShopItems(town) {
             const town1Weapons = [
-                { name: 'Iron Dagger', type: 'weapon', price: 80, attack: 4, desc: 'A basic but reliable dagger' },
-                { name: 'Iron Sword', type: 'weapon', price: 150, attack: 7, desc: 'A sturdy iron blade' },
-                { name: 'Iron Axe', type: 'weapon', price: 180, attack: 9, desc: 'Heavy iron axe', warriorOnly: true },
-                { name: 'Shortstaff', type: 'weapon', price: 120, attack: 2, magic: 6, desc: 'A basic wooden staff for mages', mageOnly: true }
+                { name: 'Iron Dagger', type: 'weapon', price: 120, attack: 4, desc: 'A basic but reliable dagger' },
+                { name: 'Iron Sword', type: 'weapon', price: 220, attack: 7, desc: 'A sturdy iron blade' },
+                { name: 'Iron Axe', type: 'weapon', price: 260, attack: 9, desc: 'Heavy iron axe', warriorOnly: true },
+                { name: 'Shortstaff', type: 'weapon', price: 180, attack: 2, magic: 6, desc: 'A basic wooden staff for mages', mageOnly: true }
             ];
             const town2Weapons = [
-                { name: 'Steel Sword', type: 'weapon', price: 450, attack: 14, desc: 'Forged from quality steel' },
-                { name: 'Battle Axe', type: 'weapon', price: 600, attack: 20, desc: 'A heavy two-handed axe', warriorOnly: true },
-                { name: 'Knight Sword', type: 'weapon', price: 550, attack: 18, desc: 'A fine blade favored by paladins', paladinOnly: true },
-                { name: 'Steel Blade', type: 'weapon', price: 500, attack: 16, desc: 'Sharp steel blade' },
-                { name: 'Grand Mage Staff', type: 'weapon', price: 800, attack: 8, magic: 18, desc: 'Powerful staff for accomplished mages', mageOnly: true }
+                { name: 'Steel Sword', type: 'weapon', price: 700, attack: 14, desc: 'Forged from quality steel' },
+                { name: 'Battle Axe', type: 'weapon', price: 950, attack: 20, desc: 'A heavy two-handed axe', warriorOnly: true },
+                { name: 'Knight Sword', type: 'weapon', price: 850, attack: 18, desc: 'A fine blade favored by paladins', paladinOnly: true },
+                { name: 'Steel Blade', type: 'weapon', price: 780, attack: 16, desc: 'Sharp steel blade' },
+                { name: 'Grand Mage Staff', type: 'weapon', price: 1250, attack: 8, magic: 18, desc: 'Powerful staff for accomplished mages', mageOnly: true }
             ];
             const town3Weapons = [
-                { name: 'Great Axe', type: 'weapon', price: 1500, attack: 32, desc: 'Massive axe of destruction', warriorOnly: true },
-                { name: 'Broadsword', type: 'weapon', price: 1400, attack: 30, desc: 'Legendary paladin blade', paladinOnly: true },
-                { name: 'Wizard Staff', type: 'weapon', price: 1800, attack: 12, magic: 28, desc: 'Ultimate staff for master mages', mageOnly: true },
-                { name: 'Mythril Sword', type: 'weapon', price: 1300, attack: 28, desc: 'Lightweight mythril blade' }
+                { name: 'Great Axe', type: 'weapon', price: 2400, attack: 32, desc: 'Massive axe of destruction', warriorOnly: true },
+                { name: 'Broadsword', type: 'weapon', price: 2200, attack: 30, desc: 'Legendary paladin blade', paladinOnly: true },
+                { name: 'Wizard Staff', type: 'weapon', price: 2800, attack: 12, magic: 28, desc: 'Ultimate staff for master mages', mageOnly: true },
+                { name: 'Mythril Sword', type: 'weapon', price: 2100, attack: 28, desc: 'Lightweight mythril blade' }
             ];
             switch(town) {
                 case 'brighthollow': return town1Weapons;
@@ -13448,20 +13532,20 @@
 
         getArmorShopItems(town) {
             const town1Armor = [
-                { name: 'Leather Armor', type: 'armor', price: 100, defense: 4, desc: 'Basic leather protection' },
-                { name: 'Chain Mail', type: 'armor', price: 300, defense: 10, desc: 'Interlocking metal rings' },
-                { name: 'Apprentice Robe', type: 'armor', price: 150, defense: 2, magic: 5, desc: 'Simple robes for magic users', mageOnly: true }
+                { name: 'Leather Armor', type: 'armor', price: 150, defense: 4, desc: 'Basic leather protection' },
+                { name: 'Chain Mail', type: 'armor', price: 450, defense: 10, desc: 'Interlocking metal rings' },
+                { name: 'Apprentice Robe', type: 'armor', price: 220, defense: 2, magic: 5, desc: 'Simple robes for magic users', mageOnly: true }
             ];
             const town2Armor = [
-                { name: 'Bronze Armor', type: 'armor', price: 500, defense: 16, desc: 'Sturdy bronze plate' },
-                { name: 'Steel Armor', type: 'armor', price: 700, defense: 20, desc: 'Quality steel protection' },
-                { name: 'Magician Robe', type: 'armor', price: 450, defense: 6, magic: 12, desc: 'Enchanted robes for mages', mageOnly: true },
-                { name: 'Plate Mail', type: 'armor', price: 850, defense: 24, desc: 'Full plate armor', warriorOnly: true }
+                { name: 'Bronze Armor', type: 'armor', price: 780, defense: 16, desc: 'Sturdy bronze plate' },
+                { name: 'Steel Armor', type: 'armor', price: 1100, defense: 20, desc: 'Quality steel protection' },
+                { name: 'Magician Robe', type: 'armor', price: 700, defense: 6, magic: 12, desc: 'Enchanted robes for mages', mageOnly: true },
+                { name: 'Plate Mail', type: 'armor', price: 1300, defense: 24, desc: 'Full plate armor', warriorOnly: true }
             ];
             const town3Armor = [
-                { name: 'Grand Wizard Robe', type: 'armor', price: 1200, defense: 12, magic: 22, desc: 'Ultimate mage attire', mageOnly: true },
-                { name: 'Mythril Armor', type: 'armor', price: 1500, defense: 30, desc: 'Legendary mythril plate' },
-                { name: 'Dragon Scale Mail', type: 'armor', price: 1800, defense: 35, desc: 'Armor made from dragon scales', warriorOnly: true }
+                { name: 'Grand Wizard Robe', type: 'armor', price: 1900, defense: 12, magic: 22, desc: 'Ultimate mage attire', mageOnly: true },
+                { name: 'Mythril Armor', type: 'armor', price: 2400, defense: 30, desc: 'Legendary mythril plate' },
+                { name: 'Dragon Scale Mail', type: 'armor', price: 2900, defense: 35, desc: 'Armor made from dragon scales', warriorOnly: true }
             ];
             switch(town) {
                 case 'brighthollow': return town1Armor;
@@ -13476,7 +13560,14 @@
                 { name: 'Potion', type: 'consumable', price: 50, effect: 'heal', power: 60, desc: 'Restores 60 HP to one ally' },
                 { name: 'Ether', type: 'consumable', price: 80, effect: 'restore_mp', power: 30, desc: 'Restores 30 MP to one ally' },
                 { name: 'Antidote', type: 'consumable', price: 30, effect: 'cure_poison', desc: 'Cures poison' },
-                { name: 'Cabin', type: 'consumable', price: 200, effect: 'full_restore', desc: 'Fully restores all party HP/MP (Use from Menu)' }
+                { name: 'Cabin', type: 'consumable', price: 200, effect: 'full_restore', desc: 'Fully restores all party HP/MP (Use from Menu)' },
+                // Previously the only revive item in the whole game was the
+                // crafted Second Wind Tonic, which needs Demon Horn/Soul
+                // Essence - materials that don't drop until Duskmere. That
+                // left a dead party member completely unrecoverable for the
+                // entire first region (including the Goblin King dungeon).
+                // This gives every player a basic revive option from town 1.
+                { name: 'Phoenix Down', type: 'consumable', price: 180, effect: 'revive', power: 0.4, desc: 'Revives a fallen ally with 40% HP' }
             ];
             const town2Items = [
                 { name: 'Hi-Potion', type: 'consumable', price: 200, effect: 'heal', power: 180, desc: 'Restores 180 HP to one ally' },
@@ -13486,7 +13577,8 @@
                 { name: 'Frost Trap', type: 'consumable', price: 400, effect: 'damage_all', power: 80, element: 'ice', desc: 'Deals 80 ice damage to all enemies' },
                 { name: 'Elixir', type: 'consumable', price: 350, effect: 'restore_all', power: 0, desc: 'Fully restores HP/MP of one ally' },
                 { name: 'Incense of Calm', type: 'consumable', effect: 'encounter_rate', power: 0.5, price: 200, desc: 'Reduces encounter rate by 50% for 100 steps' },
-                { name: 'Beast Lure', type: 'consumable', effect: 'encounter_rate', power: 2.0, price: 150, desc: 'Doubles encounter rate for 50 steps' }
+                { name: 'Beast Lure', type: 'consumable', effect: 'encounter_rate', power: 2.0, price: 150, desc: 'Doubles encounter rate for 50 steps' },
+                { name: 'Phoenix Feather', type: 'consumable', price: 350, effect: 'revive', power: 0.7, desc: 'Revives a fallen ally with 70% HP' }
             ];
             const town3Items = [
                 { name: 'Mega-Potion', type: 'consumable', price: 600, effect: 'heal_all', power: 200, desc: 'Restores 200 HP to all allies' },
@@ -13494,7 +13586,8 @@
                 { name: 'Rage Potion', type: 'consumable', price: 800, effect: 'buff', stat: 'crit', power: 0.3, duration: 5, desc: 'Increases critical hit chance by 30% for 5 turns' },
                 { name: 'Fortitude Draught', type: 'consumable', price: 800, effect: 'buff', stat: 'defense', power: 2.0, duration: 5, desc: 'Doubles defense for 5 turns' },
                 { name: 'Lucky Bomb', type: 'consumable', price: 1000, effect: 'lucky', power: 0, desc: 'Increases gold and rare item chance by 50% for next battle' },
-                { name: 'Megalixir', type: 'consumable', price: 1500, effect: 'full_restore_all', desc: 'Fully restores all party members' }
+                { name: 'Megalixir', type: 'consumable', price: 1500, effect: 'full_restore_all', desc: 'Fully restores all party members' },
+                { name: 'Full Life', type: 'consumable', price: 700, effect: 'revive', power: 1.0, desc: 'Revives a fallen ally with 100% HP' }
             ];
             switch(town) {
                 case 'brighthollow': return town1Items;
@@ -15331,14 +15424,14 @@
                 else if (townText.includes('Duskmere')) currentTown = 'duskmere';
                 else if (townText.includes('Sylvaris')) currentTown = 'sylvaris';
             }
-            let availableQuests = [];
-            if (currentTown === 'brighthollow') {
-                availableQuests = QUEST_DATA.filter(quest => quest.town === 'brighthollow' && !this.quests.some(q => q.id === quest.id));
-            } else if (currentTown === 'duskmere') {
-                availableQuests = QUEST_DATA.filter(quest => (quest.town === 'brighthollow' || quest.town === 'duskmere') && !this.quests.some(q => q.id === quest.id));
-            } else if (currentTown === 'sylvaris') {
-                availableQuests = QUEST_DATA.filter(quest => !this.quests.some(q => q.id === quest.id));
-            }
+            // Kept in sync with the identical filter in showAvailableQuests()
+            // - see the comment there for why this dropped the cross-region
+            // union and added the completedQuestIds exclusion.
+            let availableQuests = QUEST_DATA.filter(quest =>
+                quest.town === currentTown &&
+                !this.quests.some(q => q.id === quest.id) &&
+                !this.completedQuestIds.has(quest.id)
+            );
             if (availableQuests.length === 0) {
                 this.ui.showPopup('No Quests', `There are no available quests in ${currentTown}.`);
                 return;
@@ -16121,18 +16214,17 @@
             if (!chest || chest.opened) return;
             chest.opened = true;
             const lootTable = LOOT_TABLES[getCurrentLootQuadrant()] || LOOT_TABLES.brighthollow;
-            const goldFound = (80 + Math.floor(Math.random() * 60)) * chest.itemCount;
+            // Gold trimmed way down from the old (80-140)*itemCount formula
+            // (which hit 300-700+ per chest on deeper floors) - a chest
+            // should feel like a nice find, not a payday.
+            const goldFound = 25 + Math.floor(Math.random() * 20) + (chest.itemCount - 1) * 15;
             this.party.gold += goldFound;
             this.updateGoldDisplays();
             this.audio.play('coin');
             const foundNames = [];
             for (let i = 0; i < chest.itemCount; i++) {
-                const roll = Math.random();
-                let pool = lootTable.uncommon;
-                if (roll < 0.08 && lootTable.legendary && lootTable.legendary.length) pool = lootTable.legendary;
-                else if (roll < 0.32 && lootTable.rare && lootTable.rare.length) pool = lootTable.rare;
-                if (pool && pool.length) {
-                    const item = pool[Math.floor(Math.random() * pool.length)];
+                const item = rollTieredLootItem(lootTable, false);
+                if (item) {
                     this.party.addItem({ ...item });
                     foundNames.push(item.name);
                 }
@@ -16152,18 +16244,19 @@
             }
             f.vaultOpened = true;
             const lootTable = LOOT_TABLES[getCurrentLootQuadrant()] || LOOT_TABLES.brighthollow;
-            const goldFound = 700 * this.dungeonMap.currentFloorIndex;
+            // Was 700*floorIndex (2100+ gold on a floor 3 vault) - a vault
+            // should clearly beat a regular chest, just not by 5-10x.
+            const goldFound = 150 + 80 * this.dungeonMap.currentFloorIndex;
             this.party.gold += goldFound;
             this.updateGoldDisplays();
             this.audio.play('coin');
-            const rolls = this.dungeonMap.currentFloorIndex + 1;
+            // Capped at 2 rolls regardless of depth - it's meant to be a
+            // single special reward, not a second per-floor chest count.
+            const rolls = Math.min(2, this.dungeonMap.currentFloorIndex + 1);
             const foundNames = [];
             for (let i = 0; i < rolls; i++) {
-                const roll = Math.random();
-                let pool = (lootTable.rare && lootTable.rare.length) ? lootTable.rare : lootTable.uncommon;
-                if (roll < 0.35 && lootTable.legendary && lootTable.legendary.length) pool = lootTable.legendary;
-                if (pool && pool.length) {
-                    const item = pool[Math.floor(Math.random() * pool.length)];
+                const item = rollTieredLootItem(lootTable, true);
+                if (item) {
                     this.party.addItem({ ...item });
                     foundNames.push(item.name);
                 }
@@ -16354,7 +16447,10 @@
             }
             this.audio.playMusic('battle', 'castle');
             this.battle.startEncounter(this.party, 'castle');
-            this.updateQuestProgress('boss_defeat', 1);
+            // boss_defeat quest progress now fires from Battle.endBattle()
+            // once the fight is actually won (see wasBossFight there) -
+            // it used to fire immediately here, before the battle even
+            // began.
         }
 
         /** Random encounters while walking dungeon corridors - elite chance scales with floor depth (30/40/50/60/70%). */
@@ -16493,7 +16589,7 @@
                 ${progressMessage}
                 <p><strong>Progress:</strong> ${progress}/${quest.goal}</p>
                 <p><strong>Reward:</strong> ${quest.reward.gold} G, ${quest.reward.item}</p>
-                <p style="color: #888; margin-top: 15px;">${quest.dialogue.start}</p>
+                <p style="color: #888; margin-top: 15px;">${quest.dialogue?.start || 'Complete this quest for rewards!'}</p>
                 ${!isComplete ? `
                     <p style="color: #ffaa00; margin-top: 10px;">Quest in progress - keep going!</p>
                 ` : `
@@ -16954,7 +17050,15 @@
         }
 
         showCraftingTab() {
-            let menuHTML = '<div style="max-height: 420px; overflow-y: auto;">';
+            // No longer wraps content in its own max-height/overflow div -
+            // that nested scroll container could trap a touch-scroll
+            // gesture before it ever reached the OK button below (worse on
+            // the Apply/Remove tab, which usually has much more content:
+            // every hero's weapon/armor rows plus the full gem list). The
+            // outer .popup-box already scrolls as a whole (max-height:80%;
+            // overflow-y:auto), so letting IT be the only scroll container
+            // keeps OK reachable by the same gesture as everything else.
+            let menuHTML = '<div>';
             menuHTML += this.gemCrafterTabBar('craft');
             menuHTML += this.getCraftingTabHTML();
             menuHTML += '</div>';
@@ -16962,7 +17066,8 @@
         }
 
         showApplyGemTab() {
-            let menuHTML = '<div style="max-height: 420px; overflow-y: auto;">';
+            // See the comment in showCraftingTab() - same fix, same reason.
+            let menuHTML = '<div>';
             menuHTML += this.gemCrafterTabBar('apply');
             menuHTML += this.getApplyGemTabHTML();
             menuHTML += '</div>';
@@ -17539,14 +17644,20 @@
                 else if (townText.includes('Sylvaris')) currentTown = 'sylvaris';
             }
             console.log('Current town for available quests:', currentTown);
-            let availableQuests = [];
-            if (currentTown === 'brighthollow') {
-                availableQuests = QUEST_DATA.filter(quest => quest.town === 'brighthollow' && !this.quests.some(q => q.id === quest.id));
-            } else if (currentTown === 'duskmere') {
-                availableQuests = QUEST_DATA.filter(quest => (quest.town === 'brighthollow' || quest.town === 'duskmere') && !this.quests.some(q => q.id === quest.id));
-            } else if (currentTown === 'sylvaris') {
-                availableQuests = QUEST_DATA.filter(quest => !this.quests.some(q => q.id === quest.id));
-            }
+            // Was unioning in every prior region's town quests too (Duskmere
+            // showed Brighthollow's alongside its own, Sylvaris showed all
+            // three) - per Ray's request this now shows only the current
+            // region's board. It also never excluded quests already turned
+            // in (completedQuestIds), so a fully-completed quest kept
+            // reappearing as "available" forever once removed from the
+            // active list - that combined with the region-union is what
+            // made "Accept All" try to hand back everything from every
+            // region every time.
+            let availableQuests = QUEST_DATA.filter(quest =>
+                quest.town === currentTown &&
+                !this.quests.some(q => q.id === quest.id) &&
+                !this.completedQuestIds.has(quest.id)
+            );
             console.log('Available quests found:', availableQuests.length);
             if (availableQuests.length === 0) {
                 content.innerHTML = '<p style="color: #888; text-align: center; padding: 20px;">No available quests in this town. Check back later or travel to other towns!</p>';
