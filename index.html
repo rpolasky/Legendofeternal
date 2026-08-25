@@ -2100,6 +2100,161 @@
         }
 
         /* ====================================================================== */
+        /*                    ARCHETYPE SHRINE / STORY BEAT                       */
+        /* ====================================================================== */
+        .shrine-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: radial-gradient(circle at 50% 35%, rgba(70,30,110,0.55) 0%, rgba(5,0,15,0.92) 75%);
+            backdrop-filter: blur(2px);
+            animation: shrineFadeIn 0.5s ease;
+        }
+        @keyframes shrineFadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .shrine-panel {
+            width: 100%;
+            max-width: 480px;
+            max-height: 86vh;
+            overflow-y: auto;
+            background: linear-gradient(160deg, #2a1245 0%, #150a2b 60%, #0a0518 100%);
+            border: 2px solid #c8a2ff;
+            box-shadow: 0 0 50px rgba(180,120,255,0.45), inset 0 0 30px rgba(180,120,255,0.08);
+            border-radius: 14px;
+            padding: 26px 22px;
+            text-align: center;
+            color: #eae0ff;
+        }
+
+        .shrine-icon-glow {
+            font-size: 46px;
+            margin-bottom: 8px;
+            filter: drop-shadow(0 0 14px #c8a2ff);
+            animation: shrineIconPulse 2.6s ease-in-out infinite;
+        }
+        @keyframes shrineIconPulse {
+            0%, 100% { filter: drop-shadow(0 0 10px #c8a2ff); transform: scale(1); }
+            50% { filter: drop-shadow(0 0 22px #e8d0ff); transform: scale(1.06); }
+        }
+
+        .shrine-title {
+            color: #f0dfff;
+            font-size: 20px;
+            letter-spacing: 1px;
+            text-shadow: 0 0 16px #a870ff;
+            margin-bottom: 10px;
+        }
+
+        .shrine-body {
+            color: #cdb8ee;
+            line-height: 1.6;
+            font-style: italic;
+            margin-bottom: 18px;
+        }
+
+        .shrine-progress {
+            color: #9c7dc9;
+            font-size: 12px;
+            margin-bottom: 14px;
+            letter-spacing: 0.5px;
+        }
+
+        .archetype-card {
+            display: block;
+            width: 100%;
+            text-align: left;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid #6a4a99;
+            border-radius: 10px;
+            padding: 14px;
+            margin-bottom: 12px;
+            color: #eae0ff;
+            cursor: pointer;
+            transition: background 0.2s, border-color 0.2s, transform 0.15s;
+        }
+        .archetype-card:hover, .archetype-card:active {
+            background: rgba(200,162,255,0.12);
+            border-color: #c8a2ff;
+            transform: translateY(-1px);
+        }
+        .archetype-card .archetype-card-name {
+            font-size: 17px;
+            font-weight: bold;
+            color: #f0dfff;
+            margin-bottom: 4px;
+        }
+        .archetype-card .archetype-card-tagline {
+            font-size: 12.5px;
+            color: #b9a3dd;
+            font-style: italic;
+            margin-bottom: 8px;
+        }
+        .archetype-card .archetype-card-detail {
+            font-size: 12px;
+            color: #9c7dc9;
+            line-height: 1.5;
+        }
+
+        .shrine-confirm-warning {
+            background: rgba(255,120,60,0.1);
+            border-left: 3px solid #ff9955;
+            color: #ffc9a3;
+            font-size: 12.5px;
+            padding: 10px 12px;
+            border-radius: 6px;
+            text-align: left;
+            margin: 14px 0;
+        }
+
+        /* Story beat popup - a distinct "new chapter" moment, deliberately
+           different from the loot-chest victory popup so it registers as a
+           different kind of information rather than more reward flavor. */
+        .story-beat-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 480;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: rgba(5,5,15,0.82);
+            animation: shrineFadeIn 0.4s ease;
+        }
+        .story-beat-panel {
+            width: 100%;
+            max-width: 440px;
+            background: linear-gradient(160deg, #1c2440 0%, #0d1226 100%);
+            border: 2px solid #ffd76a;
+            box-shadow: 0 0 45px rgba(255,215,106,0.35);
+            border-radius: 14px;
+            padding: 28px 22px;
+            text-align: center;
+            color: #f5eccb;
+        }
+        .story-beat-icon {
+            font-size: 44px;
+            margin-bottom: 10px;
+            filter: drop-shadow(0 0 12px #ffd76a);
+        }
+        .story-beat-title {
+            font-size: 20px;
+            color: #ffd76a;
+            text-shadow: 0 0 14px #ffb02e;
+            margin-bottom: 14px;
+            letter-spacing: 0.5px;
+        }
+        .story-beat-body {
+            line-height: 1.7;
+            color: #e8dcbb;
+            margin-bottom: 20px;
+        }
+        .story-beat-body strong { color: #ffd76a; }
+
+        /* ====================================================================== */
         /*                       LOW HP WARNING PULSE                            */
         /* ====================================================================== */
         .battle-hero.low-hp-warning .hero-avatar {
@@ -5264,7 +5419,7 @@
         'Sunken Temple': { type: 'castle', floors: 3, hasBoss: true },
         'Ashveil Spire': { type: 'castle', floors: 5, hasBoss: true },
         'Ancient Ruins': { type: 'ruins', floors: 2 },
-        'Forgotten Shrine': { type: 'ruins', floors: 2 },
+        'Forgotten Shrine': { type: 'ruins', floors: 1, isShrine: true },
         'Mysterious Ruins': { type: 'ruins', floors: 2 }
     };
 
@@ -5585,7 +5740,7 @@
         return { x: rx, y: ry, size, centerX: rx + Math.floor(size / 2), centerY: ry + Math.floor(size / 2) };
     }
 
-    function generateDungeonFloor(locationName, floorIndex, type, isLastFloor, hasBoss) {
+    function generateDungeonFloor(locationName, floorIndex, type, isLastFloor, hasBoss, isShrine) {
         const rng = mulberry32(hashStringToSeed(locationName + ':floor' + floorIndex));
         // All dungeon types (cave/castle/ruins) now use the same room-and-corridor
         // carver as Goblin Keep - wide connected chambers instead of the old
@@ -5593,8 +5748,11 @@
         // a "true maze" special dungeon is wanted again later.
         const { grid, entrance } = carveRoomFloor(rng, DUNGEON_FLOOR_WIDTH, DUNGEON_FLOOR_HEIGHT);
 
-        // Widen from strict 1-wide corridors to mostly-2-wide, some 1-wide left mixed in.
-        widenPassages(grid, DUNGEON_FLOOR_WIDTH, DUNGEON_FLOOR_HEIGHT, rng, 0.45);
+        // Shrine floors (e.g. Forgotten Shrine's archetype trial) are widened
+        // further than normal dungeons - an open, walkable approach to the
+        // altar rather than a tight dungeon crawl, since there's nothing to
+        // fight here.
+        widenPassages(grid, DUNGEON_FLOOR_WIDTH, DUNGEON_FLOOR_HEIGHT, rng, isShrine ? 0.75 : 0.45);
 
         const dist = bfsDistances(grid, entrance);
         let far = entrance, maxD = -1;
@@ -5606,10 +5764,12 @@
             }
         }
 
-        const exitType = isLastFloor ? (hasBoss ? 'boss' : 'vault') : 'stairs';
+        // Shrines have their own exit type ('shrine') - the far chamber is
+        // the altar, reached with no boss and no locked-behind-a-fight gate.
+        const exitType = isShrine ? 'shrine' : (isLastFloor ? (hasBoss ? 'boss' : 'vault') : 'stairs');
         // The exit chamber: a proper throne room for bosses, a treasure hall for vaults,
         // a small stairwell landing otherwise - all carved as real rooms, not bare tiles.
-        const exitRoomSize = exitType === 'boss' ? 7 : exitType === 'vault' ? 5 : 3;
+        const exitRoomSize = exitType === 'boss' ? 7 : exitType === 'shrine' ? 8 : exitType === 'vault' ? 5 : 3;
         const exitRoom = carveRoomAround(grid, DUNGEON_FLOOR_WIDTH, DUNGEON_FLOOR_HEIGHT, far.x, far.y, exitRoomSize);
 
         // Fisher-Yates shuffle (seeded) for chest room placement
@@ -5617,7 +5777,9 @@
             const j = Math.floor(rng() * (i + 1));
             const tmp = reachable[i]; reachable[i] = reachable[j]; reachable[j] = tmp;
         }
-        const chestCount = Math.min(6 + floorIndex * 2, Math.floor(reachable.length / 6));
+        // Shrines carry no treasure chests - it's a place of ceremony, not
+        // loot. Everything else about the floor generates identically.
+        const chestCount = isShrine ? 0 : Math.min(6 + floorIndex * 2, Math.floor(reachable.length / 6));
         const chests = [];
         let placed = 0;
         for (let i = 0; i < reachable.length && placed < chestCount; i++) {
@@ -5664,11 +5826,12 @@
             this.type = config.type;
             this.totalFloors = config.floors;
             this.hasBoss = !!config.hasBoss;
+            this.isShrine = !!config.isShrine;
             this.currentFloorIndex = 1;
             this.floors = {};
             for (let f = 1; f <= this.totalFloors; f++) {
                 const isLast = f === this.totalFloors;
-                this.floors[f] = generateDungeonFloor(locationName, f, this.type, isLast, this.hasBoss);
+                this.floors[f] = generateDungeonFloor(locationName, f, this.type, isLast, this.hasBoss, this.isShrine);
             }
             this.resetToEntrance();
         }
@@ -6132,6 +6295,107 @@
     }
 
     // =====================================================================
+    //                       HERO ARCHETYPE DEFINITIONS
+    // =====================================================================
+    // Mid-game specialization: 3 options per class, chosen once at the
+    // Forgotten Shrine (see Game.enterArchetypeShrine). Permanent. Each
+    // entry is deliberately simple - one statMods block, one passive (from
+    // a small generic set handled directly in Hero/BattleSystem), and one
+    // new spell using the existing spell-type system (Hero.selectArchetype
+    // pushes newSpell into hero.spells). No new subsystem per archetype -
+    // everything routes through hooks that already exist for equipment/
+    // buffs, so this stays pure data.
+    const ARCHETYPE_DEFS = {
+        warrior: [
+            {
+                id: 'berserker', name: 'Berserker', icon: '🩸',
+                tagline: 'Reckless aggression - the lower your HP, the harder you hit.',
+                statMods: { attackPct: 0.10, defensePct: -0.10 },
+                passive: { type: 'lowHpDamageBoost', threshold: 0.30, bonus: 0.25 },
+                passiveDesc: '+25% attack when below 30% HP',
+                newSpell: { name: 'Reckless Strike', cost: 6, power: 20, type: 'damage', usesAttack: true, tier: 1,
+                    desc: 'A heavy, unguarded blow that hits harder than a normal attack.' }
+            },
+            {
+                id: 'guardian', name: 'Guardian', icon: '🛡️',
+                tagline: 'An unbreakable wall - shrugs off blows others couldn\'t survive.',
+                statMods: { defensePct: 0.15, maxHpPct: 0.10 },
+                passive: { type: 'selfDamageReduction', amount: 0.15 },
+                passiveDesc: 'Takes 15% less damage from all sources',
+                newSpell: { name: 'Bulwark', cost: 5, power: 1.6, type: 'buff', stat: 'defense', duration: 3, tier: 1,
+                    desc: 'Braces defensively, sharply raising defense for a few turns.' }
+            },
+            {
+                id: 'duelist', name: 'Duelist', icon: '⚡',
+                tagline: 'Precision and speed - strike first, strike true.',
+                statMods: { speedPct: 0.15 },
+                passive: { type: 'critBonus', amount: 0.10 },
+                passiveDesc: '+10% critical hit chance',
+                newSpell: { name: 'Focused Blade', cost: 5, power: 1.8, type: 'buff', stat: 'crit', duration: 3, tier: 1,
+                    desc: 'Narrows focus to a single point, sharply raising critical hit chance.' }
+            }
+        ],
+        mage: [
+            {
+                id: 'elementalist', name: 'Elementalist', icon: '🔥',
+                tagline: 'Master of fire, ice, and lightning.',
+                statMods: { magicPct: 0.15, maxMpPct: 0.10 },
+                passive: { type: 'elementalSpellCostReduction', amount: 0.15 },
+                passiveDesc: 'Elemental spells cost 15% less MP',
+                newSpell: { name: 'Wildfire', cost: 14, power: 45, type: 'damage', element: 'fire', tier: 2,
+                    desc: 'A surging blast of flame, stronger than any basic fire spell.' }
+            },
+            {
+                id: 'battlemage', name: 'Battlemage', icon: '⚔️',
+                tagline: 'Blade and spell fused into one weapon.',
+                statMods: { attackPct: 0.10, magicPct: 0.10, maxHpPct: 0.10 },
+                passive: { type: 'weaponMagicBonus', amount: 0.20 },
+                passiveDesc: 'Physical attacks deal +20% bonus magic damage',
+                newSpell: { name: 'Spellblade Strike', cost: 8, power: 22, type: 'damage', usesAttack: true, tier: 1,
+                    desc: 'A weapon strike wreathed in raw arcane force.' }
+            },
+            {
+                id: 'arcanist', name: 'Arcanist', icon: '🌀',
+                tagline: 'Control the battlefield before it controls you.',
+                statMods: { maxMpPct: 0.20, speedPct: 0.10 },
+                passive: { type: 'spellCostReduction', amount: 0.10 },
+                passiveDesc: 'All spells cost 10% less MP',
+                newSpell: { name: 'Hex', cost: 7, power: 0.35, type: 'enemy_debuff', stat: 'defense', tier: 1,
+                    desc: 'Unravels a foe\'s defenses for the rest of the battle.' }
+            }
+        ],
+        paladin: [
+            {
+                id: 'holy_paladin', name: 'Holy Paladin', icon: '✨',
+                tagline: 'Protector and healer of the party.',
+                statMods: { maxHpPct: 0.10 },
+                passive: { type: 'healBonus', amount: 0.15 },
+                passiveDesc: 'Healing spells are 15% stronger',
+                newSpell: { name: 'Smite', cost: 8, power: 24, type: 'damage', usesAttack: true, tier: 1,
+                    desc: 'A weapon strike charged with holy light.' }
+            },
+            {
+                id: 'crusader', name: 'Crusader', icon: '🗡️',
+                tagline: 'Holy wrath given form.',
+                statMods: { attackPct: 0.15, magicPct: 0.10 },
+                passive: { type: 'weaponMagicBonus', amount: 0.15 },
+                passiveDesc: 'Physical attacks deal +15% bonus holy damage',
+                newSpell: { name: 'Holy Strike', cost: 8, power: 26, type: 'damage', usesAttack: true, tier: 1,
+                    desc: 'A radiant blow that burns through a foe\'s guard.' }
+            },
+            {
+                id: 'warden', name: 'Warden', icon: '🔰',
+                tagline: 'The line that does not break.',
+                statMods: { defensePct: 0.20 },
+                passive: { type: 'selfDamageReduction', amount: 0.15 },
+                passiveDesc: 'Takes 15% less damage from all sources',
+                newSpell: { name: 'Aegis', cost: 9, power: 1.8, type: 'buff', stat: 'defense', duration: 4, tier: 2,
+                    desc: 'Calls down a lasting ward, raising defense for several turns.' }
+            }
+        ]
+    };
+
+    // =====================================================================
     //                            HERO CLASS
     // =====================================================================
 
@@ -6140,6 +6404,7 @@
             this.name = name;
             this.heroClass = heroClass;
             this.level = level;
+            this.archetype = null;
             this.experience = 0;
             this.experienceToNext = this.calculateExpToNext();
             this.baseStats = this.getBaseStats();
@@ -6224,7 +6489,65 @@
                 }
             });
 
+            // Archetype percentage stat modifiers (see ARCHETYPE_DEFS) apply
+            // last, on top of equipment/buffs, same as gear bonuses do.
+            const archetype = this.getArchetypeDef();
+            if (archetype && archetype.statMods) {
+                const mods = archetype.statMods;
+                if (mods.attackPct) stats.attack = Math.floor(stats.attack * (1 + mods.attackPct));
+                if (mods.defensePct) stats.defense = Math.max(0, Math.floor(stats.defense * (1 + mods.defensePct)));
+                if (mods.magicPct) stats.magic = Math.floor(stats.magic * (1 + mods.magicPct));
+                if (mods.speedPct) stats.speed = Math.floor(stats.speed * (1 + mods.speedPct));
+                if (mods.maxHpPct) stats.maxHp = Math.floor(stats.maxHp * (1 + mods.maxHpPct));
+                if (mods.maxMpPct) stats.maxMp = Math.floor(stats.maxMp * (1 + mods.maxMpPct));
+                // Berserker-style passive: bonus attack while HP is low.
+                // Uses currentHp against the base (pre-modifier) maxHp so it
+                // doesn't feed back into its own threshold check.
+                if (archetype.passive && archetype.passive.type === 'lowHpDamageBoost') {
+                    const hpPercent = this.baseStats.maxHp > 0 ? this.currentHp / this.baseStats.maxHp : 1;
+                    if (hpPercent <= archetype.passive.threshold) {
+                        stats.attack = Math.floor(stats.attack * (1 + archetype.passive.bonus));
+                    }
+                }
+            }
+
             return stats;
+        }
+
+        /** Returns this hero's chosen archetype definition (from
+         *  ARCHETYPE_DEFS), or null if they haven't specialized yet. */
+        getArchetypeDef() {
+            if (!this.archetype) return null;
+            const options = ARCHETYPE_DEFS[this.heroClass];
+            if (!options) return null;
+            return options.find(a => a.id === this.archetype) || null;
+        }
+
+        /** Permanently specializes this hero into the given archetype id
+         *  (must be one of ARCHETYPE_DEFS[this.heroClass]). Grants the
+         *  archetype's unique spell immediately. Idempotent - re-selecting
+         *  the same archetype won't duplicate the spell. Returns true on
+         *  success. */
+        selectArchetype(archetypeId) {
+            const options = ARCHETYPE_DEFS[this.heroClass];
+            if (!options) return false;
+            const def = options.find(a => a.id === archetypeId);
+            if (!def) return false;
+            this.archetype = archetypeId;
+            const alreadyKnown = this.spells.some(s => s.name === def.newSpell.name);
+            if (!alreadyKnown) {
+                this.spells.push({ ...def.newSpell });
+            }
+            return true;
+        }
+
+        /** Extra flat damage a physical attack deals on top of normal
+         *  damage, for archetypes with a weaponMagicBonus passive
+         *  (Battlemage, Crusader). Scales off effective magic stat. */
+        getWeaponMagicBonusDamage() {
+            const archetype = this.getArchetypeDef();
+            if (!archetype || !archetype.passive || archetype.passive.type !== 'weaponMagicBonus') return 0;
+            return Math.floor(this.getEffectiveStats().magic * archetype.passive.amount);
         }
 
         canEquip(item) {
@@ -6295,6 +6618,10 @@
         }
 
         takeDamage(amount) {
+            const archetype = this.getArchetypeDef();
+            if (archetype && archetype.passive && archetype.passive.type === 'selfDamageReduction') {
+                amount = amount * (1 - archetype.passive.amount);
+            }
             const actual = Math.max(1, amount - Math.floor(this.getEffectiveStats().defense / 2));
             this.currentHp = Math.max(0, this.currentHp - actual);
             if (this.currentHp === 0) {
@@ -6339,7 +6666,15 @@
          *  used instead of reading spell.cost directly so every casting
          *  path - battle menu, world menu, buttons - agrees on the cost. */
         getSpellCost(spell) {
-            const reduction = (this.equipment.weapon && this.equipment.weapon.manaCostReduction) || 0;
+            let reduction = (this.equipment.weapon && this.equipment.weapon.manaCostReduction) || 0;
+            const archetype = this.getArchetypeDef();
+            if (archetype && archetype.passive) {
+                if (archetype.passive.type === 'spellCostReduction') {
+                    reduction += archetype.passive.amount;
+                } else if (archetype.passive.type === 'elementalSpellCostReduction' && spell.element) {
+                    reduction += archetype.passive.amount;
+                }
+            }
             return Math.max(1, Math.ceil(spell.cost * (1 - reduction)));
         }
 
@@ -6392,6 +6727,10 @@
                 if (e.critBonus) bonus += e.critBonus;
             });
             bonus += this.getSpeedCritBonus();
+            const archetype = this.getArchetypeDef();
+            if (archetype && archetype.passive && archetype.passive.type === 'critBonus') {
+                bonus += archetype.passive.amount;
+            }
             return bonus;
         }
 
@@ -6662,6 +7001,22 @@
             exp: 5000, gold: 5000, isBoss: true,
             elementalResist: { fire: 0.5, ice: 0.5, lightning: 0.3 }, desc: 'The final boss, very resistant to lightning',
             drops: { material: 'Ashen Core', chance: 1.0, quantity: 3, type: 'treasure', value: 2000 }
+        }
+    };
+
+    // A large, unmissable pop-up fired the moment a specific story boss
+    // falls, on top of (not instead of) the normal victory popup - see the
+    // wasBossFight hook in Battle.endBattle(). Each entry's `id` is added to
+    // completedQuestIds so it only ever fires once per save, and doubles as
+    // the unlock flag talkToKing() checks to reveal the matching follow-up
+    // royal quest.
+    const STORY_BEATS = {
+        'Dark Fortress': {
+            id: 'archetype_shrine_unlocked',
+            icon: '📜',
+            title: 'A New Path Has Opened',
+            body: "The Dread Knight has fallen. Return to <strong>Duskmere</strong> and speak with <strong>Queen Seraphina</strong> about <strong>The Shrine Awaits</strong> — your heroes are ready for what comes next.",
+            revealLocation: 'Forgotten Shrine'
         }
     };
 
@@ -10673,7 +11028,8 @@
                 elementalDamage = Math.floor(elementalDamage * 1.5);
                 window.game.trackCriticalHit();
             }
-            const totalDamage = damage + elementalDamage;
+            const archetypeBonusDamage = hero.getWeaponMagicBonusDamage ? hero.getWeaponMagicBonusDamage() : 0;
+            const totalDamage = damage + elementalDamage + archetypeBonusDamage;
 
             // Hero steps toward the target and swings; damage/log/hit-effects
             // resolve at the moment of impact so they're in sync with the
@@ -10966,6 +11322,10 @@
                 if (caster.equipment.weapon && caster.equipment.weapon.healingOutputBonus) {
                     healAmt = Math.floor(healAmt * (1 + caster.equipment.weapon.healingOutputBonus));
                 }
+                const casterArchetype = caster.getArchetypeDef ? caster.getArchetypeDef() : null;
+                if (casterArchetype && casterArchetype.passive && casterArchetype.passive.type === 'healBonus') {
+                    healAmt = Math.floor(healAmt * (1 + casterArchetype.passive.amount));
+                }
                 if (target.equipment && target.equipment.shield && target.equipment.shield.healingBonus) {
                     const bonus = target.equipment.shield.healingBonus;
                     healAmt = Math.floor(healAmt * (1 + bonus));
@@ -11001,8 +11361,31 @@
                 this.nextHero();
                 return;
             }
+            if (spell.type === 'enemy_debuff') {
+                // Permanently (for the rest of this battle) weakens the
+                // target's given stat by spell.power (e.g. 0.35 = -35%).
+                // Deliberately simple - no duration/tick system on Monster,
+                // just a one-time multiplier applied directly.
+                if (spell.stat === 'defense') {
+                    target.defense = Math.max(1, Math.floor(target.defense * (1 - spell.power)));
+                } else if (spell.stat === 'attack') {
+                    target.attack = Math.max(1, Math.floor(target.attack * (1 - spell.power)));
+                }
+                window.game.audio.play('magic');
+                this.log(`🌀 ${caster.name} casts ${spell.name} on ${target.name} - its ${spell.stat} crumbles!`);
+                const monsterIndex = this.monsters.indexOf(target);
+                const monsterDiv = document.getElementById(`monster-${monsterIndex}`);
+                if (monsterDiv) {
+                    monsterDiv.style.transition = 'box-shadow 0.4s';
+                    monsterDiv.style.boxShadow = '0 0 30px #c060ff';
+                    setTimeout(() => { monsterDiv.style.boxShadow = ''; }, 700);
+                }
+                this.renderMainCommands();
+                this.nextHero();
+                return;
+            }
             if (spell.type === 'damage') {
-                let damage = spell.power + caster.getEffectiveStats().magic;
+                let damage = spell.power + (spell.usesAttack ? caster.getEffectiveStats().attack : caster.getEffectiveStats().magic);
                 const spellLogLines = [];
                 if (spell.element && target.elementalResist && target.elementalResist[spell.element]) {
                     damage = Math.floor(damage * target.elementalResist[spell.element]);
@@ -11928,6 +12311,9 @@
                     window.game.dungeonMap.floor.bossDefeated = true;
                     if (window.game.unlockLoreChapter) {
                         window.game.unlockLoreChapter(window.game.dungeonMap.locationName);
+                    }
+                    if (window.game.triggerStoryBeat) {
+                        window.game.triggerStoryBeat(window.game.dungeonMap.locationName);
                     }
                 }
                 if (priorScreen !== 'world') {
@@ -13659,6 +14045,30 @@
                 const highTimes = [0.5, 2.2, 4.0, 5.6];
                 this._scheduleNotes(highNotes, highTimes, [0.6, 0.6, 0.6, 0.8], 'sine', 0.06, startTime);
                 this.musicTimer = setTimeout(() => { this.playMusic('ruins'); }, 7000);
+            } else if (type === 'shrine') {
+                // Surreal and weightless - a slow, wide pentatonic drone
+                // beneath shimmering, irregularly-spaced high tones. No
+                // percussion, no motif repetition - meant to feel like a
+                // held breath rather than a place with monsters in it.
+                const droneNotes = [131, 196, 262];
+                for (let i = 0; i < droneNotes.length; i++) {
+                    const osc = this.context.createOscillator();
+                    const gain = this.context.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.value = droneNotes[i];
+                    osc.connect(gain);
+                    gain.connect(this.musicGain);
+                    gain.gain.setValueAtTime(0.0, startTime + i * 0.6);
+                    gain.gain.linearRampToValueAtTime(0.07, startTime + i * 0.6 + 3.5);
+                    gain.gain.linearRampToValueAtTime(0.02, startTime + i * 0.6 + 8);
+                    osc.start(startTime + i * 0.6);
+                    osc.stop(startTime + i * 0.6 + 8.5);
+                    this.music.push(osc);
+                }
+                const shimmerNotes = [784, 698, 880, 659, 932, 784];
+                const shimmerTimes = [0.8, 2.6, 3.9, 5.5, 6.8, 8.2];
+                this._scheduleNotes(shimmerNotes, shimmerTimes, [1.0, 0.9, 1.1, 0.9, 1.0, 1.2], 'sine', 0.045, startTime);
+                this.musicTimer = setTimeout(() => { this.playMusic('shrine'); }, 9500);
             } else if (type === 'castle') {
                 // Grand and a little tense - square-wave brass-like motif
                 // over a slow-moving low pedal note.
@@ -13820,7 +14230,17 @@
         { id: 'angler', name: 'Angler', icon: '🐟', desc: 'Successfully land 25 catches while fishing.',
             check: (game, s) => s.fishCaught >= 25 },
         { id: 'master_angler', name: 'Master Angler', icon: '🌟', desc: 'Reel in a rare equipment catch while fishing.',
-            check: (game, s) => s.fishRareCaught >= 1 }
+            check: (game, s) => s.fishRareCaught >= 1 },
+        { id: 'chosen_path', name: 'Chosen Path', icon: '🕯️', desc: 'Specialize your first hero at the Forgotten Shrine.',
+            check: (game, s) => s.archetypesChosen.size >= 1 },
+        { id: 'trinity_forged', name: 'Trinity Forged', icon: '✨', desc: 'Specialize all three heroes at the Forgotten Shrine.',
+            check: (game, s) => s.trinityForged },
+        { id: 'true_berserker', name: 'True Berserker', icon: '🩸', desc: 'Reach level 20 as a Berserker.',
+            check: (game) => !!(game.party && game.party.heroes.some(h => h.archetype === 'berserker' && h.level >= 20)) },
+        { id: 'true_elementalist', name: 'True Elementalist', icon: '🔥', desc: 'Reach level 20 as an Elementalist.',
+            check: (game) => !!(game.party && game.party.heroes.some(h => h.archetype === 'elementalist' && h.level >= 20)) },
+        { id: 'true_holy_paladin', name: 'True Holy Paladin', icon: '✨', desc: 'Reach level 20 as a Holy Paladin.',
+            check: (game) => !!(game.party && game.party.heroes.some(h => h.archetype === 'holy_paladin' && h.level >= 20)) }
     ];
 
     // =====================================================================
@@ -13851,7 +14271,9 @@
                 screensVisited: new Set(),
                 fishCaught: 0,
                 fishRareCaught: 0,
-                fishMaterialCaught: 0
+                fishMaterialCaught: 0,
+                archetypesChosen: new Set(),
+                trinityForged: false
             };
         }
 
@@ -13900,6 +14322,12 @@
                     break;
                 case 'screen_visited':
                     if (data.screen) s.screensVisited.add(data.screen);
+                    break;
+                case 'archetype_selected':
+                    if (data.hero && data.hero.name) s.archetypesChosen.add(data.hero.name);
+                    break;
+                case 'archetype_trinity':
+                    s.trinityForged = true;
                     break;
             }
             this.checkAll();
@@ -15645,14 +16073,16 @@
                 const f = this.dungeonMap.floor;
                 // Once the boss is beaten or the vault is emptied, this tile doubles as a
                 // quick way out instead of re-fighting the boss or re-showing "already empty".
-                const resolved = (f.exitType === 'boss' && f.bossDefeated) || (f.exitType === 'vault' && f.vaultOpened);
+                const resolved = (f.exitType === 'boss' && f.bossDefeated) || (f.exitType === 'vault' && f.vaultOpened)
+                    || (f.exitType === 'shrine' && this.isArchetypeTrialComplete());
                 if (resolved) {
                     indicator.style.display = 'block';
-                    indicator.textContent = 'Press ENTER to leave the dungeon';
+                    indicator.textContent = f.exitType === 'shrine' ? 'Press ENTER to leave the shrine' : 'Press ENTER to leave the dungeon';
                     this.nearDungeonFeature = { type: 'leave', ref: null };
                 } else {
                     const label = f.exitType === 'stairs' ? 'Press ENTER to descend'
                         : f.exitType === 'boss' ? 'Press ENTER to face what awaits...'
+                        : f.exitType === 'shrine' ? 'Press ENTER to approach the altar'
                         : 'Press ENTER to open the vault';
                     indicator.style.display = 'block';
                     indicator.textContent = label;
@@ -15675,8 +16105,16 @@
                 case 'stairs': this.descendDungeonFloor(); break;
                 case 'boss': this.attemptDungeonBoss(); break;
                 case 'vault': this.openDungeonVault(); break;
+                case 'shrine': this.openArchetypeShrine(); break;
                 case 'leave': this.exitLocation(); break;
             }
+        }
+
+        /** True once every living hero has chosen an archetype - the
+         *  Forgotten Shrine's altar has nothing left to offer after that. */
+        isArchetypeTrialComplete() {
+            if (!this.party || !this.party.heroes.length) return false;
+            return this.party.heroes.every(h => !!h.archetype);
         }
 
         openDungeonChest(chest) {
@@ -15733,6 +16171,134 @@
             this.updateQuestProgress('treasure_find', 1, null, { location: this.dungeonMap ? this.dungeonMap.locationName : null });
             this.updateQuestProgress('retrieve_item', 1, null, { location: this.dungeonMap ? this.dungeonMap.locationName : null });
             this.ui.showPopup('🌟 Treasure Vault!', `You found ${goldFound} gold!\nFound: ${foundNames.join(', ')}`);
+            this.checkDungeonProximity();
+        }
+
+        /** Fires the large story-beat popup for a story boss (see
+         *  STORY_BEATS), exactly once per save. Also auto-reveals any
+         *  location tied to that beat (e.g. Forgotten Shrine) so it's on
+         *  the map immediately, independent of whether the player notices
+         *  the popup, reads their quest log, or talks to the NPC first -
+         *  three separate surfaces all pointing at the same instruction. */
+        triggerStoryBeat(bossLocationName) {
+            const beat = STORY_BEATS[bossLocationName];
+            if (!beat) return;
+            if (this.completedQuestIds.has(beat.id)) return;
+            this.completedQuestIds.add(beat.id);
+            if (beat.revealLocation && this.world && this.world.revealSecretLocation) {
+                this.world.revealSecretLocation(beat.revealLocation);
+            }
+            setTimeout(() => showStoryBeatPopup(beat), 350);
+        }
+
+        // =================================================================
+        //                    ARCHETYPE SHRINE (Forgotten Shrine)
+        // =================================================================
+
+        /** Entry point when the player reaches the shrine's altar. Walks
+         *  each hero without an archetype through a selection step; once
+         *  everyone has chosen, shows a completion message. Safe to call
+         *  again on a later visit - already-specialized heroes are skipped. */
+        openArchetypeShrine() {
+            if (this.isArchetypeTrialComplete()) {
+                this.ui.showPopup('The Forgotten Shrine', 'The altar is quiet now. Your heroes have already found their paths here.');
+                this.checkDungeonProximity();
+                return;
+            }
+            this.renderShrineStep(true);
+        }
+
+        renderShrineStep(isFirstOpen) {
+            const existing = document.getElementById('shrine-overlay');
+            if (existing) existing.remove();
+
+            const heroes = this.party.heroes;
+            const chosenCount = heroes.filter(h => h.archetype).length;
+            const nextHero = heroes.find(h => !h.archetype);
+
+            const overlay = document.createElement('div');
+            overlay.id = 'shrine-overlay';
+            overlay.className = 'shrine-overlay';
+
+            if (!nextHero) {
+                // Everyone has chosen - completion screen.
+                overlay.innerHTML = `
+                    <div class="shrine-panel">
+                        <div class="shrine-icon-glow">✨</div>
+                        <div class="shrine-title">The Trial is Complete</div>
+                        <div class="shrine-body">Three paths, chosen. The shrine falls silent behind you - what comes next is yours to write.</div>
+                        <button class="menu-button" onclick="window.game.closeShrineOverlay()" style="width:100%;">Leave the Altar</button>
+                    </div>
+                `;
+                document.getElementById('game-container').appendChild(overlay);
+                if (this.achievements) this.achievements.report('archetype_trinity', {});
+                return;
+            }
+
+            const options = ARCHETYPE_DEFS[nextHero.heroClass] || [];
+            const introHTML = isFirstOpen ? `
+                <div class="shrine-body">The air here remembers every hero who has stood where you stand. One by one, each of your heroes must choose the path they'll walk for the rest of this journey. Choose carefully - this cannot be undone, except by rare means found much later on.</div>
+            ` : '';
+
+            let cardsHTML = '';
+            options.forEach(opt => {
+                cardsHTML += `
+                    <button class="archetype-card" onclick="window.game.confirmArchetypeSelection('${nextHero.name}', '${opt.id}')">
+                        <div class="archetype-card-name">${opt.icon} ${opt.name}</div>
+                        <div class="archetype-card-tagline">${opt.tagline}</div>
+                        <div class="archetype-card-detail">Passive: ${opt.passiveDesc}<br>New Ability: <strong>${opt.newSpell.name}</strong> - ${opt.newSpell.desc}</div>
+                    </button>
+                `;
+            });
+
+            overlay.innerHTML = `
+                <div class="shrine-panel">
+                    <div class="shrine-icon-glow">🕯️</div>
+                    <div class="shrine-title">Trial of the Three</div>
+                    <div class="shrine-progress">${chosenCount} of ${heroes.length} heroes have chosen their path</div>
+                    ${introHTML}
+                    <div class="shrine-body" style="font-style:normal; margin-bottom: 12px;">Choose ${nextHero.name}'s path:</div>
+                    ${cardsHTML}
+                </div>
+            `;
+            document.getElementById('game-container').appendChild(overlay);
+        }
+
+        /** Looks up the given hero+archetype and shows an explicit,
+         *  unambiguous confirmation before locking it in - a tap on a card
+         *  is not itself the commitment. */
+        confirmArchetypeSelection(heroName, archetypeId) {
+            const hero = this.party.heroes.find(h => h.name === heroName);
+            if (!hero) return;
+            const def = (ARCHETYPE_DEFS[hero.heroClass] || []).find(a => a.id === archetypeId);
+            if (!def) return;
+
+            const overlay = document.getElementById('shrine-overlay');
+            if (!overlay) return;
+            const panel = overlay.querySelector('.shrine-panel');
+            if (!panel) return;
+            panel.innerHTML = `
+                <div class="shrine-icon-glow">${def.icon}</div>
+                <div class="shrine-title">${hero.name} will become a ${def.name}</div>
+                <div class="shrine-confirm-warning">This choice is permanent and cannot be changed except through a rare item found later in your journey. Confirm?</div>
+                <button class="menu-button" onclick="window.game.finalizeArchetypeSelection('${hero.name}', '${archetypeId}')" style="width:100%; margin-bottom: 8px;">Confirm ${def.name}</button>
+                <button class="menu-button" onclick="window.game.renderShrineStep(false)" style="width:100%; background:transparent; border:1px solid #6a4a99;">Go Back</button>
+            `;
+        }
+
+        finalizeArchetypeSelection(heroName, archetypeId) {
+            const hero = this.party.heroes.find(h => h.name === heroName);
+            if (!hero) return;
+            hero.selectArchetype(archetypeId);
+            if (this.achievements) {
+                this.achievements.report('archetype_selected', { hero: hero });
+            }
+            this.renderShrineStep(false);
+        }
+
+        closeShrineOverlay() {
+            const overlay = document.getElementById('shrine-overlay');
+            if (overlay) overlay.remove();
             this.checkDungeonProximity();
         }
 
@@ -15794,6 +16360,7 @@
         /** Random encounters while walking dungeon corridors - elite chance scales with floor depth (30/40/50/60/70%). */
         checkDungeonRandomEncounter() {
             if (!this.dungeonMap) return;
+            if (this.dungeonMap.isShrine) return; // no monsters at the shrine - it's a place of ceremony, not combat
             if (Math.random() < 0.14) {
                 const floorNum = this.dungeonMap.currentFloorIndex;
                 const eliteChance = Math.min(0.8, 0.2 + floorNum * 0.1);
@@ -15840,7 +16407,11 @@
                     break;
                 case 'ruins':
                     console.log('CASE: ruins');
-                    this.audio.playMusic('ruins');
+                    if (location.name === 'Forgotten Shrine') {
+                        this.audio.playMusic('shrine');
+                    } else {
+                        this.audio.playMusic('ruins');
+                    }
                     this.enterDungeonScreen(location, 'ruins');
                     break;
                 case 'spring':
@@ -16105,6 +16676,49 @@
             this.ui.showPopup(npc.name, menuHTML, true);
         }
 
+        /** Renders the accept/in-progress/complete card for a single royal
+         *  quest by id - pulled out of talkToKing() so a town's king can
+         *  offer more than one royal quest (e.g. Duskmere's Dread Knight
+         *  quest, followed by the archetype shrine quest once unlocked)
+         *  without duplicating this markup per quest. */
+        renderRoyalQuestBlock(questId, headerLabel) {
+            const royalQuestData = QUEST_DATA.find(q => q.id === questId);
+            if (!royalQuestData) return '';
+            const hasQuest = this.quests.some(q => q.id === questId);
+            const activeQuest = this.quests.find(q => q.id === questId);
+            const isComplete = activeQuest && activeQuest.progress >= activeQuest.goal;
+            const label = headerLabel || 'Royal Quest';
+            if (!hasQuest) {
+                return `
+                    <div style="background: rgba(255,215,0,0.1); padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 4px solid var(--gold-color);">
+                        <h4 style="color: var(--gold-color); margin-bottom: 10px;">⚔️ ${label} Available</h4>
+                        <p><strong>${royalQuestData.name}</strong></p>
+                        <p>${royalQuestData.description}</p>
+                        <p style="color: #888; margin-top: 5px;">Reward: ${royalQuestData.reward.gold} G, ${royalQuestData.reward.item}</p>
+                        <button class="menu-button" onclick="window.game.acceptNPCQuest('${questId}')"
+                                style="margin-top: 10px; padding: 5px 15px;">Accept Quest</button>
+                    </div>
+                `;
+            } else if (isComplete) {
+                return `
+                    <div style="background: rgba(68,255,68,0.1); padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 4px solid #44ff44;">
+                        <h4 style="color: #44ff44; margin-bottom: 10px;">✅ ${label} Complete!</h4>
+                        <p><strong>${royalQuestData.name}</strong></p>
+                        <p>Return for your reward.</p>
+                        <button class="menu-button" onclick="window.game.completeNPCQuest('${questId}')"
+                                style="margin-top: 10px; padding: 5px 15px; background: #44ff44; color: #000;">Claim Reward</button>
+                    </div>
+                `;
+            }
+            return `
+                <div style="background: rgba(100,100,255,0.1); padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 4px solid #4466ff;">
+                    <h4 style="color: #88aaff; margin-bottom: 10px;">📋 ${label} in Progress</h4>
+                    <p><strong>${royalQuestData.name}</strong></p>
+                    <p>${royalQuestData.description}</p>
+                </div>
+            `;
+        }
+
         talkToKing() {
             let townName = '';
             const townInfo = document.getElementById('town-info');
@@ -16116,7 +16730,7 @@
             }
             const kingDialogues = {
                 'Brighthollow': { name: 'King Aldric', dialogue: "Welcome, brave adventurer! Our kingdom has been fractured since Voraxis appeared. Each region has its own ruler now, but we all face the same threat.", quest: "Defeat the Goblin King to reopen the mountain pass. That's your first step toward uniting the kingdoms against Voraxis.", reward: "Return to me after you've cleared the pass, and I'll reward you.", questId: 'brighthollow_envoy' },
-                'Duskmere': { name: 'Queen Seraphina', dialogue: "The undead plague my lands. The Dark Fortress to the south is the source, but I lack the strength to assault it.", quest: "Defeat the Dread Knight in the Dark Fortress. He leads the undead army.", reward: "Defeat him and I'll grant you the Shadow Blade, effective against dark creatures.", questId: 'duskmere_watchtower' },
+                'Duskmere': { name: 'Queen Seraphina', dialogue: "The undead plague my lands. The Dark Fortress to the south is the source, but I lack the strength to assault it.", quest: "Defeat the Dread Knight in the Dark Fortress. He leads the undead army.", reward: "Defeat him and I'll grant you the Shadow Blade, effective against dark creatures.", questId: 'duskmere_watchtower', followUpQuestId: 'duskmere_shrine_awaits', followUpUnlockFlag: 'archetype_shrine_unlocked' },
                 'Sylvaris': { name: 'King Theron', dialogue: "The desert expands each year. The Sunken Temple holds the key to stopping it, but it's guarded by powerful elementals.", quest: "Explore the Sunken Temple and find the Orb of Seasons. It can restore the land.", reward: "Bring me the orb and I'll teach you the ultimate elemental spells.", questId: 'sylvaris_oasis_advisor' }
             };
             const king = kingDialogues[townName] || kingDialogues['Brighthollow'];
@@ -16125,42 +16739,12 @@
             // buttons reuse the same acceptNPCQuest/completeNPCQuest flow as
             // any other quest-giver NPC, since those just look the quest up
             // in QUEST_DATA by id regardless of who's offering it.
-            let royalQuestHTML = '';
-            const royalQuestData = QUEST_DATA.find(q => q.id === king.questId);
-            if (royalQuestData) {
-                const hasQuest = this.quests.some(q => q.id === king.questId);
-                const activeQuest = this.quests.find(q => q.id === king.questId);
-                const isComplete = activeQuest && activeQuest.progress >= activeQuest.goal;
-                if (!hasQuest) {
-                    royalQuestHTML = `
-                        <div style="background: rgba(255,215,0,0.1); padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 4px solid var(--gold-color);">
-                            <h4 style="color: var(--gold-color); margin-bottom: 10px;">⚔️ Royal Quest Available</h4>
-                            <p><strong>${royalQuestData.name}</strong></p>
-                            <p>${royalQuestData.description}</p>
-                            <p style="color: #888; margin-top: 5px;">Reward: ${royalQuestData.reward.gold} G, ${royalQuestData.reward.item}</p>
-                            <button class="menu-button" onclick="window.game.acceptNPCQuest('${king.questId}')"
-                                    style="margin-top: 10px; padding: 5px 15px;">Accept Quest</button>
-                        </div>
-                    `;
-                } else if (isComplete) {
-                    royalQuestHTML = `
-                        <div style="background: rgba(68,255,68,0.1); padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 4px solid #44ff44;">
-                            <h4 style="color: #44ff44; margin-bottom: 10px;">✅ Royal Quest Complete!</h4>
-                            <p><strong>${royalQuestData.name}</strong></p>
-                            <p>Return for your reward.</p>
-                            <button class="menu-button" onclick="window.game.completeNPCQuest('${king.questId}')"
-                                    style="margin-top: 10px; padding: 5px 15px; background: #44ff44; color: #000;">Claim Reward</button>
-                        </div>
-                    `;
-                } else {
-                    royalQuestHTML = `
-                        <div style="background: rgba(100,100,255,0.1); padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 4px solid #4466ff;">
-                            <h4 style="color: #88aaff; margin-bottom: 10px;">📋 Royal Quest in Progress</h4>
-                            <p><strong>${royalQuestData.name}</strong></p>
-                            <p>${royalQuestData.description}</p>
-                        </div>
-                    `;
-                }
+            let royalQuestHTML = this.renderRoyalQuestBlock(king.questId, 'Royal Quest');
+            // Follow-up quest (e.g. "The Shrine Awaits") only appears once
+            // its unlock flag has been set - currently only Duskmere, fired
+            // from Battle.endBattle() the moment the Dread Knight falls.
+            if (king.followUpQuestId && king.followUpUnlockFlag && this.completedQuestIds.has(king.followUpUnlockFlag)) {
+                royalQuestHTML += this.renderRoyalQuestBlock(king.followUpQuestId, 'Royal Quest');
             }
 
             let menuHTML = `
@@ -18358,6 +18942,7 @@
                     heroes: this.party.heroes.map(h => ({
                         name: h.name,
                         heroClass: h.heroClass,
+                        archetype: h.archetype || null,
                         level: h.level,
                         experience: h.experience,
                         currentHp: h.currentHp,
@@ -18483,6 +19068,7 @@
                 if (saveData.party.heroes && Array.isArray(saveData.party.heroes)) {
                     saveData.party.heroes.forEach(heroData => {
                         const hero = new Hero(heroData.name, heroData.heroClass, heroData.level || 1);
+                        hero.archetype = heroData.archetype || null;
                         hero.experience = heroData.experience || 0;
                         hero.currentHp = heroData.currentHp || hero.baseStats.maxHp;
                         hero.currentMp = heroData.currentMp || hero.baseStats.maxMp;
@@ -20725,6 +21311,24 @@ const QUEST_DATA = [
         }
     },
     {
+        id: 'duskmere_shrine_awaits',
+        name: 'The Shrine Awaits',
+        description: "With the Dread Knight fallen, Queen Seraphina speaks of an old place - the Forgotten Shrine - where heroes have always gone next to find their true calling. Travel there when you're ready.",
+        type: 'visit_locations',
+        targets: ['Forgotten Shrine'],
+        quadrant: 'duskmere',
+        goal: 1,
+        progress: 0,
+        reward: { gold: 500, item: 'Ether x2' },
+        npc: 'Queen Seraphina',
+        town: 'duskmere',
+        dialogue: {
+            start: "You've proven yourselves against the Dread Knight. There's an old place - the Forgotten Shrine - where heroes like you have always gone next, to find their true calling. It lies west of here, past the ridgeline. Go there when you're ready - this can't be rushed, and it can't be undone.",
+            progress: "The shrine is waiting. Head there whenever you're ready.",
+            complete: "You've walked the shrine's path. I can feel it in you now - each of you, changed."
+        }
+    },
+    {
         id: 'duskmere_lost_ledger',
         name: 'The Trade Ledger',
         description: "Merchant assistant Nessa's trade ledger was lost when monsters raided a shipment through Crystal Caverns.",
@@ -22146,6 +22750,33 @@ const QUEST_DATA = [
                 const x = Math.random() * width;
                 window.fx.burst(x, 20, colors[Math.floor(Math.random() * colors.length)], 12);
             }, i * 120);
+        }
+    }
+
+    /** Full-screen, deliberately unmissable popup for major story beats
+     *  (e.g. the archetype shrine unlocking after the Dread Knight falls).
+     *  Distinct styling from the victory/loot popup on purpose - this is a
+     *  different kind of information, not more reward flavor - and it does
+     *  not auto-dismiss; the player must tap "Got it" to close it. */
+    function showStoryBeatPopup(beat) {
+        const existing = document.getElementById('story-beat-overlay');
+        if (existing) existing.remove();
+        const overlay = document.createElement('div');
+        overlay.id = 'story-beat-overlay';
+        overlay.className = 'story-beat-overlay';
+        overlay.innerHTML = `
+            <div class="story-beat-panel">
+                <div class="story-beat-icon">${beat.icon}</div>
+                <div class="story-beat-title">${beat.title}</div>
+                <div class="story-beat-body">${beat.body}</div>
+                <button class="menu-button" onclick="document.getElementById('story-beat-overlay').remove()" style="width:100%;">Got it</button>
+            </div>
+        `;
+        const container = document.getElementById('game-container');
+        if (container) container.appendChild(overlay);
+        if (window.game && window.game.audio) window.game.audio.play('levelup');
+        if (navigator.vibrate) {
+            try { navigator.vibrate([80, 40, 80]); } catch (e) { /* unsupported, ignore */ }
         }
     }
 
