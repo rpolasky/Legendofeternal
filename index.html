@@ -1226,9 +1226,9 @@
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             grid-auto-rows: min-content;
-            gap: 16px 14px;
+            gap: 10px 10px;
             width: 56%;
-            padding-top: 20px;
+            padding-top: 10px;
             align-content: start;
             justify-items: center;
         }
@@ -1246,12 +1246,12 @@
            behavior, so this is the one rule in effect now. */
         .monster-sprite {
             width: 100%;
-            max-width: 128px;
+            max-width: 100px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: flex-start;
-            font-size: clamp(24px, 9vw, 36px);
+            font-size: clamp(20px, 7vw, 30px);
             position: relative;
             animation: monsterFloat 2.5s infinite ease-in-out;
             cursor: pointer;
@@ -1276,8 +1276,8 @@
            overlap risk to guard against, and a big fixed size reads as
            more imposing than one tied to a single 1/3-width column. */
         .monster-sprite.boss {
-            width: 190px;
-            max-width: 190px;
+            width: 150px;
+            max-width: 150px;
             animation: bossFloat 2s infinite ease-in-out;
             filter: drop-shadow(0 10px 8px rgba(0,0,0,0.5)) drop-shadow(0 0 24px rgba(255,68,68,0.6));
         }
@@ -1294,13 +1294,13 @@
            pixel art for attention or forcing the name line's font down. */
         .monster-level-badge {
             position: absolute;
-            top: -14px;
-            right: -10px;
+            top: -10px;
+            right: -6px;
             background: rgba(0,0,0,0.88);
-            border: 3px solid var(--border-color);
-            border-radius: 14px;
-            padding: 4px 14px;
-            font-size: 30px;
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            padding: 2px 8px;
+            font-size: 18px;
             font-weight: bold;
             color: var(--highlight);
             z-index: 26;
@@ -1309,33 +1309,33 @@
         }
 
         .monster-sprite.boss .monster-level-badge {
-            top: -18px;
-            right: -14px;
-            padding: 6px 20px;
-            font-size: 38px;
-            border-width: 4px;
+            top: -14px;
+            right: -10px;
+            padding: 4px 14px;
+            font-size: 26px;
+            border-width: 3px;
         }
 
         /* Elemental weakness/resistance badges */
         .monster-elemental-badge {
             position: absolute;
-            left: -36px;
+            left: -22px;
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 4px;
             top: 50%;
             transform: translateY(-50%);
             z-index: 25;
         }
 
         .elemental-weakness, .elemental-resist {
-            width: 32px;
-            height: 32px;
+            width: 22px;
+            height: 22px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 16px;
+            font-size: 12px;
             font-weight: bold;
             box-shadow: 0 2px 8px rgba(0,0,0,0.5);
             transition: transform 0.2s;
@@ -1397,22 +1397,22 @@
         .monster-info {
             background: rgba(0,0,0,0.9);
             border: 1px solid var(--border-color);
-            padding: 5px 8px;
-            margin-top: 4px;
-            font-size: 14px;
+            padding: 3px 6px;
+            margin-top: 3px;
+            font-size: 11px;
             width: 100%;
             text-align: center;
             border-radius: 4px;
             white-space: normal;
-            line-height: 1.3;
+            line-height: 1.25;
             word-break: break-word;
         }
 
         .monster-hp-bar {
             width: 100%;
-            height: 10px;
+            height: 7px;
             background: #333;
-            margin-top: 4px;
+            margin-top: 3px;
             border-radius: 4px;
             overflow: hidden;
         }
@@ -2900,35 +2900,14 @@
             animation: overlayFade 0.3s ease;
         }
 
-        /* #fishing-overlay is the one .popup-overlay instance still nested
-           inside #game-container (out of scope for this pass), so it needs
-           its own position:absolute override - otherwise the position:fixed
-           above (correct for popup-overlay/lore-overlay, which now live
-           outside the container) would make it fixed relative to the
-           transformed container's containing block, which resolves
-           differently than plain absolute and can misalign it slightly. */
-        #fishing-overlay {
-            position: absolute;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-        }
-
-        /* #fishing-overlay is nested inside #game-container (see that id's
-           own comment above), which has no z-index of its own - it used to
-           implicitly render above the world/town screens because those
-           lived INSIDE it too, back before they became real full-viewport
-           .screen.active siblings at z-index:10. Now #game-container has
-           nothing keeping it above that z-index:10, so its contents
-           (fishing-overlay included) silently render BEHIND whichever
-           screen is currently active - this is the fix: elevate
-           #game-container only while fishing is actually open, mirroring
-           the same fix battle-screen used to need before it was moved out
-           to real screen space entirely (see the git history / the old
-           body.battle-active rule this replaces the spirit of). */
-        body.fishing-active #game-container {
-            z-index: 25;
-        }
+        /* fishing-overlay now uses the plain .popup-overlay rule above like
+           every other popup (position:fixed at real full-viewport size) -
+           it used to need its own position:absolute override + a
+           body.fishing-active z-index hack on #game-container because it
+           was still nested inside that old scaled container. Moving it out
+           to be a real sibling (see the HTML) both fixes that and is the
+           actual reason it renders full-size now instead of shrunk down
+           with the rest of that box. */
 
         @keyframes overlayFade {
             from { opacity: 0; }
@@ -2999,28 +2978,39 @@
         /*                      FISHING MINIGAME                                */
         /* ====================================================================== */
         .fishing-box {
-            min-width: 460px;
+            min-width: 560px;
+            /* Generic popups cap at 80% of viewport height, which works
+               fine for text dialogs but leaves too little room for the
+               fishing track on a short landscape phone screen (this is
+               also why the box was overflowing/clipping its own Reel!
+               button off the bottom edge before this fix). */
+            max-height: 94vh;
+            padding: 18px 30px;
             text-align: center;
         }
 
         .fishing-instructions {
             color: #a8c0d8;
-            font-size: 13px;
-            margin-bottom: 16px;
+            font-size: 14px;
+            margin-bottom: 12px;
         }
 
         .fishing-layout {
             display: flex;
-            gap: 18px;
+            gap: 24px;
             justify-content: center;
             align-items: flex-start;
-            margin-bottom: 14px;
+            margin-bottom: 4px;
         }
 
         .fishing-track {
             position: relative;
-            width: 64px;
-            height: 280px;
+            width: 84px;
+            /* Sized to reliably fit the rest of the dialog (header,
+               instructions, result line, buttons) within a real landscape
+               phone's viewport height without clipping - see .fishing-box
+               above. Taller on genuinely tall viewports via the vh term. */
+            height: min(230px, 46vh);
             background: linear-gradient(180deg, #0d3446 0%, #0a1f30 60%, #071620 100%);
             border: 2px solid var(--border-color);
             border-radius: 10px;
@@ -3706,6 +3696,19 @@
                 max-width: 90%;
             }
 
+            /* .fishing-box needs its own override here since this
+               .popup-box rule (same specificity, later in the cascade)
+               would otherwise win back over the base .fishing-box rule's
+               tighter padding/min-width, undoing the vertical-space
+               reclaiming that keeps the Reel!/Leave buttons from clipping
+               off the bottom edge on short landscape screens. */
+            .fishing-box {
+                padding: 14px 24px;
+                min-width: 0;
+                width: min(560px, 92vw);
+                max-width: 92vw;
+            }
+
             .popup-box h3 {
                 font-size: 20px;
             }
@@ -3763,6 +3766,12 @@
             .popup-box {
                 padding: 15px;
                 min-width: 200px;
+            }
+
+            .fishing-box {
+                padding: 10px 16px;
+                min-width: 0;
+                width: min(560px, 92vw);
             }
 
             .popup-box h3 {
@@ -3916,30 +3925,12 @@
              persistent "Lore" journal opened from the world screen's control
              bar, which grows a new chapter each time a story boss falls. -->
 
-        <!-- ================================================================= -->
-        <!--                         FISHING MINIGAME                          -->
-        <!-- ================================================================= -->
-        <div class="popup-overlay" id="fishing-overlay">
-            <div class="popup-box fishing-box">
-                <h3>🎣 Fishing Hole</h3>
-                <div class="fishing-instructions">Click <strong>REEL!</strong> when the bobber is inside the glowing zone.</div>
-                <div class="fishing-layout">
-                    <div class="fishing-track" id="fishing-track">
-                        <div class="fishing-zone" id="fishing-zone"></div>
-                        <div class="fishing-bobber" id="fishing-bobber">🎣</div>
-                    </div>
-                    <div class="fishing-side">
-                        <div class="fishing-catch-log" id="fishing-catch-log"></div>
-                    </div>
-                </div>
-                <div class="fishing-result" id="fishing-result">&nbsp;</div>
-                <div class="fishing-buttons">
-                    <button class="menu-button primary" id="fishing-reel-btn" onclick="window.game.reelFish()">🪝 REEL!</button>
-                    <button class="menu-button" style="background:#8b0000; border-color:#ff4444;" onclick="window.game.cancelFishing()">🚪 Leave</button>
-                </div>
-            </div>
-        </div>
-
+        <!-- fishing-overlay now lives outside #game-container as a real
+             popup-overlay sibling below, alongside the other popups (was
+             the one exception still nested inside the old scaled
+             container, which is exactly why it rendered small - it was
+             shrunk along with everything else in that box instead of
+             sizing off the real screen). -->
     </div>
 
     <!-- ================================================================= -->
@@ -4305,6 +4296,31 @@
                 </div>
             </div>
         </div>
+
+        <!-- ================================================================= -->
+        <!--                         FISHING MINIGAME                          -->
+        <!-- ================================================================= -->
+        <div class="popup-overlay" id="fishing-overlay">
+            <div class="popup-box fishing-box">
+                <h3>🎣 Fishing Hole</h3>
+                <div class="fishing-instructions">Click <strong>REEL!</strong> when the bobber is inside the glowing zone.</div>
+                <div class="fishing-layout">
+                    <div class="fishing-track" id="fishing-track">
+                        <div class="fishing-zone" id="fishing-zone"></div>
+                        <div class="fishing-bobber" id="fishing-bobber">🎣</div>
+                    </div>
+                    <div class="fishing-side">
+                        <div class="fishing-catch-log" id="fishing-catch-log"></div>
+                    </div>
+                </div>
+                <div class="fishing-result" id="fishing-result">&nbsp;</div>
+                <div class="fishing-buttons">
+                    <button class="menu-button primary" id="fishing-reel-btn" onclick="window.game.reelFish()">🪝 REEL!</button>
+                    <button class="menu-button" style="background:#8b0000; border-color:#ff4444;" onclick="window.game.cancelFishing()">🚪 Leave</button>
+                </div>
+            </div>
+        </div>
+
         <div class="popup-overlay" id="popup-overlay">
             <div class="popup-box" id="popup-box">
                 <h3 id="popup-title">Title</h3>
@@ -15118,7 +15134,6 @@
             };
             document.getElementById('fishing-catch-log').innerHTML = '';
             document.getElementById('fishing-overlay').classList.add('active');
-            document.body.classList.add('fishing-active');
             this.state.pause();
             this.startFishingRound();
         }
@@ -15270,7 +15285,6 @@
                 if (fs.timeoutId) clearTimeout(fs.timeoutId);
             }
             document.getElementById('fishing-overlay').classList.remove('active');
-            document.body.classList.remove('fishing-active');
             this.state.resume();
         }
 
