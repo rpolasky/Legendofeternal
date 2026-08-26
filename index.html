@@ -3255,6 +3255,41 @@
             margin-top: 2px;
         }
 
+        /* Rare world encounter warning (see showRareEncounterWarning() in
+           the script) - appended straight to <body> as position:fixed
+           rather than into #game-container like .achievement-toast above,
+           so it isn't subject to that element's transform/scale (the same
+           containing-block trap that made battle/fishing/the world map
+           render tiny/misplaced earlier - see those fixes' comments). */
+        .rare-encounter-toast {
+            position: fixed;
+            left: 50%;
+            top: 22%;
+            transform: translateX(-50%) translateY(-16px) scale(0.94);
+            background: linear-gradient(135deg, rgba(20,4,10,0.96), rgba(50,8,20,0.96));
+            border: 2px solid #ff3355;
+            border-radius: 12px;
+            padding: 16px 30px;
+            color: #ffb3c0;
+            font-weight: bold;
+            font-size: 15px;
+            text-align: center;
+            box-shadow: 0 0 40px rgba(255,20,50,0.5);
+            z-index: 2000;
+            opacity: 0;
+            transition: opacity 0.5s ease, transform 0.5s ease;
+            pointer-events: none;
+            animation: rareEncounterPulse 1.4s ease-in-out infinite;
+        }
+        .rare-encounter-toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0) scale(1);
+        }
+        @keyframes rareEncounterPulse {
+            0%, 100% { box-shadow: 0 0 40px rgba(255,20,50,0.5); }
+            50% { box-shadow: 0 0 60px rgba(255,20,50,0.8); }
+        }
+
         /* ====================================================================== */
         /*                      SCROLLBARS - ENHANCED                           */
         /* ====================================================================== */
@@ -5036,6 +5071,12 @@
         VIEWPORT_WIDTH: 32,
         VIEWPORT_HEIGHT: 24,
         ENCOUNTER_RATE: 0.06,
+        // Rare "mini-boss" world encounter (see checkRandomEncounter()):
+        // 0.6% flat chance per step, with a cooldown afterward so it can't
+        // fire again immediately - keeps it feeling like a rare event
+        // rather than just another regular fight in disguise.
+        RARE_ENCOUNTER_RATE: 0.006,
+        RARE_ENCOUNTER_COOLDOWN_STEPS: 60,
         TERRAIN: {
             GRASS: 0,
             FOREST: 1,
@@ -10465,6 +10506,7 @@
             this.lastDropRarity = null;
             this.lastSpellElement = null;
             this.lastMaterialsFound = [];
+            this.lastRareEncounterBonus = null;
             this.runAttempts = 0;
             // Tracks which monster slot indices have already played their
             // one-time death animation, so updateMonsterDisplay() (called
@@ -10478,6 +10520,7 @@
             this.itemsUsedInBattle = false;
             this.magicOnlyBattle = true;
             this.lastMaterialsFound = [];
+            this.lastRareEncounterBonus = null;
             
             const existingPopup = document.getElementById('battle-results-popup');
             if (existingPopup) existingPopup.remove();
@@ -10513,6 +10556,9 @@
             if (location === 'cave_elite') {
                 this.log('⚡ ELITE ENCOUNTER! Stronger enemies appear! ⚡');
                 this.log('They drop better rewards!');
+            } else if (location === 'world_rare') {
+                this.log('🌑 A menacing presence blocks your path!');
+                this.log('This foe is far tougher than usual...');
             } else {
                 this.log(`Encounter started! ${this.monsters.length} enemies appear!`);
             }
@@ -10524,6 +10570,7 @@
         generateMonsters(location, partyLevel) {
             const isBoss = location === 'castle';
             const isElite = location === 'cave_elite';
+            const isRareWorldEncounter = location === 'world_rare';
             const isSpecialLocation = location === 'cave' || location === 'ruins';
             const count = isBoss ? 1 : (isSpecialLocation ? Math.floor(Math.random() * 3) + 2 : Math.floor(Math.random() * 2) + 1);
 
@@ -10533,6 +10580,31 @@
                 const castleName = window.game.nearLocation ? window.game.nearLocation.name : 'Ashveil Spire';
                 const boss = CASTLE_BOSSES[castleName] || CASTLE_BOSSES['Ashveil Spire'];
                 const monster = new Monster(boss, true);
+                this.monsters.push(monster);
+                return;
+            }
+
+            // Rare "mini-boss" world encounter: a single foe, pulled from
+            // the current region's elite pool (falling back to a regular
+            // monster if a region has none defined) and pushed noticeably
+            // harder than even a normal elite - it's meant to feel like a
+            // real, uncommon threat rather than a reskinned regular fight.
+            if (isRareWorldEncounter) {
+                const quadrantData = QUADRANTS[quadrant];
+                const eliteCandidates = quadrantData.monsters.filter(m => m.isElite);
+                const template = (eliteCandidates.length > 0 ? eliteCandidates : quadrantData.monsters)[
+                    Math.floor(Math.random() * (eliteCandidates.length > 0 ? eliteCandidates.length : quadrantData.monsters.length))
+                ];
+                const monster = new Monster(template, false);
+                monster.name = `Menacing ${monster.name.replace(/^Elite /, '')}`;
+                monster.maxHp = Math.floor(monster.maxHp * 2.4);
+                monster.currentHp = monster.maxHp;
+                monster.attack = Math.floor(monster.attack * 1.8);
+                monster.defense = Math.floor(monster.defense * 1.6);
+                monster.expReward = Math.floor(monster.expReward * 4);
+                monster.goldReward = Math.floor(monster.goldReward * 4.5);
+                monster.isElite = true;
+                monster.isRareEncounter = true;
                 this.monsters.push(monster);
                 return;
             }
@@ -12423,6 +12495,37 @@
                 this.lastDropRarity = null;
             }
             this.lastMaterialsFound = materialsFound;
+
+            // Rare world "mini-boss" encounter bonus: guaranteed on top of
+            // the normal roll above (not instead of it) - a chunk of extra
+            // gold plus either a rare-tier item or a fully-formed gem
+            // (skipping the usual fragment-collecting grind), 50/50. This
+            // is what makes hunting these encounters down feel worthwhile
+            // beyond the already-boosted per-monster gold/exp.
+            this.lastRareEncounterBonus = null;
+            if (this.monsters.some(m => m.isRareEncounter)) {
+                const bonusGold = 150 + Math.floor(Math.random() * 150);
+                this.party.gold += bonusGold;
+                window.game.updateGoldDisplays();
+                if (Math.random() < 0.5) {
+                    const bonusPool = (lootTable.rare && lootTable.rare.length > 0) ? lootTable.rare : (lootTable.uncommon || []);
+                    if (bonusPool.length > 0) {
+                        const bonusItem = JSON.parse(JSON.stringify(bonusPool[Math.floor(Math.random() * bonusPool.length)]));
+                        this.party.addItem(bonusItem);
+                        this.lastRareEncounterBonus = { type: 'item', name: bonusItem.name, gold: bonusGold };
+                        this.log(`🎁 The presence leaves behind: ${bonusItem.name}!`);
+                    }
+                } else {
+                    const colors = Object.keys(SOCKET_GEM_TIERS);
+                    const color = colors[Math.floor(Math.random() * colors.length)];
+                    const tierDef = SOCKET_GEM_TIERS[color][0];
+                    const gem = { name: tierDef.name, element: tierDef.element || null, bonus: { ...tierDef.bonus }, desc: tierDef.desc, fragmentCost: { [color]: tierDef.cost } };
+                    this.party.addGem(gem);
+                    this.lastRareEncounterBonus = { type: 'gem', name: gem.name, gold: bonusGold };
+                    this.log(`💎 The presence leaves behind: a ${gem.name}!`);
+                }
+                this.log(`🌑 Bonus gold from the encounter: +${bonusGold} G!`);
+            }
         }
 
         showBattleResults() {
@@ -12435,6 +12538,8 @@
             const droppedItem = this.lastDroppedItem;
             const rarity = this.lastDropRarity || 'common';
             const materialsFound = this.lastMaterialsFound || [];
+            const rareBonus = this.lastRareEncounterBonus;
+            if (rareBonus) totalGold += rareBonus.gold;
             const existingPopup = document.getElementById('battle-results-popup');
             if (existingPopup) existingPopup.remove();
             const popup = document.createElement('div');
@@ -12472,14 +12577,25 @@
                 });
                 materialsHTML += '</div>';
             }
+            let rareBonusHTML = '';
+            if (rareBonus) {
+                const bonusIcon = rareBonus.type === 'gem' ? '💎' : '🎁';
+                rareBonusHTML = `
+                    <div style="margin: 15px 0; padding: 12px; background: rgba(255,20,50,0.1); border-radius: 6px; border-left: 4px solid #ff3355;">
+                        <div style="color: #ff8899; font-weight: bold;">${bonusIcon} Rare Encounter Bonus</div>
+                        <div style="color: #ffb3c0; margin-top: 4px;">${rareBonus.name}</div>
+                    </div>
+                `;
+            }
             popup.innerHTML = `
                 <div style="font-size: 48px; margin-bottom: 10px; animation: chestOpen 0.5s;">📦</div>
-                <h2 class="victory-title-glow" style="color: var(--highlight); margin-bottom: 14px;">🏆 VICTORY!</h2>
+                <h2 class="victory-title-glow" style="color: ${rareBonus ? '#ff3355' : 'var(--highlight)'}; margin-bottom: 14px;">${rareBonus ? '🌑 MENACING FOE DEFEATED!' : '🏆 VICTORY!'}</h2>
                 <button class="menu-button" onclick="window.game.battle.exitBattleResults()"
                         style="margin: 0 auto 20px; display: block; padding: 10px 28px; font-size: 15px;">Continue</button>
                 <div style="margin-bottom: 20px; text-align: left;">
                     <p style="margin: 10px 0;">💰 Gold gained: ${totalGold}</p>
                     <p style="margin: 10px 0;">✨ Experience gained: ${totalExp}</p>
+                    ${rareBonusHTML}
                     ${materialsHTML}
                     ${itemHTML}
                 </div>
@@ -16212,6 +16328,21 @@
             const terrain = this.world.getTerrainAt(this.world.playerX, this.world.playerY);
             const isOnRoad = this.world.roads.some(road => road.x === this.world.playerX && road.y === this.world.playerY);
             if (isOnRoad) return;
+            // Rare "mini-boss" encounter: a low, flat per-step chance,
+            // independent of terrain/road modifiers and the normal
+            // encounter roll below - deliberately uncommon enough to feel
+            // like a real event rather than just a reskinned regular fight.
+            // A short in-world warning plays first, then the fight starts
+            // once it's finished (see showRareEncounterWarning()).
+            if (!this.rareEncounterCooldown && Math.random() < CONFIG.RARE_ENCOUNTER_RATE) {
+                this.rareEncounterCooldown = CONFIG.RARE_ENCOUNTER_COOLDOWN_STEPS;
+                showRareEncounterWarning(() => {
+                    this.audio.playMusic('battle', getBattleEnvironment('world').scene);
+                    this.battle.startEncounter(this.party, 'world_rare');
+                });
+                return;
+            }
+            if (this.rareEncounterCooldown > 0) this.rareEncounterCooldown--;
             let encounterRate = CONFIG.ENCOUNTER_RATE;
             if (terrain === CONFIG.TERRAIN.FOREST) encounterRate *= 1.5;
             if (terrain === CONFIG.TERRAIN.DESERT) encounterRate *= 1.5;
@@ -22829,6 +22960,25 @@ const QUEST_DATA = [
      *  Dungeon locations get a fixed scene; open-world encounters pick a
      *  scene based on which region's monster table is currently in play, so
      *  the backdrop always matches what the party is actually fighting. */
+    /** Shows the "strange evil presence" warning before a rare world
+     *  encounter, then calls onDone() once it's finished so the actual
+     *  fight starts right after - appended to <body> as position:fixed
+     *  rather than into #game-container (see .rare-encounter-toast's own
+     *  comment for why that matters). */
+    function showRareEncounterWarning(onDone) {
+        const toast = document.createElement('div');
+        toast.className = 'rare-encounter-toast';
+        toast.innerHTML = `🌑 You feel a strange evil presence nearby...`;
+        document.body.appendChild(toast);
+        requestAnimationFrame(() => toast.classList.add('show'));
+        if (window.game && window.game.audio) window.game.audio.play('levelup');
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 500);
+            if (onDone) onDone();
+        }, 1800);
+    }
+
     function getBattleEnvironment(location) {
         if (location === 'castle') return { scene: 'castle', particle: 'dust' };
         if (location === 'cave' || location === 'cave_elite') return { scene: 'cave', particle: 'mist' };
