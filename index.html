@@ -10417,12 +10417,21 @@
                     hero.statusEffects.forEach(e => {
                         if (!e.name || e.name === 'Poison') return;
                         let icon = '✨';
+                        // Was matching on substrings of e.name (e.g.
+                        // "includes('Bolster')" -> shield icon), but the
+                        // statusEffect objects never actually carry a
+                        // `.stat` field - only `.statModifiers` (a stat->
+                        // amount map) or `.critBonus`. Reading those directly
+                        // is both more accurate and automatically correct
+                        // for any future buff spell, instead of needing its
+                        // name added to a hardcoded list here too.
                         if (e.type === 'debuff') icon = '💔';
-                        else if (e.name.includes('Protect') || e.stat === 'defense' || e.name.includes('Bolster') || e.name.includes('Fortitude')) icon = '🛡️';
-                        else if (e.name.includes('Critical') || e.stat === 'crit' || e.name.includes('Rage')) icon = '⚔️';
+                        else if (e.critBonus) icon = '⚔️';
+                        else if (e.statModifiers && e.statModifiers.attack) icon = '⚔️';
+                        else if (e.statModifiers && e.statModifiers.defense) icon = '🛡️';
+                        else if (e.statModifiers && e.statModifiers.speed) icon = '⚡';
+                        else if (e.statModifiers && e.statModifiers.magic) icon = '🔮';
                         else if (e.name.includes('Cure') || e.type === 'heal') icon = '💚';
-                        else if (e.name.includes('Fortify')) icon = '🔮';
-                        else if (e.name.includes('Haste')) icon = '⚡';
                         let durationText = '';
                         if (e.duration > 0) {
                             const safeDuration = Math.max(0, e.duration);
@@ -11293,31 +11302,50 @@
             this.lastSpellElement = spell.element;
             this.clearPartyHighlights();
             if (spell.type === 'buff') {
-                if (spell.stat === 'defense' || spell.name === 'Bolster' || spell.name === 'Protect' || spell.name === 'Bolster 2' || spell.name === 'Fortify') {
-                    const existingBuff = target.statusEffects.find(e => e.name === spell.name);
-                    if (existingBuff) {
-                        existingBuff.duration = spell.duration || 3;
-                        this.log(`${target.name}'s ${spell.name} was refreshed! (${existingBuff.duration} turns)`);
-                    } else {
-                        target.statusEffects.push({ name: spell.name, duration: spell.duration || 3, statModifiers: { defense: spell.tier === 2 ? 8 : 5 } });
-                        this.log(`${caster.name} casts ${spell.name} on ${target.name}!`);
-                        this.log(`${target.name}'s defense increased!`);
-                    }
-                } else if (spell.stat === 'crit' || spell.name === 'Critical' || spell.name === 'Critical 2' || spell.name === 'Haste') {
-                    const existingBuff = target.statusEffects.find(e => e.name === spell.name);
-                    if (existingBuff) {
-                        existingBuff.duration = spell.duration || 3;
-                        this.log(`${target.name}'s ${spell.name} was refreshed! (${existingBuff.duration} turns)`);
-                    } else {
-                        target.statusEffects.push({ name: spell.name, duration: spell.duration || 3, critBonus: spell.tier === 2 ? 0.25 : 0.15 });
-                        this.log(`${caster.name} casts ${spell.name} on ${target.name}!`);
-                        this.log(`${target.name}'s critical hit chance increased!`);
-                    }
+                // This used to be a hardcoded list of specific spell names
+                // ("Bolster", "Protect", etc.) with two branches (a defense
+                // branch and a crit branch) - any buff spell whose name or
+                // stat wasn't on that list (Shell/magic_defense, Might,
+                // Berserk) matched NEITHER branch and silently did nothing:
+                // no statusEffect got pushed, so there was no log line and
+                // nothing for the duration-dots status display to show.
+                // Worse, "Bolster" (meant to raise ATTACK) only matched via
+                // its name in the defense branch, so it was actually
+                // buffing defense instead. Rewritten to dispatch off
+                // spell.stat directly so every current and future buff
+                // spell is wired correctly.
+                //
+                // Shell's stat is 'magic_defense', but this game's combat
+                // model has only one damage-mitigation stat - Hero.
+                // takeDamage() runs ALL incoming damage (physical or
+                // magic) through the same `defense` value. There's no
+                // separate magic-defense stat to raise, so Shell is
+                // treated as a defense buff (same mechanism as Protect)
+                // under its own name/duration.
+                const statKey = spell.stat === 'magic_defense' ? 'defense' : spell.stat;
+                const isCrit = spell.stat === 'crit';
+                const REAL_STAT_KEYS = ['attack', 'defense', 'magic', 'speed'];
+                const existingBuff = target.statusEffects.find(e => e.name === spell.name);
+                if (existingBuff) {
+                    existingBuff.duration = spell.duration || 3;
+                    this.log(`${target.name}'s ${spell.name} was refreshed! (${existingBuff.duration} turns)`);
+                } else if (isCrit) {
+                    target.statusEffects.push({ name: spell.name, duration: spell.duration || 3, critBonus: spell.power || 0.15 });
+                    this.log(`${caster.name} casts ${spell.name} on ${target.name}!`);
+                    this.log(`${target.name}'s critical hit chance increased!`);
+                } else if (REAL_STAT_KEYS.includes(statKey)) {
+                    const tierBonus = spell.tier === 3 ? 12 : (spell.tier === 2 ? 8 : 5);
+                    target.statusEffects.push({ name: spell.name, duration: spell.duration || 3, statModifiers: { [statKey]: tierBonus } });
+                    const statLabel = { attack: 'attack', defense: 'defense', magic: 'magic power', speed: 'speed' }[statKey];
+                    this.log(`${caster.name} casts ${spell.name} on ${target.name}!`);
+                    this.log(`${target.name}'s ${statLabel} increased!`);
+                } else {
+                    this.log(`${caster.name} casts ${spell.name} on ${target.name}!`);
                 }
                 window.game.audio.play('magic');
                 this.updatePartyDisplay();
                 setTimeout(() => {
-                    const effectType = (spell.stat === 'defense' || spell.name.includes('Bolster') || spell.name.includes('Protect') || spell.name.includes('Fortify')) ? 'shield' : 'axe';
+                    const effectType = (statKey === 'defense') ? 'shield' : 'axe';
                     this.createBuffEffect(target, effectType);
                 }, 50);
                 this.renderMainCommands();
@@ -11325,13 +11353,24 @@
                 return;
             }
             if (spell.type === 'all_buff') {
+                // Same stat-driven fix as the single-target buff branch
+                // above - this previously always wrote to
+                // statModifiers.crit for crit-type party buffs (War Cry),
+                // but 'crit' isn't a real stat field (crit chance is read
+                // from critBonus instead, same as single-target crit
+                // buffs), so War Cry logged its cast message but had zero
+                // actual effect on anyone's crit chance.
+                const statKey = spell.stat === 'magic_defense' ? 'defense' : spell.stat;
+                const isCrit = spell.stat === 'crit';
                 this.party.heroes.forEach(hero => {
                     if (!hero.isDead) {
                         const existingBuff = hero.statusEffects.find(e => e.name === spell.name);
                         if (existingBuff) {
                             existingBuff.duration = spell.duration;
+                        } else if (isCrit) {
+                            hero.statusEffects.push({ name: spell.name, duration: spell.duration, critBonus: spell.power || 0.15 });
                         } else {
-                            hero.statusEffects.push({ name: spell.name, duration: spell.duration, statModifiers: { [spell.stat]: 8 } });
+                            hero.statusEffects.push({ name: spell.name, duration: spell.duration, statModifiers: { [statKey]: 8 } });
                         }
                     }
                 });
@@ -11341,7 +11380,7 @@
                 setTimeout(() => {
                     this.party.heroes.forEach((hero, index) => {
                         if (!hero.isDead) {
-                            const effectType = spell.stat === 'defense' ? 'shield' : 'axe';
+                            const effectType = (statKey === 'defense') ? 'shield' : 'axe';
                             this.createBuffEffect(hero, effectType);
                         }
                     });
