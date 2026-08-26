@@ -4061,6 +4061,15 @@
             <div class="start-screen-leaves" id="start-screen-leaves"></div>
 
             <div class="start-screen-dock">
+                <div class="start-actions-secondary">
+                    <button class="menu-button primary" onclick="if(window.game) window.game.newGame();">🆕 New Game</button>
+                    <button class="menu-button" onclick="if(window.game) window.game.loadGame();">📂 Load</button>
+                    <button class="menu-button" onclick="if(window.game) window.game.saveGame();">💾 Save</button>
+                    <button class="menu-button" onclick="if(window.game) window.game.deleteSave();">🗑️ Delete</button>
+                    <button class="menu-button" onclick="if(window.game) window.game.showInstructions();">📖 Help</button>
+                    <button class="menu-button" onclick="toggleFullscreen()">⛶ Full Screen</button>
+                </div>
+
                 <div class="start-slots-row">
                     <div class="save-slot" id="slot1-container" onclick="window.game.selectSlot(1)">
                         <h3>SLOT 1</h3>
@@ -4082,18 +4091,6 @@
                             <div class="slot-empty">✨ Begin a new journey</div>
                         </div>
                     </div>
-                </div>
-
-                <div class="start-actions-primary">
-                    <button class="menu-button primary" onclick="if(window.game) window.game.newGame();">🆕 New Game</button>
-                    <button class="menu-button" onclick="if(window.game) window.game.loadGame();">📂 Load</button>
-                </div>
-
-                <div class="start-actions-secondary">
-                    <button class="menu-button" onclick="if(window.game) window.game.saveGame();">💾 Save</button>
-                    <button class="menu-button" onclick="if(window.game) window.game.deleteSave();">🗑️ Delete</button>
-                    <button class="menu-button" onclick="if(window.game) window.game.showInstructions();">📖 Help</button>
-                    <button class="menu-button" onclick="toggleFullscreen()">⛶ Full Screen</button>
                 </div>
             </div>
         </div>
