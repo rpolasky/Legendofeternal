@@ -1504,6 +1504,24 @@
             animation: none;
         }
 
+        /* Ally-target highlight (shown while picking who a heal/buff spell
+           or item targets) - a real CSS class + :active pseudo-class
+           instead of inline styles driven by onmouseover/onmouseout, which
+           is what let the green tint get stuck permanently on a touch
+           device: a touch fires "mouseover" without any guaranteed
+           "mouseout" to undo it, so the old inline backgroundColor could
+           survive long after target selection ended. :active has no such
+           failure mode - it can't get stuck, since the browser itself
+           clears it the moment the touch/click ends, not application code. */
+        .battle-hero.targetable {
+            border: 2px solid #00ff00;
+            cursor: pointer;
+            border-radius: 8px;
+        }
+        .battle-hero.targetable:active {
+            background-color: rgba(0, 255, 0, 0.3);
+        }
+
         .battle-hero .hero-avatar {
             width: 84px;
             height: 84px;
@@ -1952,6 +1970,54 @@
             letter-spacing: normal;
         }
 
+        /* Magic/Item list popup (see #battle-action-overlay in the HTML) -
+           same row-per-option shape as .limit-break-option above, just in
+           the standard purple/gold theme instead of limit break's magenta,
+           and with a right-aligned cost/quantity tag instead of a
+           description line. */
+        .battle-action-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 16px;
+            max-height: 50vh;
+            overflow-y: auto;
+        }
+        .battle-action-option {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            background: linear-gradient(135deg, rgba(42,42,74,0.9), rgba(26,26,46,0.9));
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-color);
+            padding: 12px 14px;
+            text-align: left;
+            cursor: pointer;
+            font-family: inherit;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .battle-action-option:hover,
+        .battle-action-option:active {
+            border-color: var(--highlight);
+            box-shadow: 0 4px 20px rgba(255,215,0,0.2);
+        }
+        .battle-action-option.disabled {
+            opacity: 0.5;
+        }
+        .battle-action-name {
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .battle-action-cost {
+            font-size: 12px;
+            color: #cfc0ee;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
         @keyframes limitBreakPulse {
             0%, 100% { box-shadow: 0 0 10px rgba(255,102,204,0.4), 0 2px 10px rgba(0,0,0,0.3); }
             50% { box-shadow: 0 0 26px rgba(255,102,204,0.9), 0 2px 10px rgba(0,0,0,0.3); }
@@ -1963,16 +2029,7 @@
             transform: none !important;
         }
 
-        #auto-battle-btn {
-            grid-column: span 2;
-            background: linear-gradient(135deg, rgba(74,74,106,0.9), rgba(54,54,86,0.9));
-            border-color: #6a6a8a;
-        }
-
-        #auto-battle-btn.active {
-            background: linear-gradient(135deg, rgba(255,170,0,0.3), rgba(255,215,0,0.2));
-            border-color: var(--gold-color);
-            color: var(--gold-color);
+        #auto-battle-btn.auto-active {
             animation: autoPulse 1s infinite;
         }
 
@@ -4345,6 +4402,22 @@
                 <button class="menu-button" onclick="document.getElementById('limit-break-overlay').classList.remove('active')">⬅️ Back</button>
             </div>
         </div>
+        <!-- Shared list-style popup for the Magic and Item battle commands
+             (showMagicMenu()/showBattleItemMenu() in the script populate
+             this the same way showLimitBreakMenu() populates the one
+             above) - each spell/item gets its own row with an icon, name,
+             and MP cost/quantity, instead of being crammed as text into
+             the compact icon-only #battle-commands buttons (illegible -
+             those are sized for single emoji, not spell names). Tapping a
+             row both closes this and starts targeting; Back just closes it
+             and leaves the main command icons untouched underneath. -->
+        <div class="popup-overlay" id="battle-action-overlay">
+            <div class="popup-box limit-break-box" id="battle-action-box">
+                <h3 id="battle-action-title">🔮 Magic</h3>
+                <div class="battle-action-list" id="battle-action-list"></div>
+                <button class="menu-button" onclick="document.getElementById('battle-action-overlay').classList.remove('active')">⬅️ Back</button>
+            </div>
+        </div>
         <div class="popup-overlay" id="lore-overlay">
             <div class="popup-box lore-box" id="lore-box" style="max-width: 640px; width: 90%; max-height: 80vh; display: flex; flex-direction: column;">
                 <h3 style="color: var(--highlight); flex-shrink: 0;">📖 The Story So Far</h3>
@@ -4824,6 +4897,15 @@
         let pinchStartDist = 1, pinchStartScale = 1;
         let pinchStartMidX = 0, pinchStartMidY = 0;
         let panStartTX = 0, panStartTY = 0;
+        // World's own zoom actually redraws with a different tile density
+        // (see Renderer.renderWorld()), unlike the CSS-transform scale
+        // below which just visually stretches whatever was already drawn -
+        // that's why CSS zoom-out never revealed more surrounding map, it
+        // was capped at "no scaling" as the outer limit and wouldn't have
+        // helped even if it went lower. Only the world screen gets this
+        // treatment; town/dungeon keep the CSS-transform approach as-is.
+        const isWorldZoom = context === 'world' && typeof renderer.zoom === 'number';
+        let pinchStartRendererZoom = 1;
 
         const zoomState = { scale: 1, tx: 0, ty: 0, minScale: 1, maxScale: 2.5 };
         canvas.style.transformOrigin = 'center center';
@@ -4834,6 +4916,7 @@
         canvas._resetZoomPan = () => {
             zoomState.scale = 1; zoomState.tx = 0; zoomState.ty = 0;
             applyTransform();
+            if (isWorldZoom && typeof renderer.resetZoom === 'function') renderer.resetZoom();
         };
         // Exposes a button-friendly nudge (used by the world-hud's ZOOM +/-
         // buttons) that shares this exact same CSS-transform zoom the pinch
@@ -4842,6 +4925,11 @@
         // uniformly scaled for mobile (two different zoom systems trying to
         // recenter around two different things).
         canvas._nudgeZoom = (factor) => {
+            if (isWorldZoom) {
+                renderer.zoom = Math.max(renderer.minZoom, Math.min(renderer.maxZoom, renderer.zoom * factor));
+                if (window.game && window.game.world) renderer.renderWorld(window.game.world);
+                return;
+            }
             zoomState.scale = Math.max(zoomState.minScale, Math.min(zoomState.maxScale, zoomState.scale * factor));
             applyTransform();
         };
@@ -4860,6 +4948,7 @@
                 const pts = Array.from(pointers.values());
                 pinchStartDist = dist(pts[0], pts[1]) || 1;
                 pinchStartScale = zoomState.scale;
+                pinchStartRendererZoom = isWorldZoom ? renderer.zoom : 1;
                 const m = mid(pts[0], pts[1]);
                 pinchStartMidX = m.x; pinchStartMidY = m.y;
                 panStartTX = zoomState.tx; panStartTY = zoomState.ty;
@@ -4875,6 +4964,18 @@
                 const pts = Array.from(pointers.values());
                 const newDist = dist(pts[0], pts[1]) || 1;
                 const newMid = mid(pts[0], pts[1]);
+                if (isWorldZoom) {
+                    // Redraw-based zoom: reveals genuinely more/less map
+                    // instead of stretching the same fixed render. No pan
+                    // component here - the world camera already recenters
+                    // on the player every frame, so a separate pinch-pan
+                    // offset would just fight that each time you move.
+                    let newZoom = pinchStartRendererZoom * (newDist / pinchStartDist);
+                    newZoom = Math.max(renderer.minZoom, Math.min(renderer.maxZoom, newZoom));
+                    renderer.zoom = newZoom;
+                    if (window.game && window.game.world) renderer.renderWorld(window.game.world);
+                    return;
+                }
                 let newScale = pinchStartScale * (newDist / pinchStartDist);
                 newScale = Math.max(zoomState.minScale, Math.min(zoomState.maxScale, newScale));
                 zoomState.scale = newScale;
@@ -6051,10 +6152,19 @@
             // rather than shrinking tiles down to fit the whole floor at once like towns do.
             const viewTop = 36;
             const viewH = height - viewTop;
-            const tilesW = Math.ceil(width / ts) + 2;
-            const tilesH = Math.ceil(viewH / ts) + 2;
-            const startCol = Math.floor(dungeonState.playerX - tilesW / 2);
-            const startRow = Math.floor(dungeonState.playerY - tilesH / 2);
+            // Buffer tiles are added on BOTH sides symmetrically (see edgeBuffer
+            // below) so the player's own tile lands exactly on the true visual
+            // center of the screen - it used to only get added once before
+            // halving, which shifted the centered tile ~1 tile right/down of
+            // where it visually should be (same bug, same fix, as the
+            // overworld map's renderWorld()).
+            const visibleTilesW = Math.ceil(width / ts);
+            const visibleTilesH = Math.ceil(viewH / ts);
+            const edgeBuffer = 2;
+            const startCol = Math.floor(dungeonState.playerX - visibleTilesW / 2) - edgeBuffer;
+            const startRow = Math.floor(dungeonState.playerY - visibleTilesH / 2) - edgeBuffer;
+            const tilesW = visibleTilesW + edgeBuffer * 2;
+            const tilesH = visibleTilesH + edgeBuffer * 2;
             // Cached for tap-to-walk screen->tile inversion (see screenToTile below).
             this.lastStartCol = startCol;
             this.lastStartRow = startRow;
@@ -9855,11 +9965,14 @@
             this.minimapCtx = this.minimapCanvas ? this.minimapCanvas.getContext('2d') : null;
             this.tileSize = CONFIG.TILE_SIZE;
             this.game = window.game;
-            // Default view starts closer in than before (was 1.0) so tiles
-            // and sprites read clearly on a phone instead of looking
-            // stretched-out/tiny - pinch-zoom still works freely between
-            // minZoom/maxZoom on top of this.
-            this.zoom = 1.35;
+            // Dialed back slightly from 1.35 - close enough to read tiles/
+            // sprites clearly, but 1.35 didn't leave much surrounding view
+            // to see what's coming. Pinch-zoom now actually redraws at a
+            // different tile density (see setupCanvasTouch's 'world'
+            // branch) instead of just CSS-scaling the same fixed render, so
+            // zooming out from here genuinely reveals more map instead of
+            // being capped at "no zoom" as the outer limit.
+            this.zoom = 1.15;
             this.minZoom = 0.5;
             this.maxZoom = 2.0;
             this.offsetX = 0;
@@ -9962,7 +10075,7 @@
         }
 
         resetZoom() {
-            this.zoom = 1.35;
+            this.zoom = 1.15;
             this.offsetX = 0;
             this.offsetY = 0;
             if (window.game && window.game.world) {
@@ -9987,12 +10100,23 @@
             ctx.save();
             ctx.translate(this.offsetX, this.offsetY);
             ctx.scale(this.zoom, this.zoom);
-            const tilesW = Math.ceil(this.canvas.width / (ts * this.zoom)) + 4;
-            const tilesH = Math.ceil(this.canvas.height / (ts * this.zoom)) + 4;
-            const startCol = Math.floor(worldMap.playerX - tilesW / 2);
-            const startRow = Math.floor(worldMap.playerY - tilesH / 2);
-            const endCol = startCol + tilesW;
-            const endRow = startRow + tilesH;
+            // Half-width/height in tiles of what's actually visible, plus a
+            // couple of extra tiles of drawn-but-offscreen buffer on EACH
+            // side to avoid pop-in at the edges while panning. The buffer
+            // used to only get added once (via `+4` before halving), which
+            // shifted the centered tile ~2 tiles right/down of true canvas
+            // center instead of landing exactly on it - much more visible
+            // now that the default zoom is higher (fewer tiles fit on
+            // screen, so a fixed-tile offset eats a bigger fraction of it).
+            // Splitting the buffer evenly here keeps the player's own tile
+            // exactly centered regardless of zoom.
+            const halfTilesW = this.canvas.width / (ts * this.zoom) / 2;
+            const halfTilesH = this.canvas.height / (ts * this.zoom) / 2;
+            const edgeBuffer = 2;
+            const startCol = Math.floor(worldMap.playerX - halfTilesW) - edgeBuffer;
+            const startRow = Math.floor(worldMap.playerY - halfTilesH) - edgeBuffer;
+            const endCol = Math.ceil(worldMap.playerX + halfTilesW) + edgeBuffer;
+            const endRow = Math.ceil(worldMap.playerY + halfTilesH) + edgeBuffer;
             // Cached so tap-to-walk can invert a screen tap back to a tile
             // coordinate using the exact same camera transform just drawn with.
             this.lastStartCol = startCol;
@@ -10464,9 +10588,18 @@
             if (!partyArea) return;
             const heroes = partyArea.querySelectorAll('.battle-hero');
             heroes.forEach(heroDiv => {
+                heroDiv.classList.remove('targetable');
+                heroDiv.onclick = null;
+                heroDiv.onmouseover = null;
+                heroDiv.onmouseout = null;
+                // Defensive cleanup: clears any leftover inline styles from
+                // the old onmouseover/onmouseout-driven highlight (the
+                // actual source of the stuck-green-box bug), in case a
+                // battle is resumed from a state that set them before this
+                // fix shipped.
                 heroDiv.style.border = '';
                 heroDiv.style.cursor = '';
-                heroDiv.onclick = null;
+                heroDiv.style.backgroundColor = '';
             });
         }
 
@@ -10978,18 +11111,24 @@
                 this.log(`${hero.name} has no spells!`);
                 return;
             }
-            const commandArea = document.getElementById('battle-commands');
-            commandArea.innerHTML = '';
+            const overlay = document.getElementById('battle-action-overlay');
+            const title = document.getElementById('battle-action-title');
+            const list = document.getElementById('battle-action-list');
+            if (!overlay || !list) return;
+            title.textContent = '🔮 Magic';
+            list.innerHTML = '';
             hero.spells.forEach((spell) => {
-                const btn = document.createElement('button');
-                btn.className = 'cmd-btn';
                 const effCost = hero.getSpellCost(spell);
-                btn.innerHTML = `${spell.name}<br><small>${effCost} MP</small>`;
+                const affordable = hero.currentMp >= effCost;
+                const btn = document.createElement('button');
+                btn.className = 'battle-action-option' + (affordable ? '' : ' disabled');
+                btn.innerHTML = `<span class="battle-action-name">${spell.name}</span><span class="battle-action-cost">${effCost} MP</span>`;
                 btn.onclick = () => {
-                    if (hero.currentMp < hero.getSpellCost(spell)) {
+                    if (!affordable) {
                         this.log(`Not enough MP for ${spell.name}!`);
                         return;
                     }
+                    overlay.classList.remove('active');
                     // Convergence limit break: redirect a single-target damage spell
                     // into an all-enemies cast at reduced power, no target needed.
                     if (hero.pendingConvergence && spell.type === 'damage') {
@@ -11017,17 +11156,9 @@
                         this.log(`${hero.name} prepares ${spell.name}. Select an enemy.`);
                     }
                 };
-                if (hero.currentMp < effCost) btn.style.opacity = '0.5';
-                commandArea.appendChild(btn);
+                list.appendChild(btn);
             });
-            const backBtn = document.createElement('button');
-            backBtn.className = 'cmd-btn';
-            backBtn.textContent = '⬅️ BACK';
-            backBtn.onclick = () => {
-                this.resetCommandState();
-                this.renderMainCommands();
-            };
-            commandArea.appendChild(backBtn);
+            overlay.classList.add('active');
         }
 
         showBattleItemMenu(hero) {
@@ -11042,13 +11173,18 @@
                 setTimeout(() => this.renderMainCommands(), 1500);
                 return;
             }
-            const commandArea = document.getElementById('battle-commands');
-            commandArea.innerHTML = '';
+            const overlay = document.getElementById('battle-action-overlay');
+            const title = document.getElementById('battle-action-title');
+            const list = document.getElementById('battle-action-list');
+            if (!overlay || !list) return;
+            title.textContent = '🎒 Item';
+            list.innerHTML = '';
             usableItems.forEach((item) => {
                 const btn = document.createElement('button');
-                btn.className = 'cmd-btn';
-                btn.innerHTML = `${item.name}<br><small>x${item.quantity}</small>`;
+                btn.className = 'battle-action-option';
+                btn.innerHTML = `<span class="battle-action-name">${item.name}</span><span class="battle-action-cost">x${item.quantity}</span>`;
                 btn.onclick = () => {
+                    overlay.classList.remove('active');
                     this.selectedCommand = 'item';
                     this.selectedItem = item;
                     this.waitingForTarget = true;
@@ -11060,17 +11196,11 @@
                         this.log(`${hero.name} prepares to use ${item.name}. Select an enemy.`);
                     }
                 };
-                commandArea.appendChild(btn);
+                list.appendChild(btn);
             });
-            const backBtn = document.createElement('button');
-            backBtn.className = 'cmd-btn';
-            backBtn.textContent = '⬅️ BACK';
-            backBtn.onclick = () => {
-                this.resetCommandState();
-                this.renderMainCommands();
-            };
-            commandArea.appendChild(backBtn);
+            overlay.classList.add('active');
         }
+
 
         selectTarget(index) {
             if (!this.waitingForTarget || !this.active) return;
@@ -11188,24 +11318,15 @@
             heroes.forEach((heroDiv, index) => {
                 const hero = this.party.heroes[index];
                 if (hero && !hero.isDead) {
-                    heroDiv.style.border = '2px solid #00ff00';
-                    heroDiv.style.cursor = 'pointer';
-                    heroDiv.onclick = null;
+                    heroDiv.classList.add('targetable');
                     heroDiv.onclick = (e) => {
                         e.stopPropagation();
                         this.selectPartyTarget(index);
                     };
-                    heroDiv.onmouseover = () => {
-                        if (!hero.isDead) {
-                            heroDiv.style.backgroundColor = 'rgba(0, 255, 0, 0.2)';
-                        }
-                    };
-                    heroDiv.onmouseout = () => {
-                        heroDiv.style.backgroundColor = '';
-                    };
                 }
             });
         }
+
 
         executeAttack(hero, target) {
             this.magicOnlyBattle = false;
@@ -12416,9 +12537,9 @@
             const fightDungeonType = window.game.dungeonMap ? window.game.dungeonMap.type : null;
             const autoBtn = document.getElementById('auto-battle-btn');
             if (autoBtn) {
-                autoBtn.style.background = '#4a4a6a';
-                autoBtn.textContent = '⚡ Auto Battle';
-                autoBtn.classList.remove('active');
+                autoBtn.style.background = '';
+                autoBtn.textContent = '⚡';
+                autoBtn.classList.remove('auto-active');
             }
             this.resetCommandState();
             this.resetAllStatusEffects();
