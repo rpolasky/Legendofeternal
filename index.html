@@ -6850,7 +6850,7 @@
                     drops: { material: 'Goblin Ear', chance: 0.8, quantity: 2 },
                     fragment: { color: 'Emerald', chance: 0.25 } },
                 { name: 'Shadow Stalker', sprite: '👤', level: 6, hp: 120, attack: 25, defense: 10, speed: 10, exp: 120, gold: 100, isElite: true,
-                    elementalWeakness: { fire: 1.5 }, elementalResist: { lightning: 1.3 }, desc: 'Moves between shadows, resists lightning',
+                    elementalWeakness: { fire: 1.5 }, elementalResist: { lightning: 0.7 }, desc: 'Moves between shadows, resists lightning',
                     drops: { material: 'Shadow Essence', chance: 0.7, quantity: 1 },
                     fragment: { color: 'Amethyst', chance: 0.25 } }
             ]
@@ -10836,6 +10836,23 @@
                     this.selectedCommand = 'magic';
                     this.selectedSpell = spell;
                     this.waitingForTarget = true;
+                    // 'all_buff' (Haste, War Cry, Barrier) was missing from
+                    // both this check and isMultiTarget below, so it fell
+                    // through to the enemy-targeting branch - the game asked
+                    // you to "select an enemy" for a spell that buffs your
+                    // OWN party and ignores whatever you tap entirely. It
+                    // happened to still apply (executeMagic's all_buff
+                    // branch never reads the target argument), but only
+                    // once you complied with a prompt that was backwards,
+                    // and it couldn't be cast at all with no living enemy
+                    // to point at. Treated as no-target now, same as
+                    // all_heal/all_damage below.
+                    if (spell.type === 'all_buff') {
+                        this.executeMagic(hero, spell, null);
+                        this.waitingForTarget = false;
+                        this.renderMainCommands();
+                        return;
+                    }
                     const isAllySpell = (spell.type === 'heal' || spell.type === 'all_heal' || spell.type === 'buff' || spell.type === 'buff_defense' || spell.type === 'buff_crit');
                     const isMultiTarget = (spell.type === 'all_damage' || spell.type === 'all_heal');
                     if (isMultiTarget) {
@@ -10885,7 +10902,24 @@
                     this.selectedCommand = 'item';
                     this.selectedItem = item;
                     this.waitingForTarget = true;
-                    const isAllyTarget = (item.effect === 'heal' || item.effect === 'restore_mp' || item.effect === 'full_restore' || item.effect === 'revive');
+                    // heal_all/restore_mp_all/full_restore_all were missing
+                    // from every targeting list in this file (here, in
+                    // selectTarget, and in executeBattleItem's effect
+                    // switch), so picking Mega-Potion, Mega-Ether, or
+                    // Megalixir in battle told you to "select an enemy",
+                    // consumed the item the moment you tapped one, and did
+                    // absolutely nothing - no heal, no restore, no log
+                    // beyond "uses X". They're genuinely party-wide, so
+                    // (like all_heal spells) they skip target selection
+                    // entirely instead of asking for a single ally.
+                    const isPartyWideItem = (item.effect === 'heal_all' || item.effect === 'restore_mp_all' || item.effect === 'full_restore_all');
+                    if (isPartyWideItem) {
+                        this.executeBattleItem(hero, item, null);
+                        this.waitingForTarget = false;
+                        this.renderMainCommands();
+                        return;
+                    }
+                    const isAllyTarget = (item.effect === 'heal' || item.effect === 'restore_mp' || item.effect === 'full_restore' || item.effect === 'restore_all' || item.effect === 'revive');
                     if (isAllyTarget) {
                         this.log(`${hero.name} prepares to use ${item.name}. Select an ally.`);
                         this.highlightPartyTargets();
@@ -10910,7 +10944,7 @@
             const hero = this.party.heroes[this.selectedHeroIndex];
 
             if (this.selectedCommand === 'item' && this.selectedItem) {
-                const isAllyTarget = (this.selectedItem.effect === 'heal' || this.selectedItem.effect === 'restore_mp' || this.selectedItem.effect === 'full_restore' || this.selectedItem.effect === 'revive');
+                const isAllyTarget = (this.selectedItem.effect === 'heal' || this.selectedItem.effect === 'restore_mp' || this.selectedItem.effect === 'full_restore' || this.selectedItem.effect === 'restore_all' || this.selectedItem.effect === 'revive');
                 if (isAllyTarget) {
                     const target = this.party.heroes[index];
                     const validTarget = this.selectedItem.effect === 'revive' ? (target && target.isDead) : (target && !target.isDead);
@@ -11169,6 +11203,44 @@
                 window.game.audio.play('victory');
                 healSparkle(target); this.showDamage(target, 'FULL', true);
                 this.log(`${user.name} uses ${item.name} on ${target.name} - fully restored!`);
+            } else if (item.effect === 'restore_all') {
+                // Despite the name, this is single-target (see its own
+                // description: "Fully restores HP/MP of one ally") - it was
+                // never handled at all before, so Elixir did nothing when
+                // used in battle beyond consuming itself.
+                target.currentHp = target.baseStats.maxHp;
+                target.currentMp = target.baseStats.maxMp;
+                window.game.audio.play('victory');
+                healSparkle(target); this.showDamage(target, 'FULL', true);
+                this.log(`${user.name} uses ${item.name} on ${target.name} - HP and MP fully restored!`);
+            } else if (item.effect === 'heal_all') {
+                // Party-wide - target is null (see showBattleItemMenu).
+                window.game.audio.play('heal');
+                this.party.heroes.filter(h => !h.isDead).forEach(h => {
+                    const oldHp = h.currentHp;
+                    h.heal(item.power);
+                    const healed = h.currentHp - oldHp;
+                    healSparkle(h); this.showDamage(h, healed, true);
+                });
+                this.log(`${user.name} uses ${item.name} - the whole party recovers HP!`);
+            } else if (item.effect === 'restore_mp_all') {
+                window.game.audio.play('magic');
+                this.party.heroes.filter(h => !h.isDead).forEach(h => {
+                    const oldMp = h.currentMp;
+                    h.currentMp = Math.min(h.baseStats.maxMp, h.currentMp + item.power);
+                    const restored = h.currentMp - oldMp;
+                    this.showDamage(h, restored, true);
+                });
+                this.log(`${user.name} uses ${item.name} - the whole party recovers MP!`);
+            } else if (item.effect === 'full_restore_all') {
+                window.game.audio.play('victory');
+                this.party.heroes.forEach(h => {
+                    h.currentHp = h.baseStats.maxHp;
+                    h.currentMp = h.baseStats.maxMp;
+                    h.isDead = false;
+                    healSparkle(h); this.showDamage(h, 'FULL', true);
+                });
+                this.log(`${user.name} uses ${item.name} - the entire party is fully restored!`);
             } else if (item.effect === 'revive') {
                 const reviveHp = Math.max(1, Math.floor(target.baseStats.maxHp * (item.power || 0.5)));
                 target.isDead = false;
@@ -11631,11 +11703,18 @@
             if (spell.type === 'all_heal') {
                 const livingHeroes = this.party.heroes.filter(h => !h.isDead);
                 if (livingHeroes.length === 0) return;
-                let totalHeal = spell.power + caster.getEffectiveStats().magic;
+                let healPerTarget = spell.power + caster.getEffectiveStats().magic;
                 if (caster.equipment.weapon && caster.equipment.weapon.healingOutputBonus) {
-                    totalHeal = Math.floor(totalHeal * (1 + caster.equipment.weapon.healingOutputBonus));
+                    healPerTarget = Math.floor(healPerTarget * (1 + caster.equipment.weapon.healingOutputBonus));
                 }
-                const healPerTarget = Math.floor(totalHeal / livingHeroes.length);
+                // Was dividing this total across the whole living party
+                // (e.g. "Curaja All... heals for 150 HP" only actually gave
+                // each hero 150/partySize), so it got weaker the more of
+                // your party was still standing to receive it - backwards
+                // for a party heal, and nothing like its stated power. Now
+                // every living ally gets the full amount, same as heal_all
+                // items and every "restores X HP to all allies" description
+                // in the game already implies.
                 window.game.audio.play('heal');
                 const partyArea = document.getElementById('party-battle-area');
                 if (partyArea) {
@@ -18501,6 +18580,46 @@
             this.ui.updateWorldHUD(this.party);
         }
 
+        /** Generic party-wide restore item handler for the inventory menu -
+         *  covers full_restore (Cabin), heal_all (Mega-Potion),
+         *  restore_mp_all (Mega-Ether), and full_restore_all (Megalixir).
+         *  Cabin keeps its own dedicated useCabinFromMenu() too (used by
+         *  the always-visible menu shortcut button), this just fixes the
+         *  path that goes through clicking the item itself. */
+        usePartyRestoreItem(itemName) {
+            const item = this.party.inventory.items.find(i => i.name === itemName);
+            if (!item || item.quantity <= 0) {
+                this.ui.showPopup('Error', 'Item no longer available!');
+                this.renderMenuInventory();
+                return;
+            }
+            item.quantity--;
+            if (item.quantity <= 0) {
+                this.party.inventory.items = this.party.inventory.items.filter(i => i.name !== itemName);
+            }
+            let message = '';
+            if (item.effect === 'full_restore' || item.effect === 'full_restore_all') {
+                this.party.heroes.forEach(hero => {
+                    hero.currentHp = hero.baseStats.maxHp;
+                    hero.currentMp = hero.baseStats.maxMp;
+                    hero.isDead = false;
+                });
+                message = 'All party members fully restored!\nHP and MP maxed out.';
+            } else if (item.effect === 'heal_all') {
+                this.party.heroes.filter(h => !h.isDead).forEach(h => h.heal(item.power));
+                message = `The whole party recovers ${item.power} HP!`;
+            } else if (item.effect === 'restore_mp_all') {
+                this.party.heroes.filter(h => !h.isDead).forEach(h => {
+                    h.currentMp = Math.min(h.baseStats.maxMp, h.currentMp + item.power);
+                });
+                message = `The whole party recovers ${item.power} MP!`;
+            }
+            this.ui.showPopup('Item Used', message);
+            this.renderMenu();
+            this.ui.updateWorldHUD(this.party);
+            this.selectedMenuItem = null;
+        }
+
         renderMenuInventory() {
             const container = document.getElementById('menu-inventory-list');
             const details = document.getElementById('menu-item-details');
@@ -18601,12 +18720,27 @@
                 return;
             }
 
-            if (item.effect === 'full_restore') {
+            if (item.effect === 'full_restore' || item.effect === 'heal_all' || item.effect === 'restore_mp_all' || item.effect === 'full_restore_all') {
+                // Cabin (full_restore) had a working dedicated menu button
+                // elsewhere, but reaching it THIS way - clicking the item in
+                // the inventory list - called window.game.useCabin(), a
+                // function that doesn't exist (the real one is
+                // useCabinFromMenu()). That's a hard JS error, not just a
+                // no-op: tapping "Use on Party" here would throw and leave
+                // the popup stuck. Mega-Potion/Mega-Ether/Megalixir
+                // (heal_all/restore_mp_all/full_restore_all) weren't
+                // special-cased here at all, so they fell through to the
+                // single-hero picker below and then hit useItemOnHero()'s
+                // switch, which had no case for any of them either - the
+                // item would just silently vanish from inventory with
+                // nothing shown. All four now route through one generic
+                // party-wide handler.
                 details.innerHTML = '<h4 style="color: var(--highlight);">' + item.name + '</h4>' +
-                    '<p>' + (item.desc || 'Fully restores all party members') + '</p>' +
+                    '<p>' + (item.desc || this.getItemEffectDesc(item)) + '</p>' +
                     '<p style="color: #888;">Quantity: ' + item.quantity + '</p>' +
-                    '<button class="menu-button" onclick="window.game.useCabin()" style="margin-top: 15px; width: 100%;">Use on Party</button>' +
+                    '<button class="menu-button" onclick="window.game.usePartyRestoreItem(\'' + item.name + '\')" style="margin-top: 15px; width: 100%;">Use on Party</button>' +
                     '<button class="menu-button" onclick="window.game.renderMenuInventory()" style="margin-top: 15px; width: 100%; padding: 5px;">⬅️ Back to Items</button>';
+                this.selectedMenuItem = item;
                 return;
             }
 
@@ -18690,6 +18824,14 @@
                     hero.currentMp = Math.min(hero.baseStats.maxMp, hero.currentMp + item.power);
                     const restored = hero.currentMp - oldMp;
                     this.ui.showPopup('Item Used', `${hero.name} recovered ${restored} MP!`);
+                    break;
+                case 'restore_all':
+                    // Missing entirely before - Elixir would deduct itself
+                    // from inventory and show nothing at all once you
+                    // picked a target.
+                    hero.currentHp = hero.baseStats.maxHp;
+                    hero.currentMp = hero.baseStats.maxMp;
+                    this.ui.showPopup('Item Used', `${hero.name}'s HP and MP were fully restored!`);
                     break;
                 case 'revive':
                     if (!hero.isDead) {
