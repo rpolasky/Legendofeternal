@@ -656,9 +656,12 @@
         /* ====================================================================== */
         #start-screen {
             background: linear-gradient(180deg, #0a001a 0%, #1a0a2e 30%, #2a1a3e 60%, #0a0a1a 100%);
+            background-image: url('assets/ui/title-bg.jpg');
+            background-size: cover;
+            background-position: center;
             display: none;
             flex-direction: column;
-            justify-content: center;
+            justify-content: flex-end;
             align-items: center;
             text-align: center;
             position: relative;
@@ -675,55 +678,46 @@
             display: flex !important;
         }
 
-        /* Animated background particles */
-        #start-screen::before {
-            content: '';
+        /* The h1/subtitle are hidden now - the key art already has a
+           painted "Legend of Eternal" logo baked in (see .start-screen
+           background-image above), so a second plain-text title on top
+           would just duplicate it. Left in the DOM rather than deleted so
+           there's still a real heading for screen readers. */
+        #start-screen h1, #start-screen .subtitle {
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: 
-                radial-gradient(2px 2px at 20% 30%, rgba(255,215,0,0.3), transparent),
-                radial-gradient(2px 2px at 40% 70%, rgba(255,215,0,0.2), transparent),
-                radial-gradient(2px 2px at 60% 20%, rgba(255,215,0,0.3), transparent),
-                radial-gradient(2px 2px at 80% 80%, rgba(255,215,0,0.2), transparent);
-            background-size: 200px 200px;
-            animation: starsFloat 20s linear infinite;
+            width: 1px; height: 1px;
+            overflow: hidden;
+            clip: rect(0,0,0,0);
+        }
+
+        /* A handful of small leaves drift down from the top and sway side
+           to side, looping continuously - purely decorative ambient motion
+           over the key art (per request). Each .leaf gets a randomized
+           left position/delay/duration inline (see the script that spawns
+           them) so they don't all fall in lockstep. */
+        .start-screen-leaves {
+            position: absolute;
+            inset: 0;
             pointer-events: none;
+            z-index: 2;
+            overflow: hidden;
         }
-
-        @keyframes starsFloat {
-            0% { transform: translateY(0); }
-            100% { transform: translateY(-200px); }
-        }
-
-        #start-screen h1 {
-            font-size: 64px;
-            color: var(--highlight);
-            text-shadow: 0 0 40px rgba(255,215,0,0.4),
-                         0 0 80px rgba(255,215,0,0.2),
-                         4px 4px 0px #000;
-            margin-bottom: 10px;
-            letter-spacing: 8px;
-            animation: titleGlow 3s infinite ease-in-out;
-            position: relative;
-            z-index: 1;
-        }
-
-        @keyframes titleGlow {
-            0%, 100% { text-shadow: 0 0 40px rgba(255,215,0,0.4), 0 0 80px rgba(255,215,0,0.2), 4px 4px 0px #000; }
-            50% { text-shadow: 0 0 60px rgba(255,215,0,0.6), 0 0 120px rgba(255,215,0,0.3), 4px 4px 0px #000; }
-        }
-
-        .subtitle {
+        .leaf {
+            position: absolute;
+            top: -40px;
             font-size: 18px;
-            color: #8888bb;
-            margin-bottom: 30px;
-            letter-spacing: 6px;
-            position: relative;
-            z-index: 1;
-            text-shadow: 0 0 20px rgba(136,136,187,0.3);
+            opacity: 0.75;
+            filter: drop-shadow(0 2px 3px rgba(0,0,0,0.4));
+            animation: leafFall linear infinite, leafSway ease-in-out infinite;
+            will-change: transform;
+        }
+        @keyframes leafFall {
+            0% { transform: translateY(-5vh); }
+            100% { transform: translateY(105vh); }
+        }
+        @keyframes leafSway {
+            0%, 100% { margin-left: 0px; }
+            50% { margin-left: 40px; }
         }
 
         /* Enhanced Buttons */
@@ -784,41 +778,131 @@
             box-shadow: 0 6px 30px rgba(255,215,0,0.3);
         }
 
-        /* Save slots - Enhanced */
+        /* Bottom dock: everything (save-slot cards + action buttons) now
+           lives in a gradient scrim anchored to the bottom of the screen,
+           so the top ~60% stays clear for the key art (logo, town,
+           heroes) instead of UI elements competing with it for attention. */
+        .start-screen-dock {
+            position: relative;
+            z-index: 3;
+            width: 100%;
+            max-width: 640px;
+            padding: 18px 16px 16px;
+            background: linear-gradient(180deg, transparent 0%, rgba(5,2,15,0.55) 25%, rgba(5,2,15,0.88) 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .start-slots-row {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+            justify-content: center;
+        }
+
+        /* Save slots - now compact preview cards instead of plain text
+           boxes: each shows the party's classes/levels and gold/date at a
+           glance when a save exists, so you can tell your three files
+           apart without opening them. */
         .save-slot {
-            background: rgba(0,0,0,0.6);
-            padding: 20px;
+            background: rgba(10,5,20,0.75);
+            padding: 8px 10px;
             border: 2px solid var(--border-color);
             border-radius: 8px;
-            min-width: 150px;
-            transition: all 0.3s ease;
+            flex: 1 1 0;
+            min-width: 0;
+            max-width: 190px;
+            transition: all 0.25s ease;
             position: relative;
             z-index: 1;
             backdrop-filter: blur(5px);
+            cursor: pointer;
         }
 
-        .save-slot:hover {
+        .save-slot:hover, .save-slot:active {
             border-color: var(--highlight);
-            transform: translateY(-5px);
+            transform: translateY(-3px);
             box-shadow: var(--glow-gold);
         }
 
         .save-slot.has-save {
             border-color: var(--gold-color);
-            background: rgba(255,215,0,0.05);
+            background: rgba(255,215,0,0.08);
+        }
+
+        .save-slot.slot-selected {
+            border-color: #fff;
+            box-shadow: 0 0 0 2px var(--gold-color), var(--glow-gold);
         }
 
         .save-slot h3 {
             color: var(--highlight);
-            margin-bottom: 8px;
-            font-size: 14px;
+            margin-bottom: 4px;
+            font-size: 11px;
+            letter-spacing: 1px;
         }
 
         .save-slot .slot-info {
             color: #8888bb;
+            font-size: 10px;
+            min-height: 34px;
+            margin-bottom: 0;
+            line-height: 1.4;
+        }
+
+        .slot-heroes {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+            font-size: 12px;
+            margin-bottom: 2px;
+        }
+
+        .slot-heroes .hero-chip {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1px;
+        }
+
+        .slot-heroes .hero-chip .lvl {
+            font-size: 8px;
+            color: #cfc0ee;
+        }
+
+        .slot-meta {
+            color: #cfc0ee;
+            font-size: 9px;
+        }
+
+        .slot-empty {
+            color: #77779a;
+            font-style: italic;
+        }
+
+        .start-actions-primary {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+            justify-content: center;
+        }
+        .start-actions-primary .menu-button {
+            flex: 1 1 0;
+            max-width: 220px;
+            margin: 0;
+        }
+
+        .start-actions-secondary {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+        }
+        .start-actions-secondary .menu-button {
+            padding: 6px 12px;
             font-size: 11px;
-            min-height: 40px;
-            margin-bottom: 10px;
+            margin: 0;
         }
 
         /* ====================================================================== */
@@ -1068,11 +1152,10 @@
             display: flex;
             justify-content: space-between;
             padding: 14px 30px;
-            /* .battle-ui is now a slim icon-only command bar (was 295px
-               when it also held the always-visible log + hero-card strip -
-               both have moved: the log is a toggled overlay now, and hero
-               info lives on each character's own sprite). */
-            height: calc(100% - 76px);
+            /* Full height now - the command bar floats as a small pill
+               overlay (see .battle-ui) instead of reserving a fixed strip
+               across the bottom, so the battlefield/heroes get all of it. */
+            height: 100%;
             background: radial-gradient(ellipse at 30% 40%, #2a1a4e 0%, #0a0a1a 70%);
             transition: background 0.6s ease;
         }
@@ -1163,12 +1246,12 @@
            behavior, so this is the one rule in effect now. */
         .monster-sprite {
             width: 100%;
-            max-width: 170px;
+            max-width: 128px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: flex-start;
-            font-size: clamp(30px, 12vw, 46px);
+            font-size: clamp(24px, 9vw, 36px);
             position: relative;
             animation: monsterFloat 2.5s infinite ease-in-out;
             cursor: pointer;
@@ -1193,8 +1276,8 @@
            overlap risk to guard against, and a big fixed size reads as
            more imposing than one tied to a single 1/3-width column. */
         .monster-sprite.boss {
-            width: 250px;
-            max-width: 250px;
+            width: 190px;
+            max-width: 190px;
             animation: bossFloat 2s infinite ease-in-out;
             filter: drop-shadow(0 10px 8px rgba(0,0,0,0.5)) drop-shadow(0 0 24px rgba(255,68,68,0.6));
         }
@@ -1355,6 +1438,11 @@
             gap: 6px;
             padding-top: 4px;
             padding-right: 6px;
+            /* Keeps the bottom-most hero's card clear of the floating
+               command pill (see .battle-ui), which now overlays the
+               bottom-center of the screen instead of reserving its own
+               row. */
+            padding-bottom: 90px;
             min-height: 0;
         }
 
@@ -1417,12 +1505,12 @@
         }
 
         .battle-hero .hero-avatar {
-            width: 72px;
-            height: 72px;
+            width: 84px;
+            height: 84px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 16px;
+            font-size: 18px;
             flex-shrink: 0;
             filter: drop-shadow(0 8px 6px rgba(0,0,0,0.55));
             image-rendering: pixelated;
@@ -1541,17 +1629,25 @@
             font-weight: normal;
         }
 
-        /* Battle UI - now just a slim icon-only command bar. The log used
-           to live here full-width above the hero-card+command row; it's a
-           toggled overlay now (see .battle-log below), and hero info moved
-           onto each character's own sprite (see .hero-slot), so this only
-           needs to hold .battle-commands. */
+        /* Battle UI - a small floating pill hugging just the command icons
+           (per request: "shorten the sides of it to only encompass the
+           battle command icons") instead of a full-width strip across the
+           bottom that ate space on either side of the buttons for no
+           reason and reserved height the battlefield/heroes could use. */
         .battle-ui {
-            height: 76px;
-            background: rgba(0,0,0,0.9);
-            border-top: 4px solid var(--border-color);
+            position: absolute;
+            bottom: 14px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 12;
+            width: auto;
+            background: rgba(0,0,0,0.85);
+            border: 2px solid var(--border-color);
+            border-radius: 16px;
+            padding: 8px 10px;
             display: flex;
             backdrop-filter: blur(5px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.5);
         }
 
         /* One card per hero: name + status up top, stacked HP/MP/Limit/EXP
@@ -1721,15 +1817,13 @@
             to { opacity: 1; transform: translateX(0); }
         }
 
-        /* Battle Commands - icon-only, compact bar (was a labeled 2-column
-           grid eating a lot of vertical space - see .battle-ui above). */
+        /* Battle Commands - icon-only. .battle-ui (the pill wrapping this)
+           already provides the padding/background, so this just lays out
+           the icons themselves. */
         .battle-commands {
-            width: 100%;
-            padding: 10px 14px;
             display: flex;
-            justify-content: center;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
         }
 
         .cmd-btn {
@@ -3925,7 +4019,7 @@
         <div id="battle-screen" class="screen battle-viewport" style="display: none;">
             <div class="battle-window" id="battle-window">
                 <div class="battle-shake-wrapper" id="battle-shake-wrapper">
-                    <div id="battle-gold" style="position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.85); border: 2px solid var(--gold-color); padding: 5px 18px; color: var(--gold-color); font-size: 16px; font-weight: bold; z-index: 10; border-radius: 6px;">💰 G: 0</div>
+                    <div id="battle-gold" style="position: absolute; bottom: 14px; left: 14px; background: rgba(0,0,0,0.85); border: 2px solid var(--gold-color); padding: 5px 18px; color: var(--gold-color); font-size: 16px; font-weight: bold; z-index: 10; border-radius: 6px;">💰 G: 0</div>
 
                     <button type="button" class="battle-log-toggle-btn" id="battle-log-toggle-btn" title="Combat Log" onclick="toggleBattleLog()">📜</button>
                     <div class="battle-log" id="battle-log"></div>
@@ -3964,41 +4058,43 @@
         <div id="start-screen" class="screen active viewport-overlay">
             <h1>⚔️ LEGEND OF ETERNAL</h1>
             <div class="subtitle">✦ A Retro RPG Adventure ✦</div>
-            
-            <div style="display: flex; gap: 15px; margin: 20px 0; flex-wrap: wrap; justify-content: center; position: relative; z-index: 1;">
-                <div class="save-slot" id="slot1-container">
-                    <h3>📀 SLOT 1</h3>
-                    <div class="slot-info" id="slot1-info">Empty</div>
-                    <button class="menu-button" onclick="window.game.selectSlot(1)">▶ Play</button>
+            <div class="start-screen-leaves" id="start-screen-leaves"></div>
+
+            <div class="start-screen-dock">
+                <div class="start-slots-row">
+                    <div class="save-slot" id="slot1-container" onclick="window.game.selectSlot(1)">
+                        <h3>SLOT 1</h3>
+                        <div class="slot-info" id="slot1-info">
+                            <div class="slot-empty">✨ Begin a new journey</div>
+                        </div>
+                    </div>
+
+                    <div class="save-slot" id="slot2-container" onclick="window.game.selectSlot(2)">
+                        <h3>SLOT 2</h3>
+                        <div class="slot-info" id="slot2-info">
+                            <div class="slot-empty">✨ Begin a new journey</div>
+                        </div>
+                    </div>
+
+                    <div class="save-slot" id="slot3-container" onclick="window.game.selectSlot(3)">
+                        <h3>SLOT 3</h3>
+                        <div class="slot-info" id="slot3-info">
+                            <div class="slot-empty">✨ Begin a new journey</div>
+                        </div>
+                    </div>
                 </div>
-                
-                <div class="save-slot" id="slot2-container">
-                    <h3>📀 SLOT 2</h3>
-                    <div class="slot-info" id="slot2-info">Empty</div>
-                    <button class="menu-button" onclick="window.game.selectSlot(2)">▶ Play</button>
+
+                <div class="start-actions-primary">
+                    <button class="menu-button primary" onclick="if(window.game) window.game.newGame();">🆕 New Game</button>
+                    <button class="menu-button" onclick="if(window.game) window.game.loadGame();">📂 Load</button>
                 </div>
-                
-                <div class="save-slot" id="slot3-container">
-                    <h3>📀 SLOT 3</h3>
-                    <div class="slot-info" id="slot3-info">Empty</div>
-                    <button class="menu-button" onclick="window.game.selectSlot(3)">▶ Play</button>
+
+                <div class="start-actions-secondary">
+                    <button class="menu-button" onclick="if(window.game) window.game.saveGame();">💾 Save</button>
+                    <button class="menu-button" onclick="if(window.game) window.game.deleteSave();">🗑️ Delete</button>
+                    <button class="menu-button" onclick="if(window.game) window.game.showInstructions();">📖 Help</button>
+                    <button class="menu-button" onclick="toggleFullscreen()">⛶ Full Screen</button>
                 </div>
-            </div>
-            
-            <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; position: relative; z-index: 1;">
-                <button class="menu-button primary" onclick="if(window.game) window.game.newGame();">🆕 New Game</button>
-                <button class="menu-button" onclick="if(window.game) window.game.loadGame();">📂 Load</button>
-                <button class="menu-button" onclick="if(window.game) window.game.saveGame();">💾 Save</button>
-                <button class="menu-button" onclick="if(window.game) window.game.deleteSave();">🗑️ Delete</button>
-            </div>
-            
-            <div style="margin-top: 10px; position: relative; z-index: 1;">
-                <button class="menu-button" onclick="if(window.game) window.game.showInstructions();">📖 Help</button>
-                <button class="menu-button" onclick="toggleFullscreen()">⛶ Full Screen</button>
-            </div>
-            
-            <div style="position: absolute; bottom: 15px; left: 0; right: 0; text-align: center; font-size: 12px; color: #444466; z-index: 1; letter-spacing: 2px;">
-                ⚡ Use Arrow Keys / WASD to move ⚡
             </div>
         </div>
         <div id="shop-screen" class="screen menu-screen viewport-overlay" style="display: none;">
@@ -12146,17 +12242,15 @@
             }
             popup.innerHTML = `
                 <div style="font-size: 48px; margin-bottom: 10px; animation: chestOpen 0.5s;">📦</div>
-                <h2 class="victory-title-glow" style="color: var(--highlight); margin-bottom: 20px;">🏆 VICTORY!</h2>
+                <h2 class="victory-title-glow" style="color: var(--highlight); margin-bottom: 14px;">🏆 VICTORY!</h2>
+                <button class="menu-button" onclick="window.game.battle.exitBattleResults()"
+                        style="margin: 0 auto 20px; display: block; padding: 10px 28px; font-size: 15px;">Continue</button>
                 <div style="margin-bottom: 20px; text-align: left;">
                     <p style="margin: 10px 0;">💰 Gold gained: ${totalGold}</p>
                     <p style="margin: 10px 0;">✨ Experience gained: ${totalExp}</p>
                     ${materialsHTML}
                     ${itemHTML}
-                    <hr style="border-color: var(--border-color); margin: 15px 0;">
-                    <p style="color: #888; font-style: italic;">Click Continue to return</p>
                 </div>
-                <button class="menu-button" onclick="window.game.battle.exitBattleResults()" 
-                        style="margin: 10px auto; display: block;">Continue</button>
             `;
             document.getElementById('battle-window').appendChild(popup);
             this.animateChestOpening();
@@ -19204,6 +19298,15 @@
             }
         }
 
+        /** Maps a hero's base class to a small icon for the compact save-slot
+         *  preview cards - reuses the same iconography as the battle command
+         *  bar (⚔️ melee, 🔮 magic, 🛡️ tank) rather than loading actual
+         *  sprite art, so these tiny previews stay fast and simple. */
+        heroClassChipIcon(heroClass) {
+            const icons = { warrior: '⚔️', mage: '🔮', paladin: '🛡️' };
+            return icons[heroClass] || '✨';
+        }
+
         updateSlotInfo() {
             for (let slot = 1; slot <= 3; slot++) {
                 const saveKey = `legendOfEternal_save_${slot}`;
@@ -19214,30 +19317,29 @@
                     if (saveData) {
                         try {
                             const data = JSON.parse(saveData);
-                            let info = '';
-                            if (data.timestamp) {
-                                const date = new Date(data.timestamp);
-                                info = `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
-                            } else {
-                                info = 'Save exists';
-                            }
-                            if (data.party?.gold !== undefined) {
-                                info += `\n💰 ${data.party.gold} G`;
-                            }
-                            infoElement.innerHTML = info.replace(/\n/g, '<br>');
-                            infoElement.style.color = '#88ff88';
+                            const heroesHTML = (data.party?.heroes || []).map(h => `
+                                <div class="hero-chip" title="${h.name} - Lv${h.level}">
+                                    <span>${this.heroClassChipIcon(h.heroClass)}</span>
+                                    <span class="lvl">Lv${h.level}</span>
+                                </div>
+                            `).join('');
+                            const gold = data.party?.gold !== undefined ? `💰 ${data.party.gold.toLocaleString()}` : '';
+                            const dateStr = data.timestamp ? new Date(data.timestamp).toLocaleDateString() : '';
+                            infoElement.innerHTML = `
+                                <div class="slot-heroes">${heroesHTML}</div>
+                                <div class="slot-meta">${[gold, dateStr].filter(Boolean).join(' · ')}</div>
+                            `;
                             if (container) container.classList.add('has-save');
                         } catch (e) {
-                            infoElement.textContent = 'Corrupted save';
-                            infoElement.style.color = '#ff4444';
+                            infoElement.innerHTML = `<div class="slot-empty" style="color:#ff4444;">Corrupted save</div>`;
                             if (container) container.classList.remove('has-save');
                         }
                     } else {
-                        infoElement.textContent = 'Empty';
-                        infoElement.style.color = '#888';
+                        infoElement.innerHTML = `<div class="slot-empty">✨ Begin a new journey</div>`;
                         if (container) container.classList.remove('has-save');
                     }
                 }
+                if (container) container.classList.toggle('slot-selected', this.currentSlot === slot);
             }
         }
 
@@ -23099,6 +23201,29 @@ const QUEST_DATA = [
         if (spring) injectParallaxLayer(spring, 'stars');
     }
 
+    /** Spawns a handful of small leaves into #start-screen-leaves that drift
+     *  down + sway across the title screen key art on a loop (per request).
+     *  Randomizes each leaf's horizontal spot, fall speed, sway speed, and
+     *  start delay so they don't all move in visible lockstep. */
+    function spawnStartScreenLeaves() {
+        const host = document.getElementById('start-screen-leaves');
+        if (!host || host.childElementCount) return;
+        const glyphs = ['🍃', '🍂', '🌿'];
+        const count = 7;
+        for (let i = 0; i < count; i++) {
+            const leaf = document.createElement('div');
+            leaf.className = 'leaf';
+            leaf.textContent = glyphs[i % glyphs.length];
+            leaf.style.left = `${Math.random() * 96}%`;
+            const fallDuration = 9 + Math.random() * 7;
+            const swayDuration = 2.5 + Math.random() * 2;
+            leaf.style.animationDuration = `${fallDuration}s, ${swayDuration}s`;
+            leaf.style.animationDelay = `${-Math.random() * fallDuration}s, ${-Math.random() * swayDuration}s`;
+            leaf.style.fontSize = `${14 + Math.random() * 10}px`;
+            host.appendChild(leaf);
+        }
+    }
+
     // =====================================================================
     //                        GAME INITIALIZATION
     // =====================================================================
@@ -23106,6 +23231,7 @@ const QUEST_DATA = [
     console.log('Creating Game instance...');
     window.game = new Game();
     injectAmbientLayers();
+    spawnStartScreenLeaves();
     setupMobileDpad();
     // Auto-close the hamburger dropdown after any action inside it fires -
     // its buttons are one-shot (save, open a journal, nudge zoom, etc.), so
