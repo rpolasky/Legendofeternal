@@ -2914,6 +2914,22 @@
             height: 100%;
         }
 
+        /* #fishing-overlay is nested inside #game-container (see that id's
+           own comment above), which has no z-index of its own - it used to
+           implicitly render above the world/town screens because those
+           lived INSIDE it too, back before they became real full-viewport
+           .screen.active siblings at z-index:10. Now #game-container has
+           nothing keeping it above that z-index:10, so its contents
+           (fishing-overlay included) silently render BEHIND whichever
+           screen is currently active - this is the fix: elevate
+           #game-container only while fishing is actually open, mirroring
+           the same fix battle-screen used to need before it was moved out
+           to real screen space entirely (see the git history / the old
+           body.battle-active rule this replaces the spirit of). */
+        body.fishing-active #game-container {
+            z-index: 25;
+        }
+
         @keyframes overlayFade {
             from { opacity: 0; }
             to { opacity: 1; }
@@ -3842,42 +3858,18 @@
              section below (real screen space, dynamically sized canvas) -
              see that section for why. -->
 
-        <!-- ================================================================= -->
-        <!--                      FULL WORLD MAP SCREEN                        -->
-        <!-- ================================================================= -->
-        <div id="worldmap-screen" class="screen menu-screen" style="background: var(--panel-bg); display: none;">
-            <div class="menu-header" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; border-bottom: 2px solid var(--border-color); background: rgba(0,0,0,0.3);">
-                <h2 style="color: var(--highlight); font-size: 22px;">🗺️ WORLD MAP</h2>
-                <div style="display: flex; gap: 8px;">
-                    <button class="menu-button" onclick="if(window.game && window.game.worldMapRenderer) window.game.worldMapRenderer.zoomIn()" style="padding: 4px 12px; font-size: 12px;">➕</button>
-                    <button class="menu-button" onclick="if(window.game && window.game.worldMapRenderer) window.game.worldMapRenderer.zoomOut()" style="padding: 4px 12px; font-size: 12px;">➖</button>
-                    <button class="menu-button" onclick="if(window.game && window.game.worldMapRenderer) window.game.worldMapRenderer.resetView()" style="padding: 4px 12px; font-size: 12px;">🔄</button>
-                    <button class="menu-button" onclick="if(window.game) window.game.closeWorldMap()" style="padding: 4px 12px; font-size: 12px;">✖ Close</button>
-                </div>
-            </div>
-            
-            <div id="worldmap-container" style="position: relative; width: 100%; height: calc(100% - 100px); overflow: hidden; background: #0a0a1a;">
-                <canvas id="worldmap-canvas" width="1024" height="668" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; image-rendering: pixelated; background: #0a0a1a; display: block; cursor: grab;"></canvas>
-                <div id="worldmap-coords" style="position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.8); border: 1px solid var(--border-color); padding: 4px 12px; color: var(--highlight); font-size: 12px; z-index: 10; border-radius: 4px;">X: 0, Y: 0</div>
-            </div>
-            
-            <div class="worldmap-legend" style="padding: 8px 15px; border-top: 2px solid var(--border-color); display: flex; gap: 15px; justify-content: center; background: rgba(0,0,0,0.3); flex-wrap: wrap;">
-                <div class="legend-item" style="display: flex; align-items: center; gap: 5px;"><span style="color: var(--gold-color);">🟫</span> Town</div>
-                <div class="legend-item" style="display: flex; align-items: center; gap: 5px;"><span style="color: #888;">⛰️</span> Cave</div>
-                <div class="legend-item" style="display: flex; align-items: center; gap: 5px;"><span style="color: #ff4444;">🏯</span> Castle</div>
-                <div class="legend-item" style="display: flex; align-items: center; gap: 5px;"><span style="color: #88ff88;">💧</span> Spring</div>
-                <div class="legend-item" style="display: flex; align-items: center; gap: 5px;"><span style="color: #ffaa00;">🏛️</span> Ruins</div>
-                <div class="legend-item" style="display: flex; align-items: center; gap: 5px;"><span style="color: #00ff00;">⬤</span> You Are Here</div>
-            </div>
-        </div>
+        <!-- worldmap-screen now lives right after #game-container closes
+             below (real screen space) instead of being nested inside it -
+             it used to just get the .viewport-overlay CLASS added without
+             actually being moved in the DOM, which doesn't work: a
+             `transform` on an ancestor (here, #game-container's scale/
+             translate, always active - see fitGameContainer()) creates a
+             new containing block for position:fixed descendants, so the
+             class's position:fixed;inset:0 was resolving against
+             #game-container's small transformed box instead of the real
+             viewport, rendering the map tiny and off-center instead of
+             full-screen. -->
 
-        <!-- ================================================================= -->
-        <!--                         BATTLE SCREEN                             -->
-        <!-- ================================================================= -->
-        <!-- battle-screen now lives in the WALKABLE LOCATION VIEWPORTS
-             section below as a real full-viewport screen (same reasoning
-             as world-screen) instead of being locked inside
-             #game-container's old 1024x768 letterboxed design. -->
 
 
         <!-- ================================================================= -->
@@ -3948,6 +3940,35 @@
             </div>
         </div>
 
+    </div>
+
+    <!-- ================================================================= -->
+    <!--                      FULL WORLD MAP SCREEN                        -->
+    <!-- ================================================================= -->
+    <div id="worldmap-screen" class="screen menu-screen viewport-overlay" style="background: var(--panel-bg); display: none;">
+        <div class="menu-header" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; border-bottom: 2px solid var(--border-color); background: rgba(0,0,0,0.3);">
+            <h2 style="color: var(--highlight); font-size: 22px;">🗺️ WORLD MAP</h2>
+            <div style="display: flex; gap: 8px;">
+                <button class="menu-button" onclick="if(window.game && window.game.worldMapRenderer) window.game.worldMapRenderer.zoomIn()" style="padding: 4px 12px; font-size: 12px;">➕</button>
+                <button class="menu-button" onclick="if(window.game && window.game.worldMapRenderer) window.game.worldMapRenderer.zoomOut()" style="padding: 4px 12px; font-size: 12px;">➖</button>
+                <button class="menu-button" onclick="if(window.game && window.game.worldMapRenderer) window.game.worldMapRenderer.resetView()" style="padding: 4px 12px; font-size: 12px;">🔄</button>
+                <button class="menu-button" onclick="if(window.game) window.game.closeWorldMap()" style="padding: 4px 12px; font-size: 12px;">✖ Close</button>
+            </div>
+        </div>
+
+        <div id="worldmap-container" style="position: relative; width: 100%; height: calc(100% - 100px); overflow: hidden; background: #0a0a1a;">
+            <canvas id="worldmap-canvas" width="1024" height="668" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; image-rendering: pixelated; background: #0a0a1a; display: block; cursor: grab; touch-action: none;"></canvas>
+            <div id="worldmap-coords" style="position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.8); border: 1px solid var(--border-color); padding: 4px 12px; color: var(--highlight); font-size: 12px; z-index: 10; border-radius: 4px;">X: 0, Y: 0</div>
+        </div>
+
+        <div class="worldmap-legend" style="padding: 8px 15px; border-top: 2px solid var(--border-color); display: flex; gap: 15px; justify-content: center; background: rgba(0,0,0,0.3); flex-wrap: wrap;">
+            <div class="legend-item" style="display: flex; align-items: center; gap: 5px;"><span style="color: var(--gold-color);">🟫</span> Town</div>
+            <div class="legend-item" style="display: flex; align-items: center; gap: 5px;"><span style="color: #888;">⛰️</span> Cave</div>
+            <div class="legend-item" style="display: flex; align-items: center; gap: 5px;"><span style="color: #ff4444;">🏯</span> Castle</div>
+            <div class="legend-item" style="display: flex; align-items: center; gap: 5px;"><span style="color: #88ff88;">💧</span> Spring</div>
+            <div class="legend-item" style="display: flex; align-items: center; gap: 5px;"><span style="color: #ffaa00;">🏛️</span> Ruins</div>
+            <div class="legend-item" style="display: flex; align-items: center; gap: 5px;"><span style="color: #00ff00;">⬤</span> You Are Here</div>
+        </div>
     </div>
 
     <!-- ================================================================= -->
@@ -9549,24 +9570,41 @@
             this.ctx = this.canvas ? this.canvas.getContext('2d') : null;
             this.zoom = 0.5;
             this.minZoom = 0.25;
-            this.maxZoom = 2.0;
+            this.maxZoom = 4.0;
             this.offsetX = 0;
             this.offsetY = 0;
             this.dragging = false;
-            this.lastMouseX = 0;
-            this.lastMouseY = 0;
-            this.clickThreshold = 5;
-            this.dragStartX = 0;
-            this.dragStartY = 0;
+            this.clickThreshold = 6;
             this.worldMap = null;
             this.setupEventListeners();
         }
 
+        /** worldmap-screen is a real full-viewport screen now (see
+         *  .viewport-overlay), not locked inside #game-container's old
+         *  1024x668 design-space letterbox - so the canvas needs its own
+         *  width/height attributes resized to match its real on-screen box
+         *  (same reasoning/pattern as fitLocationCanvas() for town/cave/
+         *  etc.), or it'd still render tiny and blurry-stretched despite
+         *  the container itself now being full size. */
+        resizeCanvas() {
+            if (!this.canvas) return;
+            const container = document.getElementById('worldmap-container');
+            if (!container) return;
+            const rect = container.getBoundingClientRect();
+            const w = Math.max(100, Math.round(rect.width));
+            const h = Math.max(100, Math.round(rect.height));
+            if (this.canvas.width !== w || this.canvas.height !== h) {
+                this.canvas.width = w;
+                this.canvas.height = h;
+            }
+        }
+
         setupEventListeners() {
             if (!this.canvas) return;
-            this.canvas.addEventListener('wheel', (e) => {
+            const canvas = this.canvas;
+            canvas.addEventListener('wheel', (e) => {
                 e.preventDefault();
-                const rect = this.canvas.getBoundingClientRect();
+                const rect = canvas.getBoundingClientRect();
                 const mouseX = e.clientX - rect.left;
                 const mouseY = e.clientY - rect.top;
                 const oldZoom = this.zoom;
@@ -9577,45 +9615,99 @@
                 this.offsetY = mouseY - (mouseY - this.offsetY) * scaleChange;
                 this.render();
             });
-            this.canvas.addEventListener('mousedown', (e) => {
-                this.dragging = false;
-                this.dragStartX = e.clientX;
-                this.dragStartY = e.clientY;
-                this.lastMouseX = e.clientX;
-                this.lastMouseY = e.clientY;
-                this.canvas.style.cursor = 'grabbing';
+
+            // Pointer events unify mouse + touch + pen: one finger drags to
+            // pan (and a still finger counts as a tap, opening that tile's
+            // info, matching the old click behavior), two fingers pinch to
+            // zoom (anchored under the pinch midpoint, same math as the
+            // wheel handler above) and can also pan together.
+            const pointers = new Map();
+            let gestureMode = null; // null | 'pan' | 'pinch'
+            let panLastX = 0, panLastY = 0;
+            let downX = 0, downY = 0, downT = 0;
+            let pinchLastDist = 1, pinchLastMidX = 0, pinchLastMidY = 0;
+
+            const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+            const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+
+            canvas.addEventListener('pointerdown', (e) => {
+                try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* non-fatal - gesture still works without capture */ }
+                pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+                if (pointers.size === 1) {
+                    gestureMode = 'pan';
+                    this.dragging = false;
+                    downX = e.clientX; downY = e.clientY; downT = Date.now();
+                    panLastX = e.clientX; panLastY = e.clientY;
+                    canvas.style.cursor = 'grabbing';
+                } else if (pointers.size === 2) {
+                    gestureMode = 'pinch';
+                    const pts = Array.from(pointers.values());
+                    pinchLastDist = dist(pts[0], pts[1]) || 1;
+                    const m = mid(pts[0], pts[1]);
+                    pinchLastMidX = m.x; pinchLastMidY = m.y;
+                }
             });
-            this.canvas.addEventListener('mousemove', (e) => {
-                if (this.lastMouseX !== 0) {
-                    const dx = e.clientX - this.dragStartX;
-                    const dy = e.clientY - this.dragStartY;
-                    if (Math.abs(dx) > this.clickThreshold || Math.abs(dy) > this.clickThreshold) {
+
+            canvas.addEventListener('pointermove', (e) => {
+                if (!pointers.has(e.pointerId)) return;
+                pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+                if (gestureMode === 'pan' && pointers.size === 1) {
+                    const dx = e.clientX - panLastX;
+                    const dy = e.clientY - panLastY;
+                    if (Math.abs(e.clientX - downX) > this.clickThreshold || Math.abs(e.clientY - downY) > this.clickThreshold) {
                         this.dragging = true;
                     }
                     if (this.dragging) {
-                        this.offsetX += e.clientX - this.lastMouseX;
-                        this.offsetY += e.clientY - this.lastMouseY;
+                        this.offsetX += dx;
+                        this.offsetY += dy;
                         this.render();
                     }
-                    this.lastMouseX = e.clientX;
-                    this.lastMouseY = e.clientY;
+                    panLastX = e.clientX; panLastY = e.clientY;
+                } else if (gestureMode === 'pinch' && pointers.size === 2) {
+                    const pts = Array.from(pointers.values());
+                    const newDist = dist(pts[0], pts[1]) || 1;
+                    const newMid = mid(pts[0], pts[1]);
+                    const rect = canvas.getBoundingClientRect();
+                    const midCanvasX = newMid.x - rect.left;
+                    const midCanvasY = newMid.y - rect.top;
+                    const oldZoom = this.zoom;
+                    let newZoom = oldZoom * (newDist / pinchLastDist);
+                    newZoom = Math.max(this.minZoom, Math.min(this.maxZoom, newZoom));
+                    const scaleChange = newZoom / oldZoom;
+                    this.zoom = newZoom;
+                    this.offsetX = midCanvasX - (midCanvasX - this.offsetX) * scaleChange;
+                    this.offsetY = midCanvasY - (midCanvasY - this.offsetY) * scaleChange;
+                    // Two-finger drag pans too, standard pinch UX.
+                    this.offsetX += newMid.x - pinchLastMidX;
+                    this.offsetY += newMid.y - pinchLastMidY;
+                    pinchLastDist = newDist;
+                    pinchLastMidX = newMid.x; pinchLastMidY = newMid.y;
+                    this.render();
                 }
             });
-            this.canvas.addEventListener('mouseup', (e) => {
-                if (!this.dragging && this.worldMap) {
-                    this.handleMapClick(e);
+
+            const endPointer = (e) => {
+                pointers.delete(e.pointerId);
+                if (pointers.size === 0) {
+                    if (gestureMode === 'pan' && !this.dragging && this.worldMap && (Date.now() - downT) < 600) {
+                        this.handleMapClick(e);
+                    }
+                    this.dragging = false;
+                    gestureMode = null;
+                    canvas.style.cursor = 'grab';
+                } else if (pointers.size === 1) {
+                    // Dropped from two fingers to one mid-pinch - rearm pan
+                    // from here instead of jumping (or letting the eventual
+                    // lift-off of the remaining finger register as a tap).
+                    const remaining = Array.from(pointers.values())[0];
+                    panLastX = remaining.x; panLastY = remaining.y;
+                    downX = remaining.x; downY = remaining.y;
+                    this.dragging = true;
+                    gestureMode = 'pan';
                 }
-                this.dragging = false;
-                this.lastMouseX = 0;
-                this.lastMouseY = 0;
-                this.canvas.style.cursor = 'grab';
-            });
-            this.canvas.addEventListener('mouseleave', () => {
-                this.dragging = false;
-                this.lastMouseX = 0;
-                this.lastMouseY = 0;
-                this.canvas.style.cursor = 'grab';
-            });
+            };
+            canvas.addEventListener('pointerup', endPointer);
+            canvas.addEventListener('pointercancel', endPointer);
         }
 
         handleMapClick(e) {
@@ -9641,14 +9733,20 @@
 
         setWorldMap(worldMap) {
             this.worldMap = worldMap;
+            this.resizeCanvas();
             this.resetView();
         }
 
         resetView() {
             if (!this.worldMap || !this.canvas) return;
+            this.resizeCanvas();
+            // Center the player's current position instead of always
+            // snapping to the map's top-left corner, so opening the map
+            // starts you looking at where you actually are.
+            const tileSize = 4;
             this.zoom = 0.5;
-            this.offsetX = 0;
-            this.offsetY = 0;
+            this.offsetX = this.canvas.width / 2 - this.worldMap.playerX * tileSize * this.zoom;
+            this.offsetY = this.canvas.height / 2 - this.worldMap.playerY * tileSize * this.zoom;
             this.render();
         }
 
@@ -14862,10 +14960,20 @@
                 console.log('Creating new WorldMapRenderer');
                 this.worldMapRenderer = new WorldMapRenderer();
             }
-            this.worldMapRenderer.setWorldMap(this.world);
-            this.worldMapRenderer.resetView();
-            this.worldMapRenderer.render();
+            this.worldMapRenderer.worldMap = this.world;
+            // Switch screens FIRST - worldmap-canvas's container is
+            // display:none until switchScreen() activates it, so resizing
+            // the canvas beforehand reads a zero-size box (this is what
+            // caused it to render tiny/stuck at a fallback size). Resize
+            // and center the view only once the screen is actually laid
+            // out, then again on the next frame + a short delay to catch
+            // any late layout settling (same pattern fitLocationCanvas()
+            // uses elsewhere for this exact reason).
             this.state.switchScreen('worldmap');
+            const wmr = this.worldMapRenderer;
+            wmr.setWorldMap(this.world);
+            requestAnimationFrame(() => wmr.resetView());
+            setTimeout(() => wmr.resetView(), 150);
         }
 
         closeWorldMap() {
@@ -15010,6 +15118,7 @@
             };
             document.getElementById('fishing-catch-log').innerHTML = '';
             document.getElementById('fishing-overlay').classList.add('active');
+            document.body.classList.add('fishing-active');
             this.state.pause();
             this.startFishingRound();
         }
@@ -15161,6 +15270,7 @@
                 if (fs.timeoutId) clearTimeout(fs.timeoutId);
             }
             document.getElementById('fishing-overlay').classList.remove('active');
+            document.body.classList.remove('fishing-active');
             this.state.resume();
         }
 
@@ -23242,6 +23352,16 @@ const QUEST_DATA = [
     preventMobileZoomGestures();
     fitGameContainer();
     window.addEventListener('resize', fitGameContainer);
+    // worldmap-canvas needs its own resize on top of fitGameContainer()
+    // since it's a real full-viewport screen with a canvas sized off its
+    // own container's box (see WorldMapRenderer.resizeCanvas()), not the
+    // 1024x768 design-space #game-container handles for other screens.
+    window.addEventListener('resize', () => {
+        if (window.game && window.game.worldMapRenderer && window.game.state && window.game.state.currentScreen === 'worldmap') {
+            window.game.worldMapRenderer.resizeCanvas();
+            window.game.worldMapRenderer.render();
+        }
+    });
     window.addEventListener('orientationchange', fitGameContainer);
     // Register the offline service worker so the game can be "installed"
     // and played with no connection - only works when served over http(s)
