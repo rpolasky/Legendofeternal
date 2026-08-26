@@ -75,31 +75,14 @@
             touch-action: none;
         }
 
-        /* Town/cave/castle/ruins/spring live OUTSIDE #game-container now (see
-           .walkable-viewport) as real position:fixed siblings with z-index
-           10 (from .screen.active). #game-container itself always exists in
-           the DOM with an opaque black background - normally that's fine
-           because it sits below those screens at its default stacking level,
-           invisible behind whichever walkable-viewport is currently active.
-           But when a battle starts from one of those screens, the backdrop's
-           z-index:10 painted ON TOP of #game-container, hiding #battle-screen
-           inside it entirely (no amount of z-index on #battle-screen itself
-           can escape - a child's z-index is only ever compared within its
-           own parent's stacking context, never against the parent's
-           siblings). The fix is NOT a permanent z-index bump on
-           #game-container (that made its opaque black box permanently cover
-           every location screen, even outside battle - the "black frame"
-           bug). Instead, JS toggles body.battle-active only while a battle
-           is actually up (see switchScreen()'s 'battle' branches), so
-           #game-container is elevated above the walkable-viewport only for
-           that window and sits back below it - invisible - the rest of the
-           time. 25 stays above every walkable-viewport/screen (10) and
-           start-screen (20), while staying safely below the side rails
-           (55/60) and menu/shop viewport-overlays (250) that must remain
-           tappable over it. */
-        body.battle-active #game-container {
-            z-index: 25;
-        }
+        /* battle-screen is a real position:fixed full-viewport screen now
+           too (see .battle-viewport), just like town/cave/castle/ruins -
+           it no longer lives inside #game-container, so the z-index
+           elevation hack that used to be needed here (to punch
+           #battle-screen up above the walkable-viewport backdrop while a
+           fight was up) is gone; ordinary DOM-order z-index:10 tie-breaking
+           (see .screen.active) handles it since battle-screen is placed
+           after the walkable-viewport screens in the HTML. */
 
         /* ====================================================================== */
         /*                 MOBILE RESPONSIVE SCALING + ROTATE PROMPT             */
@@ -146,37 +129,75 @@
            screen. This is what lets the D-pad/party status/minimap/quick
            buttons live in the unused margins instead of floating over the
            gameplay view. */
+        /* #hud-top-bar is now just a floating corner cluster (hamburger +
+           gold pill), not a full-width reserved strip - it no longer eats
+           any vertical space from fitGameContainer()'s layout math (see
+           TOPBAR_H handling there), so the world view can render larger.
+           The 11 buttons that used to live in a strip now live inside
+           #hud-menu-panel, a dropdown toggled by the hamburger. */
         #hud-top-bar {
             display: none;
             position: fixed;
-            top: 0; left: 0; right: 0;
-            height: 48px;
+            top: 10px; left: 10px;
             z-index: 60;
-            background: rgba(10, 10, 26, 0.92);
-            border-bottom: 2px solid var(--border-color);
             align-items: center;
-            justify-content: space-between;
-            padding: 0 14px;
-            gap: 10px;
-            backdrop-filter: blur(4px);
+            gap: 8px;
         }
         #hud-top-bar.visible { display: flex; }
+        .hud-hamburger-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: rgba(26, 15, 46, 0.72);
+            border: 2px solid rgba(106, 74, 138, 0.9);
+            box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+            color: var(--text-color);
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(3px);
+        }
+        .hud-hamburger-btn:active { background: rgba(106, 74, 138, 0.9); }
         .hud-top-gold {
             color: var(--gold-color);
             font-weight: bold;
-            font-size: 14px;
+            font-size: 13px;
             white-space: nowrap;
-        }
-        .hud-top-buttons {
+            background: rgba(26, 15, 46, 0.72);
+            border: 2px solid rgba(106, 74, 138, 0.9);
+            border-radius: 10px;
+            padding: 0 12px;
+            height: 40px;
             display: flex;
-            gap: 6px;
-            flex-wrap: nowrap;
+            align-items: center;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+            backdrop-filter: blur(3px);
         }
-        .hud-top-buttons .menu-button {
-            padding: 5px 10px;
-            font-size: 15px;
+
+        /* Dropdown panel that used to be the always-visible top bar's button
+           strip. Anchored under the hamburger, floats above the canvas. */
+        #hud-menu-panel {
+            display: none;
+            position: fixed;
+            top: 56px; left: 10px;
+            z-index: 61;
+            background: rgba(20, 12, 38, 0.95);
+            border: 2px solid var(--highlight, #8a5fc0);
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+            padding: 8px;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+            backdrop-filter: blur(4px);
+        }
+        #hud-menu-panel.open { display: grid; }
+        #hud-menu-panel .menu-button {
+            padding: 8px 6px;
+            font-size: 17px;
             margin: 0;
             line-height: 1;
+            min-width: 40px;
         }
 
         #hud-side-left, #hud-side-right {
@@ -189,9 +210,20 @@
             display: flex;
             flex-direction: column;
             transition: width 0.15s ease;
+            /* These rails now float ON TOP of the full-bleed canvas instead
+               of living in reserved side margins - the rail box itself must
+               not swallow taps in the empty space around the D-pad/buttons,
+               or the world/map underneath would be untappable there. Each
+               actual control re-enables pointer-events itself below. */
+            pointer-events: none;
         }
         #hud-side-left { left: 0; align-items: flex-start; }
         #hud-side-right { right: 0; align-items: flex-end; }
+        #hud-side-left .hud-icon-btn,
+        #hud-side-left .dpad-btn,
+        #hud-side-right .touch-action-btn {
+            pointer-events: auto;
+        }
 
         /* #hud-side-right holds a variable-height party-status block ABOVE
            the D-pad/action buttons. With the rail's own overflow-y:auto
@@ -209,13 +241,13 @@
             overflow-y: hidden;
         }
         #hud-side-right #rail-minimap,
-        #hud-side-right #rail-location-party,
-        #hud-side-right #rail-battle-commands {
+        #hud-side-right #rail-location-party {
             flex: 1 1 auto;
             min-height: 0;
             overflow-y: auto;
         }
-        #hud-side-right #mobile-controls {
+        #hud-side-right #mobile-actions-wrap,
+        #hud-side-left #mobile-dpad-wrap {
             flex-shrink: 0;
         }
 
@@ -235,9 +267,6 @@
         }
         .rail-section.visible { display: block; }
 
-        #rail-party-status {
-            padding: 12px 10px;
-        }
         .rail-heading {
             color: var(--highlight);
             font-size: 11px;
@@ -245,12 +274,73 @@
             margin-bottom: 8px;
             text-align: center;
         }
-        #hud-side-left .party-status-mini {
+
+        /* --- Party icon button (left rail) + the overlay it opens ---
+           Replaces the always-visible left "PARTY" panel: a single small
+           icon sits in the rail (doesn't compete with the D-pad for
+           space), and tapping it floats the full party status on top of
+           the world instead of reserving permanent screen real estate. */
+        .hud-icon-btn {
+            display: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: rgba(26, 15, 46, 0.72);
+            border: 2px solid rgba(106, 74, 138, 0.9);
+            box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+            color: var(--text-color);
+            font-size: 18px;
+            align-items: center;
+            justify-content: center;
+            /* Extra top margin clears the floating hamburger button, which
+               sits fixed at the same (10px, 10px) corner and would
+               otherwise render directly on top of this. */
+            margin: 60px 10px 10px;
+            backdrop-filter: blur(3px);
+        }
+        .hud-icon-btn.visible { display: flex; }
+        .hud-icon-btn:active { background: rgba(106, 74, 138, 0.9); }
+
+        #hud-party-overlay {
+            display: none;
+            position: fixed;
+            top: 56px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 62;
+            width: min(320px, 80vw);
+            max-height: 70vh;
+            overflow-y: auto;
+            background: rgba(20, 12, 38, 0.95);
+            border: 2px solid var(--highlight, #8a5fc0);
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+            padding: 12px;
+            backdrop-filter: blur(4px);
+        }
+        #hud-party-overlay.open { display: block; }
+        .hud-party-overlay-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--highlight);
+            font-size: 13px;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+        .hud-party-overlay-header button {
+            background: none;
+            border: none;
+            color: var(--text-color);
+            font-size: 16px;
+            padding: 2px 6px;
+        }
+        #hud-party-overlay .party-status-mini {
             display: flex;
             flex-direction: column;
             gap: 8px;
         }
-        #hud-side-left .hero-mini {
+        #hud-party-overlay .hero-mini {
             text-align: left;
             padding: 6px 8px;
         }
@@ -289,10 +379,12 @@
             image-rendering: pixelated;
         }
 
-        /* #mobile-controls now lives inside #hud-side-right as a normal
-           flex child (pushed to the bottom of the rail with margin-top:auto)
-           instead of absolutely overlaying the game canvas. */
-        #mobile-controls {
+        /* .mobile-controls-part covers the two rail children that used to
+           be one #mobile-controls block: the D-pad (now left rail) and the
+           Talk/Menu/Reset buttons (right rail). Both still pin to the
+           bottom of their rail via margin-top:auto, and share the same
+           visibility toggle behavior as the old element did. */
+        .mobile-controls-part {
             display: none;
             flex-direction: column;
             align-items: center;
@@ -300,19 +392,21 @@
             margin-top: auto;
             padding: 12px 10px 16px;
         }
-        #mobile-controls.visible { display: flex; }
+        .mobile-controls-part.visible { display: flex; }
 
         .dpad {
             position: relative;
             width: 144px;
             height: 144px;
         }
+        /* Translucent with a clearly visible border, per request, so the
+           D-pad reads as "there" without blocking the view behind it. */
         .dpad-btn {
             position: absolute;
             width: 48px;
             height: 48px;
-            background: rgba(26, 26, 46, 0.85);
-            border: 2px solid rgba(106, 74, 138, 0.9);
+            background: rgba(26, 26, 46, 0.32);
+            border: 2px solid rgba(180, 140, 255, 0.85);
             border-radius: 10px;
             color: var(--text-color);
             font-size: 18px;
@@ -322,9 +416,11 @@
             touch-action: none;
             user-select: none;
             -webkit-user-select: none;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+            backdrop-filter: blur(1px);
         }
         .dpad-btn:active {
-            background: rgba(106, 74, 138, 0.9);
+            background: rgba(106, 74, 138, 0.75);
             border-color: var(--highlight);
         }
         .dpad-up { left: 48px; top: 0; }
@@ -337,100 +433,77 @@
             top: 48px;
             width: 48px;
             height: 48px;
-            background: rgba(10, 10, 26, 0.4);
+            background: rgba(10, 10, 26, 0.18);
+            border: 1px solid rgba(180, 140, 255, 0.4);
             border-radius: 8px;
         }
 
+        /* Talk/Menu/Reset: icon-only now (text label dropped), grouped in
+           a deep-purple shadowed frame per request instead of loose
+           buttons floating in the rail. */
+        .hud-action-frame {
+            background: rgba(20, 12, 38, 0.7);
+            border: 2px solid rgba(106, 74, 138, 0.9);
+            border-radius: 14px;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.55);
+            backdrop-filter: blur(3px);
+        }
         .touch-actions {
             display: flex;
             flex-direction: column;
-            gap: 10px;
-            width: 100%;
+            gap: 8px;
             align-items: center;
+            padding: 8px;
         }
         .touch-action-btn {
             touch-action: none;
-            width: 100%;
-            max-width: 140px;
-            height: 48px;
+            width: 44px;
+            height: 44px;
             background: rgba(26, 26, 46, 0.85);
             border: 2px solid rgba(106, 74, 138, 0.9);
             border-radius: 10px;
             color: var(--text-color);
-            font-size: 16px;
+            font-size: 19px;
             display: flex;
-            flex-direction: row;
             align-items: center;
             justify-content: center;
-            gap: 6px;
             user-select: none;
             -webkit-user-select: none;
         }
-        .touch-action-btn span {
-            font-size: 10px;
-            letter-spacing: 0.5px;
-            color: #cfc0ee;
-        }
+        .touch-action-btn span { display: none; }
         .touch-action-btn:active {
             background: rgba(106, 74, 138, 0.9);
             border-color: var(--highlight);
+        }
+        /* Exit only makes sense inside a town/dungeon (not the open world,
+           which has no "exit" concept) - hidden by default, shown per
+           screen by updateHudVisibility(). Red to match the old Exit
+           button's warning color since it's the one destructive-ish nav
+           action in the frame. */
+        .touch-action-btn.touch-exit {
+            display: none;
+            background: rgba(80, 20, 20, 0.85);
+            border-color: rgba(255, 68, 68, 0.85);
+        }
+        .touch-action-btn.touch-exit.visible { display: flex; }
+        .touch-action-btn.touch-exit:active {
+            background: rgba(139, 0, 0, 0.9);
+            border-color: #ff4444;
         }
 
         /* Hide all of this chrome on devices with a mouse/trackpad - it's a
            touch-first system, and desktop already has the old in-canvas
            world-hud-style controls plus keyboard/mouse. */
         @media (hover: hover) and (pointer: fine) {
-            #hud-top-bar, #hud-side-left, #hud-side-right { display: none !important; }
+            #hud-top-bar, #hud-side-left, #hud-side-right, #hud-menu-panel, #hud-party-overlay { display: none !important; }
         }
 
-        /* ====================================================================== */
-        /*         BATTLE RAIL MODE - hero cards + commands relocated out        */
-        /* ====================================================================== */
-        /* When body.battle-rail-mode is active (see enterBattleRailMode() in
-           the script), #battle-hud-party and #battle-commands have been
-           physically moved (not duplicated - the exact same DOM nodes, so
-           all existing selectCommand()/render logic keeps working untouched)
-           into the side rails. .battle-ui then only needs to hold the log,
-           so it shrinks way down, handing most of that space back to
-           .battle-background - directly fixing "the battle screen is too
-           tiny to see/tap". */
-        body.battle-rail-mode .battle-ui {
-            height: 80px;
-        }
-        body.battle-rail-mode .battle-background {
-            height: calc(100% - 80px);
-        }
-        body.battle-rail-mode .battle-hud-row {
-            display: none;
-        }
-        body.battle-rail-mode .battle-log {
-            padding: 8px 14px;
-        }
-
-        #hud-side-left #battle-hud-party {
-            flex-direction: column;
-            overflow-x: visible;
-            overflow-y: auto;
-            width: 100%;
-            gap: 8px;
-            padding: 10px;
-        }
-        #hud-side-left .hud-hero-card {
-            width: 100%;
-            min-width: 0;
-        }
-
-        #hud-side-right #battle-commands {
-            width: 100%;
-            grid-template-columns: 1fr;
-            padding: 10px;
-            gap: 8px;
-        }
-        #hud-side-right .cmd-btn {
-            padding: 14px 10px;
-            font-size: 13px;
-            min-height: 46px;
-        }
+        /* battle-rail-mode (which used to relocate #battle-hud-party and
+           #battle-commands into the side rails on wide-margin screens) has
+           been fully replaced: battle-screen is a real full-viewport
+           screen now (see .battle-viewport) with its own compact icon
+           command bar and per-hero info cards, so there's no longer a
+           separate "roomier" rail layout to relocate into. */
 
         /* ====================================================================== */
         /*                      SCREEN TRANSITIONS                              */
@@ -467,13 +540,13 @@
         /*   chrome (z-index 55-60) stays visible and tappable on top of the     */
         /*   now-wider canvas instead of being covered by it.                    */
         /* ====================================================================== */
-        .walkable-viewport {
+        .walkable-viewport, .battle-viewport {
             position: fixed !important;
             inset: 0 !important;
             width: 100vw !important;
             height: 100vh !important;
         }
-        .walkable-viewport.active {
+        .walkable-viewport.active, .battle-viewport.active {
             /* switchScreen() sets style.display='block' (not 'flex') when
                activating a screen, silently overriding .location-screen's
                own display:flex rule - which meant .location-canvas's flex:1
@@ -484,13 +557,12 @@
             display: flex !important;
             flex-direction: column !important;
             overflow: hidden !important;
-            /* Room is reserved on the right for the D-pad/action-button
-               rail (kept, per the request) - nothing reserved on the left
-               anymore, so the canvas can use that previously-blank space.
-               Must match LOCATION_RAIL_W in the script, which sizes
-               #hud-side-right to the same 170px while one of these screens
-               is active. */
-            padding-right: 170px;
+            /* Chrome (D-pad left, action-button frame right) now floats on
+               top of the canvas instead of living in reserved side margins
+               - the canvas/control-bar go completely edge-to-edge. See
+               #hud-side-left/#hud-side-right pointer-events handling below,
+               which lets taps pass through the empty space around the
+               floating controls to reach the world/map underneath. */
             box-sizing: border-box;
         }
 
@@ -767,9 +839,18 @@
         }
 
         #world-canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
+            /* Was position:absolute/top:0/left:0 sized to a fixed 1024x768
+               design canvas that #game-container then letterbox-scaled to
+               fit the screen (which is what kept leaving black bars down
+               the sides). world-canvas now lives in the same real,
+               dynamically-resized full-viewport system as
+               town/cave/castle/ruins (see .walkable-viewport +
+               fitLocationCanvas()), so it just needs to be a normal flex
+               child that fills the space between the D-pad/action rails. */
+            flex: 1;
+            width: 100%;
+            min-height: 0;
+            min-width: 0;
             z-index: 1;
             background: #000;
             image-rendering: pixelated;
@@ -944,14 +1025,13 @@
 
         .battle-window {
             position: relative;
-            width: 94%;
-            height: 90%;
-            max-width: 1000px;
-            max-height: 720px;
+            /* Full screen now (was 94%/90% with a max-width/height cap and
+               rounded corners, floating like a window over a letterboxed
+               backdrop) - battle-screen is a real full-viewport screen now
+               (see .battle-viewport), so this just needs to fill it. */
+            width: 100%;
+            height: 100%;
             background: linear-gradient(180deg, #0a001a 0%, #1a0a2e 40%, #2a1a3e 70%, #0a0a1a 100%);
-            border: 4px solid var(--border-color);
-            border-radius: 16px;
-            box-shadow: 0 0 0 4px rgba(0,0,0,0.4), 0 20px 60px rgba(0,0,0,0.85), var(--glow-gold);
             overflow: hidden;
             display: flex;
             flex-direction: column;
@@ -987,8 +1067,12 @@
             position: relative;
             display: flex;
             justify-content: space-between;
-            padding: 30px 50px;
-            height: calc(100% - 295px);
+            padding: 14px 30px;
+            /* .battle-ui is now a slim icon-only command bar (was 295px
+               when it also held the always-visible log + hero-card strip -
+               both have moved: the log is a toggled overlay now, and hero
+               info lives on each character's own sprite). */
+            height: calc(100% - 76px);
             background: radial-gradient(ellipse at 30% 40%, #2a1a4e 0%, #0a0a1a 70%);
             transition: background 0.6s ease;
         }
@@ -1258,18 +1342,34 @@
 
         /* Party Battle Area - bare pixel sprites on the stage, no panel chrome.
            Heroes stand in a vertical column on the right, facing the monsters
-           on the left (mirrors classic JRPG battle framing). All the name/HP/
-           MP/Limit/EXP info that used to live inside this box now renders in
-           the #battle-hud-party bar at the bottom of the screen instead. */
+           on the left (mirrors classic JRPG battle framing). Name/HP/MP/
+           Limit/EXP info renders in each hero's own .hud-hero-card, anchored
+           beside its sprite via the shared .hero-slot wrapper (see
+           updatePartyDisplay()). */
         .party-battle-area {
             width: 40%;
             display: flex;
             flex-direction: column;
             align-items: flex-end;
             justify-content: space-evenly;
-            gap: 14px;
-            padding-top: 10px;
-            padding-right: 10px;
+            gap: 6px;
+            padding-top: 4px;
+            padding-right: 6px;
+            min-height: 0;
+        }
+
+        /* Stable per-hero wrapper: pairs each animated .battle-hero sprite
+           with its own info card as a plain sibling, so the card stays
+           anchored beside the character (per request: hero info moved
+           next to/behind the character it belongs to, instead of a shared
+           strip at the bottom) without getting dragged along by the
+           sprite's own attack-lunge transform. Card sits to the right of
+           the avatar - heroes face left toward the monsters, so the card
+           reads as sitting just behind their shoulder. */
+        .hero-slot {
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
 
         .battle-hero {
@@ -1317,12 +1417,12 @@
         }
 
         .battle-hero .hero-avatar {
-            width: 116px;
-            height: 116px;
+            width: 72px;
+            height: 72px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 20px;
+            font-size: 16px;
             flex-shrink: 0;
             filter: drop-shadow(0 8px 6px rgba(0,0,0,0.55));
             image-rendering: pixelated;
@@ -1341,12 +1441,11 @@
            needs is accounted for by the larger gap on .party-battle-area
            below, so adjacent heroes' padded zones never touch. */
         .battle-hero {
-            padding: 10px;
+            padding: 5px;
         }
 
-        /* Reused generic stat-bar/fill styles - now rendered inside the
-           bottom #battle-hud-party bar instead of the old panel that used
-           to wrap the hero avatar in battle. */
+        /* Reused generic stat-bar/fill styles - rendered inside each hero's
+           .hud-hero-card, anchored beside its sprite on the battlefield. */
         .stat-bar {
             display: flex;
             align-items: center;
@@ -1370,7 +1469,7 @@
            with the "HP 219/225" label, so it needs its own tighter width
            rather than the general 130px default used elsewhere. */
         .hud-hero-card .stat-bar .bar {
-            width: 62px;
+            width: 46px;
             max-width: none;
         }
 
@@ -1442,48 +1541,31 @@
             font-weight: normal;
         }
 
-        /* Battle UI - Enhanced. Now a column: the log on top (full width),
-           and the party status HUD + command menu sharing the row below. */
+        /* Battle UI - now just a slim icon-only command bar. The log used
+           to live here full-width above the hero-card+command row; it's a
+           toggled overlay now (see .battle-log below), and hero info moved
+           onto each character's own sprite (see .hero-slot), so this only
+           needs to hold .battle-commands. */
         .battle-ui {
-            height: 295px;
+            height: 76px;
             background: rgba(0,0,0,0.9);
             border-top: 4px solid var(--border-color);
             display: flex;
-            flex-direction: column;
             backdrop-filter: blur(5px);
         }
 
-        /* ====================================================================== */
-        /*    PARTY HUD ROW - hero cards (name + stacked bars) + command menu    */
-        /* ====================================================================== */
-        .battle-hud-row {
-            display: flex;
-            gap: 10px;
-            padding: 8px 12px;
-            border-top: 2px solid var(--border-color);
-            background: rgba(0,0,0,0.35);
-            flex: 0 0 auto;
-        }
-
-        .battle-hud-party {
-            flex: 1;
-            display: flex;
-            gap: 8px;
-            overflow-x: auto;
-            min-width: 0;
-        }
-
         /* One card per hero: name + status up top, stacked HP/MP/Limit/EXP
-           bars below - replaces the old separate "names" + "stats" panels
-           so the party fits without needing to scroll vertically no matter
-           how many heroes are in the party (cards grow sideways, not down). */
+           bars below. Now anchored beside its character on the battlefield
+           (see .hero-slot) instead of a shared bottom strip, so it's a
+           compact fixed-width card rather than a flexible strip segment. */
         .hud-hero-card {
-            background: linear-gradient(180deg, rgba(20,20,50,0.92), rgba(10,10,30,0.92));
+            background: linear-gradient(180deg, rgba(20,20,50,0.85), rgba(10,10,30,0.85));
             border: 2px solid #3a3a6a;
             border-radius: 6px;
-            padding: 6px 10px;
-            min-width: 170px;
-            flex: 1 1 170px;
+            padding: 3px 6px;
+            width: 106px;
+            flex-shrink: 0;
+            backdrop-filter: blur(2px);
             transition: background 0.25s ease, border-color 0.25s ease;
         }
 
@@ -1563,16 +1645,51 @@
             animation: limitBreakPulse 1.1s ease-in-out infinite;
         }
 
+        /* Combat log is now a toggled overlay (press the 📜 button to show
+           it, press again to hide) instead of an always-visible strip
+           permanently eating battlefield space - matches the same
+           show/hide pattern as the world screen's hamburger menu/party
+           overlay. */
+        .battle-log-toggle-btn {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 15;
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: rgba(26, 15, 46, 0.72);
+            border: 2px solid rgba(106, 74, 138, 0.9);
+            box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+            color: var(--text-color);
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(3px);
+        }
+        .battle-log-toggle-btn:active { background: rgba(106, 74, 138, 0.9); }
+
         .battle-log {
-            flex: 1;
-            min-height: 0;
-            padding: 12px 20px;
+            display: none;
+            position: absolute;
+            top: 56px;
+            left: 10px;
+            z-index: 15;
+            width: min(360px, 70vw);
+            max-height: min(50vh, 320px);
+            padding: 12px 16px;
             overflow-y: auto;
-            font-size: 14px;
+            font-size: 13px;
             line-height: 1.5;
             font-family: 'Courier New', monospace;
-            background: rgba(0,0,0,0.3);
+            background: rgba(10, 5, 20, 0.92);
+            border: 2px solid var(--highlight, #8a5fc0);
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
         }
+        .battle-log.open { display: block; }
 
         .battle-log .entry {
             margin-bottom: 4px;
@@ -1604,44 +1721,36 @@
             to { opacity: 1; transform: translateX(0); }
         }
 
-        /* Battle Commands - Enhanced */
+        /* Battle Commands - icon-only, compact bar (was a labeled 2-column
+           grid eating a lot of vertical space - see .battle-ui above). */
         .battle-commands {
-            width: 280px;
-            padding: 12px;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            align-content: center;
-            align-self: center;
-            /* Item/spell lists can run long (many consumable stacks) and
-               used to overflow past the visible commands area with no way
-               to scroll down to the BACK button. Bounding the height and
-               letting it scroll internally keeps BACK reachable no matter
-               how many entries are listed. */
-            max-height: min(360px, 60vh);
-            overflow-y: auto;
+            width: 100%;
+            padding: 10px 14px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
         }
 
         .cmd-btn {
             background: linear-gradient(135deg, rgba(42,42,74,0.9), rgba(26,26,46,0.9));
             border: 2px solid var(--border-color);
             color: var(--text-color);
-            padding: 10px;
+            width: 52px;
+            height: 52px;
             font-family: inherit;
-            font-size: 13px;
-            line-height: 1.2;
+            font-size: 22px;
+            line-height: 1;
             cursor: pointer;
             transition: all 0.2s ease;
-            border-radius: 6px;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            border-radius: 10px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.3);
             position: relative;
             display: flex;
             align-items: center;
             justify-content: center;
             overflow: hidden;
+            flex-shrink: 0;
         }
 
         .cmd-btn::after {
@@ -1674,7 +1783,18 @@
             transform: scale(0.95);
         }
 
+        /* Limit Break keeps its text label (per request - "LIMIT BREAK" is
+           genuinely useful to read, unlike Attack/Magic/Item/Run which are
+           obvious from their icons alone), so it needs auto width instead
+           of the other commands' fixed 52x52 icon square. */
         .limit-break-btn {
+            width: auto;
+            padding: 0 18px;
+            font-size: 13px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            gap: 6px;
             background: linear-gradient(135deg, #6a1a8a, #b03050) !important;
             border-color: #ff66cc !important;
             color: #fff !important;
@@ -1684,6 +1804,12 @@
         .limit-break-btn:hover {
             border-color: #ffd0ff !important;
             box-shadow: 0 4px 25px rgba(255,102,204,0.6) !important;
+        }
+
+        .cmd-btn.auto-active {
+            background: linear-gradient(135deg, #6a5010, #ffaa00) !important;
+            border-color: #ffaa00 !important;
+            color: #1a1a1a !important;
         }
 
         /* Limit break option descriptions moved to a tap-friendly popup (see
@@ -3432,89 +3558,12 @@
                 height: 6px;
             }
 
-            .battle-background {
-                padding: 15px 20px;
-                height: calc(100% - 300px);
-            }
-
-            /* .monster-sprite override REMOVED here - it's fluid now (see
-               the base rule's own comment for why: fills its grid column,
-               capped by max-width, so a static px guess for "compact UI"
-               would just fight that and go back to the fixed-size overlap
-               risk this was trying to avoid). */
-
-            .party-battle-area {
-                width: 34%;
-            }
-
-            .battle-hero .hero-avatar {
-                width: 122px;
-                height: 122px;
-                font-size: 20px;
-            }
-
-            .battle-ui {
-                height: 300px;
-            }
-
-            /* Not enough width for hero cards + commands side by side on
-               narrow screens, so stack the HUD above the command menu. */
-            .battle-hud-row {
-                flex-direction: column;
-                padding: 6px 8px;
-                gap: 6px;
-            }
-
-            .battle-hud-party {
-                overflow-x: auto;
-            }
-
-            .hud-hero-card {
-                min-width: 120px;
-                flex: 1 1 120px;
-                padding: 5px 8px;
-            }
-
-            .hud-hero-name {
-                font-size: 11px;
-            }
-
-            .hud-hero-status {
-                font-size: 8px;
-            }
-
-            .hud-hpmp-row {
-                gap: 2px;
-            }
-
-            .stat-bar {
-                font-size: 9px;
-            }
-
-            .hud-hero-card .stat-bar .bar {
-                width: 44px;
-            }
-
-            .hud-limit-label {
-                font-size: 8px;
-                width: 26px;
-            }
-
-            .battle-commands {
-                width: 100%;
-                padding: 6px 0 0 0;
-                gap: 4px;
-            }
-
-            .cmd-btn {
-                padding: 6px;
-                font-size: 10px;
-            }
-
-            .battle-log {
-                font-size: 11px;
-                padding: 8px 10px;
-            }
+            /* battle-* overrides removed here: the base rules (see main
+               battle CSS block) are now sized directly for real device
+               pixels - battle-screen is a true full-viewport screen (see
+               .battle-viewport) instead of living inside the 1024x768
+               scaled #game-container, so there's no separate "compact for
+               a shrunk design box" pass needed anymore. */
 
             .location-info {
                 font-size: 14px;
@@ -3585,85 +3634,9 @@
                 font-size: 11px;
             }
 
-            .battle-log {
-                font-size: 9px;
-                padding: 6px;
-            }
-
-            .battle-commands {
-                width: 150px;
-                padding: 4px;
-                gap: 3px;
-            }
-
-            .cmd-btn {
-                padding: 4px;
-                font-size: 8px;
-            }
-
-            .party-battle-area {
-                width: 32%;
-            }
-
-            .battle-hero .hero-avatar {
-                width: 96px;
-                height: 96px;
-                font-size: 14px;
-            }
-
-            /* .monster-sprite override REMOVED - it's fluid now (fills its
-               grid column automatically at any width, see the base rule). */
-
-            .battle-ui {
-                height: 280px;
-            }
-
-            .battle-background {
-                height: calc(100% - 280px);
-            }
-
-            .battle-hud-row {
-                flex-direction: column;
-                padding: 4px 6px;
-                gap: 4px;
-            }
-
-            .battle-hud-party {
-                overflow-x: auto;
-            }
-
-            .hud-hero-card {
-                min-width: 95px;
-                flex: 1 1 95px;
-                padding: 4px 6px;
-            }
-
-            .hud-hero-name {
-                font-size: 9px;
-            }
-
-            .hud-hero-status {
-                font-size: 7px;
-            }
-
-            .hud-limit-label {
-                width: 20px;
-                font-size: 7px;
-            }
-
-            .stat-bar {
-                font-size: 8px;
-                gap: 3px;
-            }
-
-            .hud-hero-card .stat-bar .bar {
-                width: 34px;
-            }
-
-            .battle-commands {
-                width: 100%;
-                padding: 4px 0 0 0;
-            }
+            /* battle-* overrides removed here too, same reasoning as the
+               1100px block above - real full-viewport screen now, base
+               rules already fit real device pixels directly. */
 
             .location-ui .menu-button {
                 font-size: 8px;
@@ -3707,26 +3680,41 @@
     <!--   of how small/large the game itself is currently scaled to.      -->
     <!-- ================================================================= -->
     <div id="hud-top-bar">
+        <button type="button" class="hud-hamburger-btn" onclick="toggleWorldMenuPanel()" title="Menu">☰</button>
         <div id="hud-gold" class="hud-top-gold">💰 G: 0</div>
-        <div class="hud-top-buttons">
-            <button class="menu-button" onclick="window.game.saveGame()" title="Save">💾</button>
-            <button class="menu-button" onclick="window.game.loadGame()" title="Load">📂</button>
-            <button class="menu-button" onclick="window.game.toggleMenu()" title="Menu">📋</button>
-            <button class="menu-button" onclick="window.game.openWorldMap()" title="World Map">🗺️</button>
-            <button class="menu-button" onclick="window.game.openLoreJournal()" title="Lore">📖</button>
-            <button class="menu-button" onclick="window.game.openLegendaryJournal()" title="Legendary Weapons">⚔️</button>
-            <button class="menu-button" onclick="window.game.showQuestCompassMenu()" title="Track Quest">🧭</button>
-            <button class="menu-button" onclick="nudgeCanvasZoom('world-canvas', 1.2)" title="Zoom In">➕</button>
-            <button class="menu-button" onclick="nudgeCanvasZoom('world-canvas', 0.8)" title="Zoom Out">➖</button>
-            <button class="menu-button" onclick="window.game.renderer.resetZoom(); resetAllCanvasZoom();" title="Reset View">🔄</button>
-            <button class="menu-button" onclick="toggleFullscreen()" title="Fullscreen">⛶</button>
+    </div>
+    <div id="hud-menu-panel">
+        <button class="menu-button" onclick="window.game.saveGame()" title="Save">💾</button>
+        <button class="menu-button" onclick="window.game.loadGame()" title="Load">📂</button>
+        <button class="menu-button" onclick="window.game.toggleMenu()" title="Menu">📋</button>
+        <button class="menu-button" onclick="window.game.openWorldMap()" title="World Map">🗺️</button>
+        <button class="menu-button" onclick="window.game.openLoreJournal()" title="Lore">📖</button>
+        <button class="menu-button" onclick="window.game.openLegendaryJournal()" title="Legendary Weapons">⚔️</button>
+        <button class="menu-button" onclick="window.game.showQuestCompassMenu()" title="Track Quest">🧭</button>
+        <button class="menu-button" onclick="nudgeCanvasZoom('world-canvas', 1.2)" title="Zoom In">➕</button>
+        <button class="menu-button" onclick="nudgeCanvasZoom('world-canvas', 0.8)" title="Zoom Out">➖</button>
+        <button class="menu-button" onclick="window.game.renderer.resetZoom(); resetAllCanvasZoom();" title="Reset View">🔄</button>
+        <button class="menu-button" onclick="toggleFullscreen()" title="Fullscreen">⛶</button>
+    </div>
+
+    <div id="hud-party-overlay">
+        <div class="hud-party-overlay-header">
+            <span>⚔️ PARTY</span>
+            <button type="button" onclick="togglePartyOverlay()" title="Close">✖</button>
         </div>
+        <div class="party-status-mini" id="party-status-mini"></div>
     </div>
 
     <div id="hud-side-left">
-        <div id="rail-party-status" class="rail-section">
-            <div class="rail-heading">⚔️ PARTY</div>
-            <div class="party-status-mini" id="party-status-mini"></div>
+        <button type="button" id="hud-party-icon-btn" class="hud-icon-btn" onclick="togglePartyOverlay()" title="Party Status">⚔️</button>
+        <div id="mobile-dpad-wrap" class="mobile-controls-part">
+            <div class="dpad" id="dpad">
+                <button type="button" class="dpad-btn dpad-up" data-dir="up" aria-label="Move up">▲</button>
+                <button type="button" class="dpad-btn dpad-down" data-dir="down" aria-label="Move down">▼</button>
+                <button type="button" class="dpad-btn dpad-left" data-dir="left" aria-label="Move left">◀</button>
+                <button type="button" class="dpad-btn dpad-right" data-dir="right" aria-label="Move right">▶</button>
+                <div class="dpad-center"></div>
+            </div>
         </div>
     </div>
 
@@ -3738,18 +3726,12 @@
             <div class="rail-heading">⚔️ PARTY</div>
             <div class="party-status-mini" id="location-party-status-mini"></div>
         </div>
-        <div id="mobile-controls">
-            <div class="dpad" id="dpad">
-                <button type="button" class="dpad-btn dpad-up" data-dir="up" aria-label="Move up">▲</button>
-                <button type="button" class="dpad-btn dpad-down" data-dir="down" aria-label="Move down">▼</button>
-                <button type="button" class="dpad-btn dpad-left" data-dir="left" aria-label="Move left">◀</button>
-                <button type="button" class="dpad-btn dpad-right" data-dir="right" aria-label="Move right">▶</button>
-                <div class="dpad-center"></div>
-            </div>
+        <div id="mobile-actions-wrap" class="mobile-controls-part hud-action-frame">
             <div class="touch-actions">
                 <button type="button" class="touch-action-btn touch-interact" id="touch-interact-btn">✋<span>TALK/ENTER</span></button>
                 <button type="button" class="touch-action-btn touch-menu" id="touch-menu-btn">📋<span>MENU</span></button>
                 <button type="button" class="touch-action-btn touch-reset" id="touch-reset-btn">🔄<span>RESET</span></button>
+                <button type="button" class="touch-action-btn touch-exit" id="touch-exit-btn" title="Exit">🚪<span>EXIT</span></button>
             </div>
         </div>
     </div>
@@ -3762,12 +3744,9 @@
         <!-- ================================================================= -->
         <!--                         WORLD MAP SCREEN                          -->
         <!-- ================================================================= -->
-        <div id="world-screen" class="screen">
-            <canvas id="world-canvas" width="1024" height="768"></canvas>
-
-            <div class="location-indicator" id="location-indicator">Press ENTER to enter</div>
-            <div id="quest-compass-arrow" style="display: none;">➤</div>
-        </div>
+        <!-- world-screen now lives in the WALKABLE LOCATION VIEWPORTS
+             section below (real screen space, dynamically sized canvas) -
+             see that section for why. -->
 
         <!-- ================================================================= -->
         <!--                      FULL WORLD MAP SCREEN                        -->
@@ -3801,39 +3780,11 @@
         <!-- ================================================================= -->
         <!--                         BATTLE SCREEN                             -->
         <!-- ================================================================= -->
-        <div id="battle-screen" class="screen" style="display: none;">
-            <div class="battle-window" id="battle-window">
-                <div class="battle-shake-wrapper" id="battle-shake-wrapper">
-                    <div id="battle-gold" style="position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.85); border: 2px solid var(--gold-color); padding: 5px 18px; color: var(--gold-color); font-size: 16px; font-weight: bold; z-index: 10; border-radius: 6px;">💰 G: 0</div>
+        <!-- battle-screen now lives in the WALKABLE LOCATION VIEWPORTS
+             section below as a real full-viewport screen (same reasoning
+             as world-screen) instead of being locked inside
+             #game-container's old 1024x768 letterboxed design. -->
 
-                    <div class="battle-background" id="battle-background">
-                        <div class="battle-silhouettes" id="battle-silhouettes"></div>
-                        <div class="parallax-container">
-                            <div class="parallax-layer stars"></div>
-                            <div class="parallax-layer embers" id="battle-parallax-secondary"></div>
-                        </div>
-                        <div class="ambient-glow-pulse"></div>
-                        <canvas id="fx-canvas"></canvas>
-                        <div class="monsters-area" id="monsters-area"></div>
-                        <div class="party-battle-area" id="party-battle-area"></div>
-                    </div>
-
-                    <div class="battle-ui">
-                        <div class="battle-log" id="battle-log"></div>
-                        <div class="battle-hud-row">
-                            <div class="battle-hud-party" id="battle-hud-party"></div>
-                            <div class="battle-commands" id="battle-commands">
-                                <button class="cmd-btn" onclick="window.game.battle.selectCommand('attack')">⚔️ Attack</button>
-                                <button class="cmd-btn" onclick="window.game.battle.selectCommand('magic')">🔮 Magic</button>
-                                <button class="cmd-btn" onclick="window.game.battle.selectCommand('item')">🎒 Item</button>
-                                <button class="cmd-btn" onclick="window.game.battle.selectCommand('run')">🏃 Run</button>
-                                <button class="cmd-btn" id="auto-battle-btn" onclick="window.game.battle.toggleAutoBattle()">⚡ Auto Battle</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
 
         <!-- ================================================================= -->
         <!--                          SHOP SCREEN                              -->
@@ -3912,6 +3863,12 @@
     <!--   the script) instead of being locked to a fixed 1024px design      -->
     <!--   width with unused letterbox margin beside it on phones.            -->
     <!-- ================================================================= -->
+        <div id="world-screen" class="screen location-screen walkable-viewport" style="display: none;">
+            <canvas id="world-canvas" width="1024" height="768"></canvas>
+
+            <div class="location-indicator" id="location-indicator">Press ✋ to enter</div>
+            <div id="quest-compass-arrow" style="display: none;">➤</div>
+        </div>
         <div id="town-screen" class="screen location-screen walkable-viewport" style="display: none;">
             <div id="town-gold" style="position: absolute; top: 60px; right: 15px; background: rgba(0,0,0,0.85); border: 2px solid var(--gold-color); padding: 4px 16px; color: var(--gold-color); font-size: 15px; font-weight: bold; z-index: 40; border-radius: 6px;">💰 G: 0</div>
             
@@ -3919,51 +3876,27 @@
             
             <div id="town-info" style="position: absolute !important; top: 15px !important; left: 50% !important; transform: translateX(-50%) !important; background: rgba(0,0,0,0.9); border: 2px solid var(--highlight); padding: 8px 25px; font-size: 18px; color: var(--highlight); text-align: center; z-index: 30; border-radius: 8px; box-shadow: 0 0 30px rgba(0,0,0,0.7), 0 0 20px rgba(255,215,0,0.2); width: auto; min-width: 200px;">Welcome to Town</div>
 
-            <div class="location-indicator" id="town-location-indicator">Press ENTER to interact</div>
-            
-            <div class="town-controls-bar">
-                <div class="town-controls-hint">🕹️ WASD / Arrow Keys to walk &nbsp;•&nbsp; ENTER to interact</div>
-                <button class="menu-button" onclick="window.game.toggleMenu()" style="padding: 6px 16px; font-size: 13px; margin: 0;">📋 Menu</button>
-                <button class="menu-button" onclick="window.game.exitLocation()" style="background: #8b0000; border-color: #ff4444; padding: 6px 18px; font-size: 13px; margin: 0;">🚪 Exit Town</button>
-            </div>
+            <div class="location-indicator" id="town-location-indicator">Press ✋ to interact</div>
         </div>
         <div id="cave-screen" class="screen location-screen walkable-viewport" style="display: none;">
             <canvas id="cave-canvas" class="location-canvas" width="1024" height="700"></canvas>
             <div class="location-info">🕯️ Dark Cave - Watch your step...</div>
 
-            <div class="location-indicator" id="cave-location-indicator">Press ENTER to interact</div>
-
-            <div class="walk-controls-bar">
-                <div class="town-controls-hint">🕹️ WASD / Arrow Keys to walk &nbsp;•&nbsp; ENTER to interact</div>
-                <button class="menu-button" onclick="window.game.toggleMenu()" style="padding: 6px 16px; font-size: 13px; margin: 0;">📋 Menu</button>
-                <button class="menu-button" onclick="window.game.exitLocation()" style="background: #8b0000; border-color: #ff4444; padding: 6px 18px; font-size: 13px; margin: 0;">🚪 Exit Cave</button>
-            </div>
+            <div class="location-indicator" id="cave-location-indicator">Press ✋ to interact</div>
         </div>
         <div id="castle-screen" class="screen location-screen walkable-viewport" style="display: none;">
             <canvas id="castle-canvas" class="location-canvas" width="1024" height="700"></canvas>
             <div class="location-info" style="color: #ff6644;">⚠️ Final Castle - Danger Ahead!</div>
             <div id="castle-gold" style="position: absolute; top: 60px; right: 15px; background: rgba(0,0,0,0.85); border: 2px solid var(--gold-color); padding: 4px 16px; color: var(--gold-color); font-size: 15px; font-weight: bold; z-index: 40; border-radius: 6px;">💰 G: 0</div>
 
-            <div class="location-indicator" id="castle-location-indicator">Press ENTER to interact</div>
-
-            <div class="walk-controls-bar">
-                <div class="town-controls-hint">🕹️ WASD / Arrow Keys to walk &nbsp;•&nbsp; ENTER to interact</div>
-                <button class="menu-button" onclick="window.game.toggleMenu()" style="padding: 6px 16px; font-size: 13px; margin: 0;">📋 Menu</button>
-                <button class="menu-button" onclick="window.game.exitLocation()" style="background: #8b0000; border-color: #ff4444; padding: 6px 18px; font-size: 13px; margin: 0;">🚪 Exit Castle</button>
-            </div>
+            <div class="location-indicator" id="castle-location-indicator">Press ✋ to interact</div>
         </div>
         <div id="ruins-screen" class="screen location-screen walkable-viewport" style="display: none;">
             <canvas id="ruins-canvas" class="location-canvas" width="1024" height="700"></canvas>
             <div class="location-info">🏛️ Ancient Ruins - Mystery Awaits</div>
             <div id="ruins-gold" style="position: absolute; top: 60px; right: 15px; background: rgba(0,0,0,0.85); border: 2px solid var(--gold-color); padding: 4px 16px; color: var(--gold-color); font-size: 15px; font-weight: bold; z-index: 40; border-radius: 6px;">💰 G: 0</div>
 
-            <div class="location-indicator" id="ruins-location-indicator">Press ENTER to interact</div>
-
-            <div class="walk-controls-bar">
-                <div class="town-controls-hint">🕹️ WASD / Arrow Keys to walk &nbsp;•&nbsp; ENTER to interact</div>
-                <button class="menu-button" onclick="window.game.toggleMenu()" style="padding: 6px 16px; font-size: 13px; margin: 0;">📋 Menu</button>
-                <button class="menu-button" onclick="window.game.exitLocation()" style="background: #8b0000; border-color: #ff4444; padding: 6px 18px; font-size: 13px; margin: 0;">🚪 Exit</button>
-            </div>
+            <div class="location-indicator" id="ruins-location-indicator">Press ✋ to interact</div>
         </div>
         <div id="spring-screen" class="screen location-screen walkable-viewport" style="display: none;">
             <canvas id="spring-canvas" class="location-canvas" width="1024" height="668"></canvas>
@@ -3978,6 +3911,47 @@
             <div class="location-party-status">
                 <div style="display: flex; gap: 10px; color: var(--highlight); margin-bottom: 4px; font-size: 12px;">⚔️ PARTY STATUS</div>
                 <div id="spring-party-status" class="party-status-mini"></div>
+            </div>
+        </div>
+
+        <!-- battle-screen: real full-viewport screen (see world-screen's
+             comment above for why) instead of living inside the old
+             1024x768 letterboxed #game-container. Placed last among the
+             full-viewport screens so it naturally paints on top of
+             whichever backdrop screen (world/town/cave/etc.) is still
+             marked .active underneath it during a fight - see
+             switchScreen()'s 'battle' branch, which keeps the backdrop's
+             .active class so it stays visible, dimmed, behind this. -->
+        <div id="battle-screen" class="screen battle-viewport" style="display: none;">
+            <div class="battle-window" id="battle-window">
+                <div class="battle-shake-wrapper" id="battle-shake-wrapper">
+                    <div id="battle-gold" style="position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.85); border: 2px solid var(--gold-color); padding: 5px 18px; color: var(--gold-color); font-size: 16px; font-weight: bold; z-index: 10; border-radius: 6px;">💰 G: 0</div>
+
+                    <button type="button" class="battle-log-toggle-btn" id="battle-log-toggle-btn" title="Combat Log" onclick="toggleBattleLog()">📜</button>
+                    <div class="battle-log" id="battle-log"></div>
+
+                    <div class="battle-background" id="battle-background">
+                        <div class="battle-silhouettes" id="battle-silhouettes"></div>
+                        <div class="parallax-container">
+                            <div class="parallax-layer stars"></div>
+                            <div class="parallax-layer embers" id="battle-parallax-secondary"></div>
+                        </div>
+                        <div class="ambient-glow-pulse"></div>
+                        <canvas id="fx-canvas"></canvas>
+                        <div class="monsters-area" id="monsters-area"></div>
+                        <div class="party-battle-area" id="party-battle-area"></div>
+                    </div>
+
+                    <div class="battle-ui">
+                        <div class="battle-commands" id="battle-commands">
+                            <button class="cmd-btn" title="Attack" onclick="window.game.battle.selectCommand('attack')">⚔️</button>
+                            <button class="cmd-btn" title="Magic" onclick="window.game.battle.selectCommand('magic')">🔮</button>
+                            <button class="cmd-btn" title="Item" onclick="window.game.battle.selectCommand('item')">🎒</button>
+                            <button class="cmd-btn" title="Run" onclick="window.game.battle.selectCommand('run')">🏃</button>
+                            <button class="cmd-btn" id="auto-battle-btn" title="Auto Battle" onclick="window.game.battle.toggleAutoBattle()">⚡</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -4422,14 +4396,16 @@
     // Town/cave/castle/ruins/spring now render as their own full-viewport
     // .walkable-viewport elements (see CSS) instead of being locked inside
     // #game-container's 1024x768 letterboxed scale, so their canvas can use
-    // real screen width via fitLocationCanvas() below. LOCATION_RAIL_W is
-    // the fixed width reserved on the right for the D-pad/action buttons
-    // (144px dpad + padding) - it must match .walkable-viewport.active's
-    // padding-right in the CSS above, since that padding is what keeps the
-    // canvas from rendering underneath the rail. No margin is reserved on
-    // the left anymore - that's the space this whole change reclaims.
-    const LOCATION_RAIL_W = 170;
-    const WALKABLE_VIEWPORT_SCREENS = ['town', 'cave', 'castle', 'ruins', 'spring'];
+    // real screen width via fitLocationCanvas() below. DPAD_RAIL_W is the
+    // fixed width reserved on the LEFT for the D-pad (144px dpad + padding),
+    // ACTION_RAIL_W the smaller width reserved on the RIGHT for the
+    // icon-only Talk/Menu/Reset frame - both must match
+    // .walkable-viewport.active's padding-left/padding-right in the CSS
+    // above, since that padding is what keeps the canvas from rendering
+    // underneath either rail.
+    const DPAD_RAIL_W = 170;
+    const ACTION_RAIL_W = 90;
+    const WALKABLE_VIEWPORT_SCREENS = ['world', 'town', 'cave', 'castle', 'ruins', 'spring'];
 
     /** Scales #game-container (a fixed 1024x768 design) to fit whatever
      *  viewport it's running in - phone, tablet, or desktop window - while
@@ -4453,21 +4429,28 @@
         const isPortrait = vh > vw;
         if (rotateOverlay) rotateOverlay.classList.toggle('visible', isNarrow && isPortrait);
 
-        const availH = Math.max(200, vh - TOPBAR_H);
+        // The world screen's old top bar is now a floating hamburger corner
+        // button (see #hud-top-bar CSS) instead of a full-width strip, so it
+        // no longer needs a reserved horizontal band up top - reclaiming
+        // that height lets the world view render noticeably larger. Every
+        // other screen keeps the original reserved TOPBAR_H unchanged.
+        const screenName = window.game && window.game.state ? window.game.state.currentScreen : null;
+        const topbarReserve = screenName === 'world' ? 0 : TOPBAR_H;
+
+        const availH = Math.max(200, vh - topbarReserve);
         const scale = Math.min(vw / DESIGN_W, availH / DESIGN_H);
         const renderedW = DESIGN_W * scale;
         const renderedH = DESIGN_H * scale;
         const left = (vw - renderedW) / 2;
-        const top = TOPBAR_H + (availH - renderedH) / 2;
+        const top = topbarReserve + (availH - renderedH) / 2;
         container.style.transform = `translate(${left}px, ${top}px) scale(${scale})`;
 
         // Town/cave/castle/ruins/spring no longer live inside the scaled
         // #game-container (see .walkable-viewport in the CSS), so the
         // letterbox 'left' margin computed above doesn't apply to them -
         // they get a fixed right-only rail instead (see updateSideRails).
-        const screenName = window.game && window.game.state ? window.game.state.currentScreen : null;
         const isWalkableViewport = WALKABLE_VIEWPORT_SCREENS.includes(screenName);
-        updateSideRails(left, TOPBAR_H, vh - TOPBAR_H, isWalkableViewport);
+        updateSideRails(left, topbarReserve, vh - topbarReserve, isWalkableViewport);
         if (isWalkableViewport) fitLocationCanvas(screenName);
     }
 
@@ -4483,17 +4466,17 @@
      *  rails aren't sized from the letterbox margin at all - there IS no
      *  letterbox margin for those screens anymore, since their canvas fills
      *  the real viewport width (see fitLocationCanvas). Instead the left
-     *  rail collapses to 0 (reclaimed entirely for the canvas, which is the
-     *  whole point of this) and the right rail gets a fixed LOCATION_RAIL_W
-     *  just wide enough for the D-pad/buttons. */
+     *  rail gets a fixed DPAD_RAIL_W just wide enough for the D-pad, and the
+     *  right rail gets the smaller ACTION_RAIL_W for the icon-only
+     *  Talk/Menu/Reset frame. */
     function updateSideRails(marginPx, topPx, heightPx, isWalkableViewport) {
         const left = document.getElementById('hud-side-left');
         const right = document.getElementById('hud-side-right');
 
         if (isWalkableViewport) {
             document.body.classList.add('using-side-rails');
-            if (left) { left.style.top = `${topPx}px`; left.style.height = `${heightPx}px`; left.style.width = '0px'; }
-            if (right) { right.style.top = `${topPx}px`; right.style.height = `${heightPx}px`; right.style.width = `${LOCATION_RAIL_W}px`; }
+            if (left) { left.style.top = `${topPx}px`; left.style.height = `${heightPx}px`; left.style.width = `${DPAD_RAIL_W}px`; }
+            if (right) { right.style.top = `${topPx}px`; right.style.height = `${heightPx}px`; right.style.width = `${ACTION_RAIL_W}px`; }
             return;
         }
 
@@ -4521,7 +4504,7 @@
      *  a no-op read+maybe-write, and resizing a canvas that hasn't actually
      *  changed size is cheap. */
     function fitLocationCanvas(screenName) {
-        const canvasIds = { town: 'town-canvas', cave: 'cave-canvas', castle: 'castle-canvas', ruins: 'ruins-canvas', spring: 'spring-canvas' };
+        const canvasIds = { world: 'world-canvas', town: 'town-canvas', cave: 'cave-canvas', castle: 'castle-canvas', ruins: 'ruins-canvas', spring: 'spring-canvas' };
         const canvasId = canvasIds[screenName];
         const canvas = canvasId ? document.getElementById(canvasId) : null;
         if (!canvas) return;
@@ -4534,61 +4517,12 @@
         }
     }
 
-    /** Physically relocates #battle-hud-party into the left rail and
-     *  #battle-commands into the right rail (only when there's enough
-     *  margin for rails to be showing at all) - moves the actual DOM nodes
-     *  rather than duplicating their contents, so every existing bit of
-     *  code that does battleCommandsEl.innerHTML = ... or reads/writes
-     *  #battle-hud-party keeps working unchanged, it's just rendering into
-     *  a different (roomier, real-touch-sized) part of the screen. Frees
-     *  most of .battle-ui's height back to the actual battlefield view. */
-    function enterBattleRailMode() {
-        if (!document.body.classList.contains('using-side-rails')) return;
-        const hudParty = document.getElementById('battle-hud-party');
-        const commands = document.getElementById('battle-commands');
-        const leftRail = document.getElementById('hud-side-left');
-        const rightRail = document.getElementById('hud-side-right');
-        if (!hudParty || !commands || !leftRail || !rightRail) return;
-
-        let partyHome = document.getElementById('rail-battle-party');
-        if (!partyHome) {
-            partyHome = document.createElement('div');
-            partyHome.id = 'rail-battle-party';
-            partyHome.className = 'rail-section';
-            leftRail.appendChild(partyHome);
-        }
-        let commandsHome = document.getElementById('rail-battle-commands');
-        if (!commandsHome) {
-            commandsHome = document.createElement('div');
-            commandsHome.id = 'rail-battle-commands';
-            commandsHome.className = 'rail-section';
-            rightRail.insertBefore(commandsHome, rightRail.firstChild);
-        }
-
-        partyHome.appendChild(hudParty);
-        commandsHome.appendChild(commands);
-        partyHome.classList.add('visible');
-        commandsHome.classList.add('visible');
-        document.body.classList.add('battle-rail-mode');
-    }
-
-    /** Reverses enterBattleRailMode(), moving #battle-hud-party and
-     *  #battle-commands back to their normal spot inside .battle-hud-row. */
-    function exitBattleRailMode() {
-        if (!document.body.classList.contains('battle-rail-mode')) return;
-        const hudParty = document.getElementById('battle-hud-party');
-        const commands = document.getElementById('battle-commands');
-        const hudRow = document.querySelector('.battle-hud-row');
-        if (hudRow) {
-            if (hudParty) hudRow.appendChild(hudParty);
-            if (commands) hudRow.appendChild(commands);
-        }
-        const partyHome = document.getElementById('rail-battle-party');
-        const commandsHome = document.getElementById('rail-battle-commands');
-        if (partyHome) partyHome.classList.remove('visible');
-        if (commandsHome) commandsHome.classList.remove('visible');
-        document.body.classList.remove('battle-rail-mode');
-    }
+    /** enterBattleRailMode()/exitBattleRailMode() were removed: battle-screen
+     *  is a real full-viewport screen now with its own compact icon command
+     *  bar and per-hero info cards anchored to each character (see
+     *  updatePartyDisplay()'s .hero-slot), so there's no longer a separate
+     *  "relocate into the side rails when there's room" mode to enter or
+     *  exit - the same layout now works at any screen size. */
 
     /** Shows/hides the persistent touch chrome (top bar, D-pad, party
      *  status rail, minimap rail) based on which screen is active - the
@@ -4606,9 +4540,11 @@
             const el = document.getElementById(id);
             if (el) el.classList.toggle('visible', show);
         };
-        setVisible('mobile-controls', isWalkable);
+        setVisible('mobile-dpad-wrap', isWalkable);
+        setVisible('mobile-actions-wrap', isWalkable);
+        setVisible('touch-exit-btn', isWalkable && !isWorld);
         setVisible('hud-top-bar', isWorld);
-        setVisible('rail-party-status', isWorld);
+        setVisible('hud-party-icon-btn', isWorld);
         setVisible('rail-minimap', isWorld);
         // rail-location-party (the mini party-status box that used to sit
         // above the D-pad on town/cave/castle/ruins) is intentionally never
@@ -4617,6 +4553,52 @@
         // in that cramped a space. Removing it also frees up the whole rail
         // height for the D-pad/action buttons instead of splitting it.
         setVisible('rail-location-party', false);
+        // Leaving the world screen (or entering battle/menus) should close
+        // any open floating panels rather than leave them stranded on top
+        // of whatever's shown next.
+        if (!isWorld) {
+            closeWorldMenuPanel();
+            closePartyOverlay();
+        }
+    }
+
+    /** Hamburger dropdown (world screen only) - replaces the old always-on
+     *  top button strip. Toggled open/closed by the hamburger icon; closes
+     *  itself after any button inside is tapped since the buttons are
+     *  one-shot actions (save, open a journal, nudge zoom, etc.). */
+    function toggleWorldMenuPanel() {
+        const panel = document.getElementById('hud-menu-panel');
+        if (!panel) return;
+        panel.classList.toggle('open');
+    }
+    function closeWorldMenuPanel() {
+        const panel = document.getElementById('hud-menu-panel');
+        if (panel) panel.classList.remove('open');
+    }
+
+    /** Party status overlay (world screen only) - replaces the old
+     *  always-on left "PARTY" rail panel with a tap-to-show overlay. */
+    function togglePartyOverlay() {
+        const panel = document.getElementById('hud-party-overlay');
+        if (!panel) return;
+        panel.classList.toggle('open');
+    }
+    function closePartyOverlay() {
+        const panel = document.getElementById('hud-party-overlay');
+        if (panel) panel.classList.remove('open');
+    }
+
+    /** Combat log overlay (battle screen) - press the 📜 button to show
+     *  the log, press again to hide it, same show/hide pattern as the
+     *  world screen's hamburger menu/party overlay above. */
+    function toggleBattleLog() {
+        const log = document.getElementById('battle-log');
+        if (!log) return;
+        log.classList.toggle('open');
+    }
+    function closeBattleLog() {
+        const log = document.getElementById('battle-log');
+        if (log) log.classList.remove('open');
     }
 
     /** Wires the on-screen D-pad + Interact/Menu buttons: press-and-hold a
@@ -4685,6 +4667,13 @@
                 e.preventDefault();
                 resetAllCanvasZoom();
                 if (window.game && window.game.renderer && window.game.renderer.resetZoom) window.game.renderer.resetZoom();
+            });
+        }
+        const exitBtn = document.getElementById('touch-exit-btn');
+        if (exitBtn) {
+            exitBtn.addEventListener('pointerup', (e) => {
+                e.preventDefault();
+                if (window.game && window.game.exitLocation) window.game.exitLocation();
             });
         }
     }
@@ -5787,14 +5776,7 @@
         }
         // Shrines carry no treasure chests - it's a place of ceremony, not
         // loot. Everything else about the floor generates identically.
-        // Chest density and per-chest item count were previously
-        // (6 + floorIndex*2) chests capped at reachable/6, each holding
-        // `floorIndex` loot rolls - on a floor 3+ dungeon that could mean
-        // a dozen chests each handing out 3 items, which is how a single
-        // dungeon run was flooding the party with gear and gold. Trimmed
-        // both the chest count and the per-chest item cap so depth still
-        // rewards more, just not explosively.
-        const chestCount = isShrine ? 0 : Math.min(3 + floorIndex, Math.floor(reachable.length / 10));
+        const chestCount = isShrine ? 0 : Math.min(6 + floorIndex * 2, Math.floor(reachable.length / 6));
         const chests = [];
         let placed = 0;
         for (let i = 0; i < reachable.length && placed < chestCount; i++) {
@@ -5807,7 +5789,7 @@
             }
             if (tooClose) continue;
             const room = carveRoomAround(grid, DUNGEON_FLOOR_WIDTH, DUNGEON_FLOOR_HEIGHT, t.x, t.y, 4);
-            chests.push({ x: room.centerX, y: room.centerY, opened: false, itemCount: Math.min(2, floorIndex), room });
+            chests.push({ x: room.centerX, y: room.centerY, opened: false, itemCount: floorIndex, room });
             placed++;
         }
 
@@ -6188,18 +6170,13 @@
                 target.style.display = 'flex';
                 this.currentScreen = screenName;
                 updateHudVisibility(screenName);
-                // Elevates #game-container (which still holds #battle-screen)
-                // above the walkable-viewport backdrop screen for exactly the
-                // duration of the battle - see the body.battle-active rule on
-                // #game-container. Must be added before fitGameContainer() so
-                // the container is already stacked correctly by the time it
-                // resizes/repaints.
-                document.body.classList.add('battle-active');
                 if (typeof fitGameContainer === 'function') fitGameContainer();
-                if (typeof enterBattleRailMode === 'function') enterBattleRailMode();
                 if (window.game && window.game.updateGoldDisplays) {
                     window.game.updateGoldDisplays();
                 }
+                // Fresh fight, fresh log state - don't leave the overlay
+                // open from a previous encounter.
+                if (typeof closeBattleLog === 'function') closeBattleLog();
                 // Replay the spiral entrance every time a battle starts.
                 // Remove + force a reflow before re-adding so the
                 // animation restarts even if the class was left over
@@ -6225,14 +6202,11 @@
             // elements at once while a battle is up, and currentActive
             // (a querySelector) just grabs whichever one is first in DOM
             // order (world-screen, not battle-screen) - so comparing
-            // against it silently skipped this whole branch, including
-            // exitBattleRailMode(), any time battle ended.
+            // against it silently skipped this whole branch.
             const battleScreenEl = document.getElementById('battle-screen');
             if (battleScreenEl && battleScreenEl.classList.contains('active')) {
-                if (typeof exitBattleRailMode === 'function') exitBattleRailMode();
                 battleScreenEl.classList.remove('active');
                 battleScreenEl.style.display = 'none';
-                document.body.classList.remove('battle-active');
                 const staleBackdrop = this.battleBackdropScreen;
                 this.battleBackdropScreen = null;
                 if (staleBackdrop && staleBackdrop !== target) {
@@ -6605,33 +6579,24 @@
             this.level++;
             const stats = this.baseStats;
 
-            // Defense growth rebalanced (was +2/+3/+0 for war/pal/mage): the
-            // damage formula subtracts a flat floor(defense/2) per hit, so
-            // defense compounds hard over many levels. At +2/+3 per level,
-            // Paladin was ending up MORE armored than Warrior by mid-game
-            // (a healer out-tanking the dedicated tank), and Mage's flat 0
-            // growth meant it never got any tougher than its starting
-            // squishiness no matter how many levels it earned. Trimmed
-            // War/Pal growth and gave Mage a small amount of its own.
             switch (this.heroClass) {
                 case 'warrior':
                     stats.maxHp += 15;
                     stats.maxMp += 2;
                     stats.attack += 3;
-                    stats.defense += 1;
+                    stats.defense += 2;
                     break;
                 case 'mage':
                     stats.maxHp += 8;
                     stats.maxMp += 8;
                     stats.magic += 4;
                     stats.attack += 1;
-                    stats.defense += 1;
                     break;
                 case 'paladin':
                     stats.maxHp += 12;
                     stats.maxMp += 4;
                     stats.attack += 2;
-                    stats.defense += 1;
+                    stats.defense += 3;
                     stats.magic += 2;
                     break;
             }
@@ -6850,7 +6815,7 @@
                     drops: { material: 'Goblin Ear', chance: 0.8, quantity: 2 },
                     fragment: { color: 'Emerald', chance: 0.25 } },
                 { name: 'Shadow Stalker', sprite: '👤', level: 6, hp: 120, attack: 25, defense: 10, speed: 10, exp: 120, gold: 100, isElite: true,
-                    elementalWeakness: { fire: 1.5 }, elementalResist: { lightning: 0.7 }, desc: 'Moves between shadows, resists lightning',
+                    elementalWeakness: { fire: 1.5 }, elementalResist: { lightning: 1.3 }, desc: 'Moves between shadows, resists lightning',
                     drops: { material: 'Shadow Essence', chance: 0.7, quantity: 1 },
                     fragment: { color: 'Amethyst', chance: 0.25 } }
             ]
@@ -9683,7 +9648,11 @@
             this.minimapCtx = this.minimapCanvas ? this.minimapCanvas.getContext('2d') : null;
             this.tileSize = CONFIG.TILE_SIZE;
             this.game = window.game;
-            this.zoom = 1.0;
+            // Default view starts closer in than before (was 1.0) so tiles
+            // and sprites read clearly on a phone instead of looking
+            // stretched-out/tiny - pinch-zoom still works freely between
+            // minZoom/maxZoom on top of this.
+            this.zoom = 1.35;
             this.minZoom = 0.5;
             this.maxZoom = 2.0;
             this.offsetX = 0;
@@ -9786,7 +9755,7 @@
         }
 
         resetZoom() {
-            this.zoom = 1.0;
+            this.zoom = 1.35;
             this.offsetX = 0;
             this.offsetY = 0;
             if (window.game && window.game.world) {
@@ -10290,16 +10259,7 @@
             heroes.forEach(heroDiv => {
                 heroDiv.style.border = '';
                 heroDiv.style.cursor = '';
-                heroDiv.style.backgroundColor = '';
                 heroDiv.onclick = null;
-                // onmouseover/onmouseout below don't reliably pair up on
-                // touch devices (a tap can fire mouseover without a
-                // matching mouseout), which used to leave the green
-                // hover tint stuck on a hero's box permanently. Clearing
-                // the handlers here - on every highlight teardown - fixes
-                // that regardless of which code path got us here.
-                heroDiv.onmouseover = null;
-                heroDiv.onmouseout = null;
             });
         }
 
@@ -10361,24 +10321,34 @@
 
         updatePartyDisplay() {
             const area = document.getElementById('party-battle-area');
-            const hudBar = document.getElementById('battle-hud-party');
-            if (!area || !hudBar) return;
+            if (!area) return;
 
-            // Remove sprites/cards for heroes no longer in the party (party
+            // Remove slots for heroes no longer in the party (party
             // composition doesn't normally change mid-battle, but this is a
-            // cheap safety net).
-            area.querySelectorAll('.battle-hero').forEach(el => {
-                if (Number(el.dataset.heroIndex) >= this.party.heroes.length) el.remove();
-            });
-            hudBar.querySelectorAll('.hud-hero-card').forEach(el => {
+            // cheap safety net). Removing the whole .hero-slot wrapper takes
+            // its sprite + card with it.
+            area.querySelectorAll('.hero-slot').forEach(el => {
                 if (Number(el.dataset.heroIndex) >= this.party.heroes.length) el.remove();
             });
 
             this.party.heroes.forEach((hero, index) => {
                 const stats = hero.getEffectiveStats();
                 const heroHpPercent = hero.currentHp / stats.maxHp;
-                const isLowHp = heroHpPercent <= 0.25 && !hero.isDead;
+                const isLowHp = heroHpPercent <= 0.20 && !hero.isDead;
                 const isSelected = index === this.selectedHeroIndex;
+
+                // --- Stable per-hero slot: holds the animated sprite
+                //     wrapper (.battle-hero, which gets translateX'd on
+                //     attack lunge) and its info card as separate siblings,
+                //     so the card sits anchored next to the character
+                //     without being dragged along by the lunge animation. ---
+                let slot = area.querySelector(`.hero-slot[data-hero-index="${index}"]`);
+                if (!slot) {
+                    slot = document.createElement('div');
+                    slot.className = 'hero-slot';
+                    slot.dataset.heroIndex = index;
+                    area.appendChild(slot);
+                }
 
                 // --- Bare pixel sprite on the stage (no panel chrome). Reuses
                 //     the same persistent DOM node every update (instead of
@@ -10386,7 +10356,7 @@
                 //     animation class (attack lunge, weapon swing, recoil)
                 //     survives a mid-animation refresh instead of getting
                 //     wiped before the browser ever paints it. ---
-                let spriteDiv = area.querySelector(`.battle-hero[data-hero-index="${index}"]`);
+                let spriteDiv = slot.querySelector(`.battle-hero[data-hero-index="${index}"]`);
                 let avatarEl;
                 if (!spriteDiv) {
                     spriteDiv = document.createElement('div');
@@ -10395,7 +10365,7 @@
                     avatarEl = document.createElement('div');
                     avatarEl.dataset.heroAvatarIndex = index;
                     spriteDiv.appendChild(avatarEl);
-                    area.appendChild(spriteDiv);
+                    slot.appendChild(spriteDiv);
                 } else {
                     avatarEl = spriteDiv.querySelector('.hero-avatar');
                 }
@@ -10417,21 +10387,12 @@
                     hero.statusEffects.forEach(e => {
                         if (!e.name || e.name === 'Poison') return;
                         let icon = '✨';
-                        // Was matching on substrings of e.name (e.g.
-                        // "includes('Bolster')" -> shield icon), but the
-                        // statusEffect objects never actually carry a
-                        // `.stat` field - only `.statModifiers` (a stat->
-                        // amount map) or `.critBonus`. Reading those directly
-                        // is both more accurate and automatically correct
-                        // for any future buff spell, instead of needing its
-                        // name added to a hardcoded list here too.
                         if (e.type === 'debuff') icon = '💔';
-                        else if (e.critBonus) icon = '⚔️';
-                        else if (e.statModifiers && e.statModifiers.attack) icon = '⚔️';
-                        else if (e.statModifiers && e.statModifiers.defense) icon = '🛡️';
-                        else if (e.statModifiers && e.statModifiers.speed) icon = '⚡';
-                        else if (e.statModifiers && e.statModifiers.magic) icon = '🔮';
+                        else if (e.name.includes('Protect') || e.stat === 'defense' || e.name.includes('Bolster') || e.name.includes('Fortitude')) icon = '🛡️';
+                        else if (e.name.includes('Critical') || e.stat === 'crit' || e.name.includes('Rage')) icon = '⚔️';
                         else if (e.name.includes('Cure') || e.type === 'heal') icon = '💚';
+                        else if (e.name.includes('Fortify')) icon = '🔮';
+                        else if (e.name.includes('Haste')) icon = '⚡';
                         let durationText = '';
                         if (e.duration > 0) {
                             const safeDuration = Math.max(0, e.duration);
@@ -10444,15 +10405,16 @@
                     });
                 }
 
-                // --- HUD card: name above stacked HP/MP/Limit/EXP bars, all
-                //     in one card so the party fits horizontally instead of
-                //     needing extra vertical room per hero. Reused in place
-                //     for the same reason as the sprite above. ---
-                let card = hudBar.querySelector(`.hud-hero-card[data-hero-index="${index}"]`);
+                // --- Info card: anchored beside its hero's own sprite
+                //     inside the shared .hero-slot (instead of a separate
+                //     bottom strip), so HP/MP/Limit/EXP stay visually
+                //     associated with the character they belong to. Reused
+                //     in place for the same reason as the sprite above. ---
+                let card = slot.querySelector(`.hud-hero-card[data-hero-index="${index}"]`);
                 if (!card) {
                     card = document.createElement('div');
                     card.dataset.heroIndex = index;
-                    hudBar.appendChild(card);
+                    slot.appendChild(card);
                 }
                 card.className = `hud-hero-card ${isSelected ? 'hud-card-selected' : ''} ${hero.isDead ? 'hud-card-dead' : ''}`;
                 card.innerHTML = `
@@ -10480,7 +10442,7 @@
             });
             const battleScreenEl = document.getElementById('battle-window');
             if (battleScreenEl) {
-                const anyLowHp = this.party.heroes.some(h => !h.isDead && (h.currentHp / h.getEffectiveStats().maxHp) <= 0.25);
+                const anyLowHp = this.party.heroes.some(h => !h.isDead && (h.currentHp / h.getEffectiveStats().maxHp) <= 0.20);
                 battleScreenEl.classList.toggle('low-hp-vignette', anyLowHp);
             }
         }
@@ -10551,22 +10513,20 @@
         renderMainCommands() {
             const commandArea = document.getElementById('battle-commands');
             if (!commandArea) return;
-            const autoText = this.autoBattle ? "⏸️ Stop Auto" : "⚡ Auto Battle";
-            const autoColor = this.autoBattle ? '#ffaa00' : '#4a4a6a';
             const hero = this.party.heroes[this.selectedHeroIndex];
             const limitReady = hero && !hero.isDead && hero.isLimitBreakReady();
+            // Attack/Magic/Item/Run are icon-only (self-explanatory), but
+            // Limit Break keeps its text label since that's genuinely
+            // useful to read in the moment, per request.
             const attackBtnHTML = limitReady
-                ? `<button class="cmd-btn limit-break-btn" onclick="window.game.battle.selectCommand('limitbreak')">💥 LIMIT BREAK</button>`
-                : `<button class="cmd-btn" onclick="window.game.battle.selectCommand('attack')">⚔️ Attack</button>`;
+                ? `<button class="cmd-btn limit-break-btn" title="Limit Break" onclick="window.game.battle.selectCommand('limitbreak')">💥 LIMIT BREAK</button>`
+                : `<button class="cmd-btn" title="Attack" onclick="window.game.battle.selectCommand('attack')">⚔️</button>`;
             commandArea.innerHTML = `
                 ${attackBtnHTML}
-                <button class="cmd-btn" onclick="window.game.battle.selectCommand('magic')">🔮 Magic</button>
-                <button class="cmd-btn" onclick="window.game.battle.selectCommand('item')">🎒 Item</button>
-                <button class="cmd-btn" onclick="window.game.battle.selectCommand('run')">🏃 Run</button>
-                <button class="cmd-btn" id="auto-battle-btn" 
-                        onclick="window.game.battle.toggleAutoBattle()" 
-                        style="grid-column: span 2; background: ${autoColor};" 
-                        class="${this.autoBattle ? 'active' : ''}">${autoText}</button>
+                <button class="cmd-btn" title="Magic" onclick="window.game.battle.selectCommand('magic')">🔮</button>
+                <button class="cmd-btn" title="Item" onclick="window.game.battle.selectCommand('item')">🎒</button>
+                <button class="cmd-btn" title="Run" onclick="window.game.battle.selectCommand('run')">🏃</button>
+                <button class="cmd-btn ${this.autoBattle ? 'auto-active' : ''}" id="auto-battle-btn" title="${this.autoBattle ? 'Stop Auto Battle' : 'Auto Battle'}" onclick="window.game.battle.toggleAutoBattle()">${this.autoBattle ? '⏸️' : '⚡'}</button>
             `;
         }
 
@@ -10836,23 +10796,6 @@
                     this.selectedCommand = 'magic';
                     this.selectedSpell = spell;
                     this.waitingForTarget = true;
-                    // 'all_buff' (Haste, War Cry, Barrier) was missing from
-                    // both this check and isMultiTarget below, so it fell
-                    // through to the enemy-targeting branch - the game asked
-                    // you to "select an enemy" for a spell that buffs your
-                    // OWN party and ignores whatever you tap entirely. It
-                    // happened to still apply (executeMagic's all_buff
-                    // branch never reads the target argument), but only
-                    // once you complied with a prompt that was backwards,
-                    // and it couldn't be cast at all with no living enemy
-                    // to point at. Treated as no-target now, same as
-                    // all_heal/all_damage below.
-                    if (spell.type === 'all_buff') {
-                        this.executeMagic(hero, spell, null);
-                        this.waitingForTarget = false;
-                        this.renderMainCommands();
-                        return;
-                    }
                     const isAllySpell = (spell.type === 'heal' || spell.type === 'all_heal' || spell.type === 'buff' || spell.type === 'buff_defense' || spell.type === 'buff_crit');
                     const isMultiTarget = (spell.type === 'all_damage' || spell.type === 'all_heal');
                     if (isMultiTarget) {
@@ -10902,24 +10845,7 @@
                     this.selectedCommand = 'item';
                     this.selectedItem = item;
                     this.waitingForTarget = true;
-                    // heal_all/restore_mp_all/full_restore_all were missing
-                    // from every targeting list in this file (here, in
-                    // selectTarget, and in executeBattleItem's effect
-                    // switch), so picking Mega-Potion, Mega-Ether, or
-                    // Megalixir in battle told you to "select an enemy",
-                    // consumed the item the moment you tapped one, and did
-                    // absolutely nothing - no heal, no restore, no log
-                    // beyond "uses X". They're genuinely party-wide, so
-                    // (like all_heal spells) they skip target selection
-                    // entirely instead of asking for a single ally.
-                    const isPartyWideItem = (item.effect === 'heal_all' || item.effect === 'restore_mp_all' || item.effect === 'full_restore_all');
-                    if (isPartyWideItem) {
-                        this.executeBattleItem(hero, item, null);
-                        this.waitingForTarget = false;
-                        this.renderMainCommands();
-                        return;
-                    }
-                    const isAllyTarget = (item.effect === 'heal' || item.effect === 'restore_mp' || item.effect === 'full_restore' || item.effect === 'restore_all' || item.effect === 'revive');
+                    const isAllyTarget = (item.effect === 'heal' || item.effect === 'restore_mp' || item.effect === 'full_restore' || item.effect === 'revive');
                     if (isAllyTarget) {
                         this.log(`${hero.name} prepares to use ${item.name}. Select an ally.`);
                         this.highlightPartyTargets();
@@ -10944,7 +10870,7 @@
             const hero = this.party.heroes[this.selectedHeroIndex];
 
             if (this.selectedCommand === 'item' && this.selectedItem) {
-                const isAllyTarget = (this.selectedItem.effect === 'heal' || this.selectedItem.effect === 'restore_mp' || this.selectedItem.effect === 'full_restore' || this.selectedItem.effect === 'restore_all' || this.selectedItem.effect === 'revive');
+                const isAllyTarget = (this.selectedItem.effect === 'heal' || this.selectedItem.effect === 'restore_mp' || this.selectedItem.effect === 'full_restore' || this.selectedItem.effect === 'revive');
                 if (isAllyTarget) {
                     const target = this.party.heroes[index];
                     const validTarget = this.selectedItem.effect === 'revive' ? (target && target.isDead) : (target && !target.isDead);
@@ -11203,44 +11129,6 @@
                 window.game.audio.play('victory');
                 healSparkle(target); this.showDamage(target, 'FULL', true);
                 this.log(`${user.name} uses ${item.name} on ${target.name} - fully restored!`);
-            } else if (item.effect === 'restore_all') {
-                // Despite the name, this is single-target (see its own
-                // description: "Fully restores HP/MP of one ally") - it was
-                // never handled at all before, so Elixir did nothing when
-                // used in battle beyond consuming itself.
-                target.currentHp = target.baseStats.maxHp;
-                target.currentMp = target.baseStats.maxMp;
-                window.game.audio.play('victory');
-                healSparkle(target); this.showDamage(target, 'FULL', true);
-                this.log(`${user.name} uses ${item.name} on ${target.name} - HP and MP fully restored!`);
-            } else if (item.effect === 'heal_all') {
-                // Party-wide - target is null (see showBattleItemMenu).
-                window.game.audio.play('heal');
-                this.party.heroes.filter(h => !h.isDead).forEach(h => {
-                    const oldHp = h.currentHp;
-                    h.heal(item.power);
-                    const healed = h.currentHp - oldHp;
-                    healSparkle(h); this.showDamage(h, healed, true);
-                });
-                this.log(`${user.name} uses ${item.name} - the whole party recovers HP!`);
-            } else if (item.effect === 'restore_mp_all') {
-                window.game.audio.play('magic');
-                this.party.heroes.filter(h => !h.isDead).forEach(h => {
-                    const oldMp = h.currentMp;
-                    h.currentMp = Math.min(h.baseStats.maxMp, h.currentMp + item.power);
-                    const restored = h.currentMp - oldMp;
-                    this.showDamage(h, restored, true);
-                });
-                this.log(`${user.name} uses ${item.name} - the whole party recovers MP!`);
-            } else if (item.effect === 'full_restore_all') {
-                window.game.audio.play('victory');
-                this.party.heroes.forEach(h => {
-                    h.currentHp = h.baseStats.maxHp;
-                    h.currentMp = h.baseStats.maxMp;
-                    h.isDead = false;
-                    healSparkle(h); this.showDamage(h, 'FULL', true);
-                });
-                this.log(`${user.name} uses ${item.name} - the entire party is fully restored!`);
             } else if (item.effect === 'revive') {
                 const reviveHp = Math.max(1, Math.floor(target.baseStats.maxHp * (item.power || 0.5)));
                 target.isDead = false;
@@ -11374,50 +11262,31 @@
             this.lastSpellElement = spell.element;
             this.clearPartyHighlights();
             if (spell.type === 'buff') {
-                // This used to be a hardcoded list of specific spell names
-                // ("Bolster", "Protect", etc.) with two branches (a defense
-                // branch and a crit branch) - any buff spell whose name or
-                // stat wasn't on that list (Shell/magic_defense, Might,
-                // Berserk) matched NEITHER branch and silently did nothing:
-                // no statusEffect got pushed, so there was no log line and
-                // nothing for the duration-dots status display to show.
-                // Worse, "Bolster" (meant to raise ATTACK) only matched via
-                // its name in the defense branch, so it was actually
-                // buffing defense instead. Rewritten to dispatch off
-                // spell.stat directly so every current and future buff
-                // spell is wired correctly.
-                //
-                // Shell's stat is 'magic_defense', but this game's combat
-                // model has only one damage-mitigation stat - Hero.
-                // takeDamage() runs ALL incoming damage (physical or
-                // magic) through the same `defense` value. There's no
-                // separate magic-defense stat to raise, so Shell is
-                // treated as a defense buff (same mechanism as Protect)
-                // under its own name/duration.
-                const statKey = spell.stat === 'magic_defense' ? 'defense' : spell.stat;
-                const isCrit = spell.stat === 'crit';
-                const REAL_STAT_KEYS = ['attack', 'defense', 'magic', 'speed'];
-                const existingBuff = target.statusEffects.find(e => e.name === spell.name);
-                if (existingBuff) {
-                    existingBuff.duration = spell.duration || 3;
-                    this.log(`${target.name}'s ${spell.name} was refreshed! (${existingBuff.duration} turns)`);
-                } else if (isCrit) {
-                    target.statusEffects.push({ name: spell.name, duration: spell.duration || 3, critBonus: spell.power || 0.15 });
-                    this.log(`${caster.name} casts ${spell.name} on ${target.name}!`);
-                    this.log(`${target.name}'s critical hit chance increased!`);
-                } else if (REAL_STAT_KEYS.includes(statKey)) {
-                    const tierBonus = spell.tier === 3 ? 12 : (spell.tier === 2 ? 8 : 5);
-                    target.statusEffects.push({ name: spell.name, duration: spell.duration || 3, statModifiers: { [statKey]: tierBonus } });
-                    const statLabel = { attack: 'attack', defense: 'defense', magic: 'magic power', speed: 'speed' }[statKey];
-                    this.log(`${caster.name} casts ${spell.name} on ${target.name}!`);
-                    this.log(`${target.name}'s ${statLabel} increased!`);
-                } else {
-                    this.log(`${caster.name} casts ${spell.name} on ${target.name}!`);
+                if (spell.stat === 'defense' || spell.name === 'Bolster' || spell.name === 'Protect' || spell.name === 'Bolster 2' || spell.name === 'Fortify') {
+                    const existingBuff = target.statusEffects.find(e => e.name === spell.name);
+                    if (existingBuff) {
+                        existingBuff.duration = spell.duration || 3;
+                        this.log(`${target.name}'s ${spell.name} was refreshed! (${existingBuff.duration} turns)`);
+                    } else {
+                        target.statusEffects.push({ name: spell.name, duration: spell.duration || 3, statModifiers: { defense: spell.tier === 2 ? 8 : 5 } });
+                        this.log(`${caster.name} casts ${spell.name} on ${target.name}!`);
+                        this.log(`${target.name}'s defense increased!`);
+                    }
+                } else if (spell.stat === 'crit' || spell.name === 'Critical' || spell.name === 'Critical 2' || spell.name === 'Haste') {
+                    const existingBuff = target.statusEffects.find(e => e.name === spell.name);
+                    if (existingBuff) {
+                        existingBuff.duration = spell.duration || 3;
+                        this.log(`${target.name}'s ${spell.name} was refreshed! (${existingBuff.duration} turns)`);
+                    } else {
+                        target.statusEffects.push({ name: spell.name, duration: spell.duration || 3, critBonus: spell.tier === 2 ? 0.25 : 0.15 });
+                        this.log(`${caster.name} casts ${spell.name} on ${target.name}!`);
+                        this.log(`${target.name}'s critical hit chance increased!`);
+                    }
                 }
                 window.game.audio.play('magic');
                 this.updatePartyDisplay();
                 setTimeout(() => {
-                    const effectType = (statKey === 'defense') ? 'shield' : 'axe';
+                    const effectType = (spell.stat === 'defense' || spell.name.includes('Bolster') || spell.name.includes('Protect') || spell.name.includes('Fortify')) ? 'shield' : 'axe';
                     this.createBuffEffect(target, effectType);
                 }, 50);
                 this.renderMainCommands();
@@ -11425,24 +11294,13 @@
                 return;
             }
             if (spell.type === 'all_buff') {
-                // Same stat-driven fix as the single-target buff branch
-                // above - this previously always wrote to
-                // statModifiers.crit for crit-type party buffs (War Cry),
-                // but 'crit' isn't a real stat field (crit chance is read
-                // from critBonus instead, same as single-target crit
-                // buffs), so War Cry logged its cast message but had zero
-                // actual effect on anyone's crit chance.
-                const statKey = spell.stat === 'magic_defense' ? 'defense' : spell.stat;
-                const isCrit = spell.stat === 'crit';
                 this.party.heroes.forEach(hero => {
                     if (!hero.isDead) {
                         const existingBuff = hero.statusEffects.find(e => e.name === spell.name);
                         if (existingBuff) {
                             existingBuff.duration = spell.duration;
-                        } else if (isCrit) {
-                            hero.statusEffects.push({ name: spell.name, duration: spell.duration, critBonus: spell.power || 0.15 });
                         } else {
-                            hero.statusEffects.push({ name: spell.name, duration: spell.duration, statModifiers: { [statKey]: 8 } });
+                            hero.statusEffects.push({ name: spell.name, duration: spell.duration, statModifiers: { [spell.stat]: 8 } });
                         }
                     }
                 });
@@ -11452,7 +11310,7 @@
                 setTimeout(() => {
                     this.party.heroes.forEach((hero, index) => {
                         if (!hero.isDead) {
-                            const effectType = (statKey === 'defense') ? 'shield' : 'axe';
+                            const effectType = spell.stat === 'defense' ? 'shield' : 'axe';
                             this.createBuffEffect(hero, effectType);
                         }
                     });
@@ -11703,18 +11561,11 @@
             if (spell.type === 'all_heal') {
                 const livingHeroes = this.party.heroes.filter(h => !h.isDead);
                 if (livingHeroes.length === 0) return;
-                let healPerTarget = spell.power + caster.getEffectiveStats().magic;
+                let totalHeal = spell.power + caster.getEffectiveStats().magic;
                 if (caster.equipment.weapon && caster.equipment.weapon.healingOutputBonus) {
-                    healPerTarget = Math.floor(healPerTarget * (1 + caster.equipment.weapon.healingOutputBonus));
+                    totalHeal = Math.floor(totalHeal * (1 + caster.equipment.weapon.healingOutputBonus));
                 }
-                // Was dividing this total across the whole living party
-                // (e.g. "Curaja All... heals for 150 HP" only actually gave
-                // each hero 150/partySize), so it got weaker the more of
-                // your party was still standing to receive it - backwards
-                // for a party heal, and nothing like its stated power. Now
-                // every living ally gets the full amount, same as heal_all
-                // items and every "restores X HP to all allies" description
-                // in the game already implies.
+                const healPerTarget = Math.floor(totalHeal / livingHeroes.length);
                 window.game.audio.play('heal');
                 const partyArea = document.getElementById('party-battle-area');
                 if (partyArea) {
@@ -12466,12 +12317,6 @@
                     if (window.game.triggerStoryBeat) {
                         window.game.triggerStoryBeat(window.game.dungeonMap.locationName);
                     }
-                    // Moved here from attemptDungeonBoss() - it was firing the
-                    // instant the fight STARTED (right after startEncounter),
-                    // so the quest showed "Complete" before a single round had
-                    // happened. Now it only fires once the boss is actually
-                    // dead.
-                    window.game.updateQuestProgress('boss_defeat', 1);
                 }
                 if (priorScreen !== 'world') {
                     window.game.state.switchScreen(priorScreen);
@@ -12997,46 +12842,6 @@
     //                    LOOT TABLES - QUADRANT BASED
     // =====================================================================
 
-    /** Rolls a single item from a quadrant's loot table, weighted by ITEM
-     *  TYPE rather than the raw uncommon/rare/legendary tiers: 70% potions/
-     *  materials/gem-fragment-style consumables, 20% ordinary weapons/
-     *  armor/shields, 10% rare-or-better gear (with only a small slice of
-     *  that last bucket landing on a true legendary). This is what actually
-     *  keeps chests from being a second gear shop - the old code rolled
-     *  tiers that mixed potions and equipment together, so "uncommon" loot
-     *  was just as likely to be a sword as a potion.
-     *  vaultMode shifts the odds toward gear (vaults are meant to feel like
-     *  a real reward room), dropping the potion/material bucket. */
-    function rollTieredLootItem(lootTable, vaultMode = false) {
-        if (!lootTable) return null;
-        const isConsumableOrMaterial = (i) => i.type === 'consumable' || i.type === 'material';
-        const common = [];
-        const gear = [];
-        const rare = [];
-        const legendary = lootTable.legendary || [];
-        (lootTable.uncommon || []).forEach(i => (isConsumableOrMaterial(i) ? common : gear).push(i));
-        (lootTable.rare || []).forEach(i => (isConsumableOrMaterial(i) ? common : rare).push(i));
-        let roll = Math.random();
-        let pool;
-        if (vaultMode) {
-            // 45% ordinary gear / 40% rare gear / 15% legendary
-            if (roll < 0.45 && gear.length) pool = gear;
-            else if (roll < 0.85 && rare.length) pool = rare;
-            else pool = legendary.length ? legendary : (rare.length ? rare : gear);
-        } else {
-            if (roll < 0.70 && common.length) pool = common;
-            else if (roll < 0.90 && gear.length) pool = gear;
-            else if (rare.length || legendary.length) {
-                // Within the last 10%, only 1 in 7 rolls (~1.4% overall) is a
-                // true legendary - the rest is ordinary rare-tier gear.
-                pool = (legendary.length && Math.random() < (1 / 7)) ? legendary : (rare.length ? rare : legendary);
-            }
-        }
-        if (!pool || !pool.length) pool = common.length ? common : (gear.length ? gear : (rare.length ? rare : legendary));
-        if (!pool || !pool.length) return null;
-        return pool[Math.floor(Math.random() * pool.length)];
-    }
-
     const LOOT_TABLES = {
         brighthollow: {
             uncommon: [
@@ -13546,30 +13351,25 @@
         }
 
         getShieldShopItems(town) {
-            // Gear prices raised ~50-60% across the board (see the matching
-            // note in getWeaponShopItems) - part of the two-pronged economy
-            // fix: trimmed the gold coming in from chests/vaults AND raised
-            // what gear actually costs, so there's a real reason to save up
-            // instead of maxing out a shop in one visit.
             const town1Shields = [
-                { name: 'Wooden Shield', type: 'shield', price: 120, defense: 3, desc: 'Simple wooden shield' },
-                { name: 'Buckler', type: 'shield', price: 180, defense: 5, desc: 'Small metal shield' },
-                { name: 'Healer\'s Targe', type: 'shield', price: 220, defense: 2, magic: 2, healerShield: true, desc: 'Increases healing received by 20%', healingBonus: 0.2 }
+                { name: 'Wooden Shield', type: 'shield', price: 80, defense: 3, desc: 'Simple wooden shield' },
+                { name: 'Buckler', type: 'shield', price: 120, defense: 5, desc: 'Small metal shield' },
+                { name: 'Healer\'s Targe', type: 'shield', price: 150, defense: 2, magic: 2, healerShield: true, desc: 'Increases healing received by 20%', healingBonus: 0.2 }
             ];
             const town2Shields = [
-                { name: 'Iron Shield', type: 'shield', price: 550, defense: 10, desc: 'Sturdy iron shield' },
-                { name: 'Kite Shield', type: 'shield', price: 780, defense: 14, desc: 'Large defensive shield' },
-                { name: 'Spiked Shield', type: 'shield', price: 700, defense: 12, attack: 3, desc: 'Deals damage when blocking' },
-                { name: 'Crystal Ward', type: 'shield', price: 620, defense: 4, magic: 6, healerShield: true, desc: 'Amplifies healing magic by 30%', healingBonus: 0.3 },
-                { name: 'Moon Targe', type: 'shield', price: 750, defense: 5, magic: 4, healerShield: true, desc: 'Grants 25% chance to recover MP when hit', mpRecoveryChance: 0.25 }
+                { name: 'Iron Shield', type: 'shield', price: 350, defense: 10, desc: 'Sturdy iron shield' },
+                { name: 'Kite Shield', type: 'shield', price: 500, defense: 14, desc: 'Large defensive shield' },
+                { name: 'Spiked Shield', type: 'shield', price: 450, defense: 12, attack: 3, desc: 'Deals damage when blocking' },
+                { name: 'Crystal Ward', type: 'shield', price: 400, defense: 4, magic: 6, healerShield: true, desc: 'Amplifies healing magic by 30%', healingBonus: 0.3 },
+                { name: 'Moon Targe', type: 'shield', price: 480, defense: 5, magic: 4, healerShield: true, desc: 'Grants 25% chance to recover MP when hit', mpRecoveryChance: 0.25 }
             ];
             const town3Shields = [
-                { name: 'Mythril Shield', type: 'shield', price: 1900, defense: 25, magic: 5, desc: 'Lightweight but strong' },
-                { name: 'Aegis', type: 'shield', price: 2900, defense: 30, magic: 8, desc: 'Legendary protective shield' },
-                { name: 'Dragon Shield', type: 'shield', price: 3200, defense: 35, desc: 'Forged from dragon scales' },
-                { name: 'Angels Ward', type: 'shield', price: 2500, defense: 10, magic: 12, healerShield: true, desc: 'Increases healing received by 50%', healingBonus: 0.5 },
-                { name: 'Sanctuary Shield', type: 'shield', price: 3000, defense: 12, magic: 10, healerShield: true, desc: 'Regenerate 10 HP per turn', regenHP: 10 },
-                { name: 'Prism Guard', type: 'shield', price: 3500, defense: 8, magic: 15, healerShield: true, desc: 'Converts 20% of damage to MP', mpConversion: 0.2 }
+                { name: 'Mythril Shield', type: 'shield', price: 1200, defense: 25, magic: 5, desc: 'Lightweight but strong' },
+                { name: 'Aegis', type: 'shield', price: 1800, defense: 30, magic: 8, desc: 'Legendary protective shield' },
+                { name: 'Dragon Shield', type: 'shield', price: 2000, defense: 35, desc: 'Forged from dragon scales' },
+                { name: 'Angels Ward', type: 'shield', price: 1600, defense: 10, magic: 12, healerShield: true, desc: 'Increases healing received by 50%', healingBonus: 0.5 },
+                { name: 'Sanctuary Shield', type: 'shield', price: 1900, defense: 12, magic: 10, healerShield: true, desc: 'Regenerate 10 HP per turn', regenHP: 10 },
+                { name: 'Prism Guard', type: 'shield', price: 2200, defense: 8, magic: 15, healerShield: true, desc: 'Converts 20% of damage to MP', mpConversion: 0.2 }
             ];
             switch(town) {
                 case 'brighthollow': return town1Shields;
@@ -13581,36 +13381,36 @@
 
         getJewelryShopItems(town) {
             const town1Jewelry = [
-                { name: 'Copper Ring', type: 'jewelry', price: 180, defense: 2, speed: 1, desc: 'Basic ring with minor protection' },
-                { name: 'Iron Necklace', type: 'jewelry', price: 220, defense: 3, desc: 'Simple iron chain necklace' },
-                { name: 'Glass Pendant', type: 'jewelry', price: 150, magic: 3, defense: 1, mageOnly: true, desc: 'Simple pendant for mages' },
-                { name: 'Warriors Torc', type: 'jewelry', price: 190, attack: 2, defense: 2, warriorOnly: true, desc: 'Neck ring that strengthens the wearer' },
-                { name: 'Holy Symbol', type: 'jewelry', price: 210, magic: 2, defense: 2, paladinOnly: true, desc: 'Simple symbol of faith' }
+                { name: 'Copper Ring', type: 'jewelry', price: 120, defense: 2, speed: 1, desc: 'Basic ring with minor protection' },
+                { name: 'Iron Necklace', type: 'jewelry', price: 150, defense: 3, desc: 'Simple iron chain necklace' },
+                { name: 'Glass Pendant', type: 'jewelry', price: 100, magic: 3, defense: 1, mageOnly: true, desc: 'Simple pendant for mages' },
+                { name: 'Warriors Torc', type: 'jewelry', price: 130, attack: 2, defense: 2, warriorOnly: true, desc: 'Neck ring that strengthens the wearer' },
+                { name: 'Holy Symbol', type: 'jewelry', price: 140, magic: 2, defense: 2, paladinOnly: true, desc: 'Simple symbol of faith' }
             ];
             const town2Jewelry = [
-                { name: 'Silver Pendant', type: 'jewelry', price: 550, magic: 4, defense: 4, desc: 'Silver pendant with balanced properties' },
-                { name: 'Gold Ring', type: 'jewelry', price: 620, defense: 5, speed: 2, desc: 'Prestigious gold ring' },
-                { name: 'Amber Brooch', type: 'jewelry', price: 600, magic: 3, defense: 3, desc: 'Warm amber with healing properties' },
-                { name: 'Mage Ring', type: 'jewelry', price: 780, magic: 10, speed: 2, mageOnly: true, desc: 'Increases spell power significantly' },
-                { name: 'Crystal Earring', type: 'jewelry', price: 950, magic: 12, defense: 4, mageOnly: true, desc: 'Crystal focus for advanced magic' },
-                { name: 'Berserker Pendant', type: 'jewelry', price: 850, attack: 8, defense: 3, warriorOnly: true, desc: 'Increases ferocity in battle' },
-                { name: 'Iron Will Ring', type: 'jewelry', price: 800, defense: 8, attack: 3, warriorOnly: true, desc: 'Grants unwavering determination' },
-                { name: 'Knights Cross', type: 'jewelry', price: 820, defense: 6, magic: 4, paladinOnly: true, desc: 'Blessed cross of the order' },
-                { name: 'Sapphire Amulet', type: 'jewelry', price: 900, magic: 7, defense: 5, paladinOnly: true, desc: 'Sapphire that glows with holy light' }
+                { name: 'Silver Pendant', type: 'jewelry', price: 350, magic: 4, defense: 4, desc: 'Silver pendant with balanced properties' },
+                { name: 'Gold Ring', type: 'jewelry', price: 400, defense: 5, speed: 2, desc: 'Prestigious gold ring' },
+                { name: 'Amber Brooch', type: 'jewelry', price: 380, magic: 3, defense: 3, desc: 'Warm amber with healing properties' },
+                { name: 'Mage Ring', type: 'jewelry', price: 500, magic: 10, speed: 2, mageOnly: true, desc: 'Increases spell power significantly' },
+                { name: 'Crystal Earring', type: 'jewelry', price: 600, magic: 12, defense: 4, mageOnly: true, desc: 'Crystal focus for advanced magic' },
+                { name: 'Berserker Pendant', type: 'jewelry', price: 550, attack: 8, defense: 3, warriorOnly: true, desc: 'Increases ferocity in battle' },
+                { name: 'Iron Will Ring', type: 'jewelry', price: 520, defense: 8, attack: 3, warriorOnly: true, desc: 'Grants unwavering determination' },
+                { name: 'Knights Cross', type: 'jewelry', price: 530, defense: 6, magic: 4, paladinOnly: true, desc: 'Blessed cross of the order' },
+                { name: 'Sapphire Amulet', type: 'jewelry', price: 580, magic: 7, defense: 5, paladinOnly: true, desc: 'Sapphire that glows with holy light' }
             ];
             const town3Jewelry = [
-                { name: 'Platinum Ring', type: 'jewelry', price: 1900, defense: 10, speed: 4, desc: 'Exquisite platinum craftsmanship' },
-                { name: 'Dragonbone Necklace', type: 'jewelry', price: 2400, attack: 5, defense: 8, magic: 5, desc: 'Fashioned from dragon remains' },
-                { name: 'Mystic Medallion', type: 'jewelry', price: 2200, magic: 8, defense: 6, speed: 2, desc: 'Hum with arcane energy' },
-                { name: 'Archmage Pendant', type: 'jewelry', price: 3200, magic: 22, defense: 8, speed: 3, mageOnly: true, desc: 'Worn by archmages of legend' },
-                { name: 'Sage Ring', type: 'jewelry', price: 2900, magic: 25, mageOnly: true, desc: 'Enhances magical power to its limits' },
-                { name: 'Elemental Gem', type: 'jewelry', price: 3500, magic: 28, mageOnly: true, desc: 'Focuses elemental energy' },
-                { name: 'Titans Band', type: 'jewelry', price: 3400, attack: 18, defense: 10, warriorOnly: true, desc: 'Grants the strength of giants' },
-                { name: 'Warlords Crown', type: 'jewelry', price: 3700, attack: 15, defense: 12, speed: 2, warriorOnly: true, desc: 'Commands respect on the battlefield' },
-                { name: 'Unyielding Torc', type: 'jewelry', price: 3000, defense: 20, attack: 8, warriorOnly: true, desc: 'Makes the wearer nearly unstoppable' },
-                { name: 'Divine Relic', type: 'jewelry', price: 3500, magic: 14, defense: 14, paladinOnly: true, desc: 'Ancient artifact of the church' },
-                { name: 'Paladins Vow', type: 'jewelry', price: 3200, defense: 16, magic: 10, paladinOnly: true, desc: 'Strengthens the wearer\'s conviction' },
-                { name: 'Seraphs Tear', type: 'jewelry', price: 3800, magic: 12, defense: 12, speed: 3, paladinOnly: true, desc: 'Tear-shaped gem with healing properties' }
+                { name: 'Platinum Ring', type: 'jewelry', price: 1200, defense: 10, speed: 4, desc: 'Exquisite platinum craftsmanship' },
+                { name: 'Dragonbone Necklace', type: 'jewelry', price: 1500, attack: 5, defense: 8, magic: 5, desc: 'Fashioned from dragon remains' },
+                { name: 'Mystic Medallion', type: 'jewelry', price: 1400, magic: 8, defense: 6, speed: 2, desc: 'Hum with arcane energy' },
+                { name: 'Archmage Pendant', type: 'jewelry', price: 2000, magic: 22, defense: 8, speed: 3, mageOnly: true, desc: 'Worn by archmages of legend' },
+                { name: 'Sage Ring', type: 'jewelry', price: 1800, magic: 25, mageOnly: true, desc: 'Enhances magical power to its limits' },
+                { name: 'Elemental Gem', type: 'jewelry', price: 2200, magic: 28, mageOnly: true, desc: 'Focuses elemental energy' },
+                { name: 'Titans Band', type: 'jewelry', price: 2100, attack: 18, defense: 10, warriorOnly: true, desc: 'Grants the strength of giants' },
+                { name: 'Warlords Crown', type: 'jewelry', price: 2300, attack: 15, defense: 12, speed: 2, warriorOnly: true, desc: 'Commands respect on the battlefield' },
+                { name: 'Unyielding Torc', type: 'jewelry', price: 1900, defense: 20, attack: 8, warriorOnly: true, desc: 'Makes the wearer nearly unstoppable' },
+                { name: 'Divine Relic', type: 'jewelry', price: 2200, magic: 14, defense: 14, paladinOnly: true, desc: 'Ancient artifact of the church' },
+                { name: 'Paladins Vow', type: 'jewelry', price: 2000, defense: 16, magic: 10, paladinOnly: true, desc: 'Strengthens the wearer\'s conviction' },
+                { name: 'Seraphs Tear', type: 'jewelry', price: 2400, magic: 12, defense: 12, speed: 3, paladinOnly: true, desc: 'Tear-shaped gem with healing properties' }
             ];
             switch(town) {
                 case 'brighthollow': return town1Jewelry;
@@ -13622,23 +13422,23 @@
 
         getWeaponShopItems(town) {
             const town1Weapons = [
-                { name: 'Iron Dagger', type: 'weapon', price: 120, attack: 4, desc: 'A basic but reliable dagger' },
-                { name: 'Iron Sword', type: 'weapon', price: 220, attack: 7, desc: 'A sturdy iron blade' },
-                { name: 'Iron Axe', type: 'weapon', price: 260, attack: 9, desc: 'Heavy iron axe', warriorOnly: true },
-                { name: 'Shortstaff', type: 'weapon', price: 180, attack: 2, magic: 6, desc: 'A basic wooden staff for mages', mageOnly: true }
+                { name: 'Iron Dagger', type: 'weapon', price: 80, attack: 4, desc: 'A basic but reliable dagger' },
+                { name: 'Iron Sword', type: 'weapon', price: 150, attack: 7, desc: 'A sturdy iron blade' },
+                { name: 'Iron Axe', type: 'weapon', price: 180, attack: 9, desc: 'Heavy iron axe', warriorOnly: true },
+                { name: 'Shortstaff', type: 'weapon', price: 120, attack: 2, magic: 6, desc: 'A basic wooden staff for mages', mageOnly: true }
             ];
             const town2Weapons = [
-                { name: 'Steel Sword', type: 'weapon', price: 700, attack: 14, desc: 'Forged from quality steel' },
-                { name: 'Battle Axe', type: 'weapon', price: 950, attack: 20, desc: 'A heavy two-handed axe', warriorOnly: true },
-                { name: 'Knight Sword', type: 'weapon', price: 850, attack: 18, desc: 'A fine blade favored by paladins', paladinOnly: true },
-                { name: 'Steel Blade', type: 'weapon', price: 780, attack: 16, desc: 'Sharp steel blade' },
-                { name: 'Grand Mage Staff', type: 'weapon', price: 1250, attack: 8, magic: 18, desc: 'Powerful staff for accomplished mages', mageOnly: true }
+                { name: 'Steel Sword', type: 'weapon', price: 450, attack: 14, desc: 'Forged from quality steel' },
+                { name: 'Battle Axe', type: 'weapon', price: 600, attack: 20, desc: 'A heavy two-handed axe', warriorOnly: true },
+                { name: 'Knight Sword', type: 'weapon', price: 550, attack: 18, desc: 'A fine blade favored by paladins', paladinOnly: true },
+                { name: 'Steel Blade', type: 'weapon', price: 500, attack: 16, desc: 'Sharp steel blade' },
+                { name: 'Grand Mage Staff', type: 'weapon', price: 800, attack: 8, magic: 18, desc: 'Powerful staff for accomplished mages', mageOnly: true }
             ];
             const town3Weapons = [
-                { name: 'Great Axe', type: 'weapon', price: 2400, attack: 32, desc: 'Massive axe of destruction', warriorOnly: true },
-                { name: 'Broadsword', type: 'weapon', price: 2200, attack: 30, desc: 'Legendary paladin blade', paladinOnly: true },
-                { name: 'Wizard Staff', type: 'weapon', price: 2800, attack: 12, magic: 28, desc: 'Ultimate staff for master mages', mageOnly: true },
-                { name: 'Mythril Sword', type: 'weapon', price: 2100, attack: 28, desc: 'Lightweight mythril blade' }
+                { name: 'Great Axe', type: 'weapon', price: 1500, attack: 32, desc: 'Massive axe of destruction', warriorOnly: true },
+                { name: 'Broadsword', type: 'weapon', price: 1400, attack: 30, desc: 'Legendary paladin blade', paladinOnly: true },
+                { name: 'Wizard Staff', type: 'weapon', price: 1800, attack: 12, magic: 28, desc: 'Ultimate staff for master mages', mageOnly: true },
+                { name: 'Mythril Sword', type: 'weapon', price: 1300, attack: 28, desc: 'Lightweight mythril blade' }
             ];
             switch(town) {
                 case 'brighthollow': return town1Weapons;
@@ -13650,20 +13450,20 @@
 
         getArmorShopItems(town) {
             const town1Armor = [
-                { name: 'Leather Armor', type: 'armor', price: 150, defense: 4, desc: 'Basic leather protection' },
-                { name: 'Chain Mail', type: 'armor', price: 450, defense: 10, desc: 'Interlocking metal rings' },
-                { name: 'Apprentice Robe', type: 'armor', price: 220, defense: 2, magic: 5, desc: 'Simple robes for magic users', mageOnly: true }
+                { name: 'Leather Armor', type: 'armor', price: 100, defense: 4, desc: 'Basic leather protection' },
+                { name: 'Chain Mail', type: 'armor', price: 300, defense: 10, desc: 'Interlocking metal rings' },
+                { name: 'Apprentice Robe', type: 'armor', price: 150, defense: 2, magic: 5, desc: 'Simple robes for magic users', mageOnly: true }
             ];
             const town2Armor = [
-                { name: 'Bronze Armor', type: 'armor', price: 780, defense: 16, desc: 'Sturdy bronze plate' },
-                { name: 'Steel Armor', type: 'armor', price: 1100, defense: 20, desc: 'Quality steel protection' },
-                { name: 'Magician Robe', type: 'armor', price: 700, defense: 6, magic: 12, desc: 'Enchanted robes for mages', mageOnly: true },
-                { name: 'Plate Mail', type: 'armor', price: 1300, defense: 24, desc: 'Full plate armor', warriorOnly: true }
+                { name: 'Bronze Armor', type: 'armor', price: 500, defense: 16, desc: 'Sturdy bronze plate' },
+                { name: 'Steel Armor', type: 'armor', price: 700, defense: 20, desc: 'Quality steel protection' },
+                { name: 'Magician Robe', type: 'armor', price: 450, defense: 6, magic: 12, desc: 'Enchanted robes for mages', mageOnly: true },
+                { name: 'Plate Mail', type: 'armor', price: 850, defense: 24, desc: 'Full plate armor', warriorOnly: true }
             ];
             const town3Armor = [
-                { name: 'Grand Wizard Robe', type: 'armor', price: 1900, defense: 12, magic: 22, desc: 'Ultimate mage attire', mageOnly: true },
-                { name: 'Mythril Armor', type: 'armor', price: 2400, defense: 30, desc: 'Legendary mythril plate' },
-                { name: 'Dragon Scale Mail', type: 'armor', price: 2900, defense: 35, desc: 'Armor made from dragon scales', warriorOnly: true }
+                { name: 'Grand Wizard Robe', type: 'armor', price: 1200, defense: 12, magic: 22, desc: 'Ultimate mage attire', mageOnly: true },
+                { name: 'Mythril Armor', type: 'armor', price: 1500, defense: 30, desc: 'Legendary mythril plate' },
+                { name: 'Dragon Scale Mail', type: 'armor', price: 1800, defense: 35, desc: 'Armor made from dragon scales', warriorOnly: true }
             ];
             switch(town) {
                 case 'brighthollow': return town1Armor;
@@ -13678,14 +13478,7 @@
                 { name: 'Potion', type: 'consumable', price: 50, effect: 'heal', power: 60, desc: 'Restores 60 HP to one ally' },
                 { name: 'Ether', type: 'consumable', price: 80, effect: 'restore_mp', power: 30, desc: 'Restores 30 MP to one ally' },
                 { name: 'Antidote', type: 'consumable', price: 30, effect: 'cure_poison', desc: 'Cures poison' },
-                { name: 'Cabin', type: 'consumable', price: 200, effect: 'full_restore', desc: 'Fully restores all party HP/MP (Use from Menu)' },
-                // Previously the only revive item in the whole game was the
-                // crafted Second Wind Tonic, which needs Demon Horn/Soul
-                // Essence - materials that don't drop until Duskmere. That
-                // left a dead party member completely unrecoverable for the
-                // entire first region (including the Goblin King dungeon).
-                // This gives every player a basic revive option from town 1.
-                { name: 'Phoenix Down', type: 'consumable', price: 180, effect: 'revive', power: 0.4, desc: 'Revives a fallen ally with 40% HP' }
+                { name: 'Cabin', type: 'consumable', price: 200, effect: 'full_restore', desc: 'Fully restores all party HP/MP (Use from Menu)' }
             ];
             const town2Items = [
                 { name: 'Hi-Potion', type: 'consumable', price: 200, effect: 'heal', power: 180, desc: 'Restores 180 HP to one ally' },
@@ -13695,8 +13488,7 @@
                 { name: 'Frost Trap', type: 'consumable', price: 400, effect: 'damage_all', power: 80, element: 'ice', desc: 'Deals 80 ice damage to all enemies' },
                 { name: 'Elixir', type: 'consumable', price: 350, effect: 'restore_all', power: 0, desc: 'Fully restores HP/MP of one ally' },
                 { name: 'Incense of Calm', type: 'consumable', effect: 'encounter_rate', power: 0.5, price: 200, desc: 'Reduces encounter rate by 50% for 100 steps' },
-                { name: 'Beast Lure', type: 'consumable', effect: 'encounter_rate', power: 2.0, price: 150, desc: 'Doubles encounter rate for 50 steps' },
-                { name: 'Phoenix Feather', type: 'consumable', price: 350, effect: 'revive', power: 0.7, desc: 'Revives a fallen ally with 70% HP' }
+                { name: 'Beast Lure', type: 'consumable', effect: 'encounter_rate', power: 2.0, price: 150, desc: 'Doubles encounter rate for 50 steps' }
             ];
             const town3Items = [
                 { name: 'Mega-Potion', type: 'consumable', price: 600, effect: 'heal_all', power: 200, desc: 'Restores 200 HP to all allies' },
@@ -13704,8 +13496,7 @@
                 { name: 'Rage Potion', type: 'consumable', price: 800, effect: 'buff', stat: 'crit', power: 0.3, duration: 5, desc: 'Increases critical hit chance by 30% for 5 turns' },
                 { name: 'Fortitude Draught', type: 'consumable', price: 800, effect: 'buff', stat: 'defense', power: 2.0, duration: 5, desc: 'Doubles defense for 5 turns' },
                 { name: 'Lucky Bomb', type: 'consumable', price: 1000, effect: 'lucky', power: 0, desc: 'Increases gold and rare item chance by 50% for next battle' },
-                { name: 'Megalixir', type: 'consumable', price: 1500, effect: 'full_restore_all', desc: 'Fully restores all party members' },
-                { name: 'Full Life', type: 'consumable', price: 700, effect: 'revive', power: 1.0, desc: 'Revives a fallen ally with 100% HP' }
+                { name: 'Megalixir', type: 'consumable', price: 1500, effect: 'full_restore_all', desc: 'Fully restores all party members' }
             ];
             switch(town) {
                 case 'brighthollow': return town1Items;
@@ -15542,14 +15333,14 @@
                 else if (townText.includes('Duskmere')) currentTown = 'duskmere';
                 else if (townText.includes('Sylvaris')) currentTown = 'sylvaris';
             }
-            // Kept in sync with the identical filter in showAvailableQuests()
-            // - see the comment there for why this dropped the cross-region
-            // union and added the completedQuestIds exclusion.
-            let availableQuests = QUEST_DATA.filter(quest =>
-                quest.town === currentTown &&
-                !this.quests.some(q => q.id === quest.id) &&
-                !this.completedQuestIds.has(quest.id)
-            );
+            let availableQuests = [];
+            if (currentTown === 'brighthollow') {
+                availableQuests = QUEST_DATA.filter(quest => quest.town === 'brighthollow' && !this.quests.some(q => q.id === quest.id));
+            } else if (currentTown === 'duskmere') {
+                availableQuests = QUEST_DATA.filter(quest => (quest.town === 'brighthollow' || quest.town === 'duskmere') && !this.quests.some(q => q.id === quest.id));
+            } else if (currentTown === 'sylvaris') {
+                availableQuests = QUEST_DATA.filter(quest => !this.quests.some(q => q.id === quest.id));
+            }
             if (availableQuests.length === 0) {
                 this.ui.showPopup('No Quests', `There are no available quests in ${currentTown}.`);
                 return;
@@ -16108,13 +15899,13 @@
             const indicator = document.getElementById('location-indicator');
             if (location) {
                 indicator.style.display = 'block';
-                indicator.textContent = `${location.name} - Press ENTER to enter`;
+                indicator.textContent = `${location.name} - Press ✋ to enter`;
                 this.nearLocation = location;
                 this.nearNPC = null;
             } else if (isOnNPC) {
                 const npc = this.world.getNPCAtPlayer();
                 indicator.style.display = 'block';
-                indicator.textContent = `Talk to ${npc.name} - Press ENTER to talk`;
+                indicator.textContent = `Talk to ${npc.name} - Press ✋ to talk`;
                 this.nearLocation = null;
                 this.nearNPC = npc;
             } else {
@@ -16167,7 +15958,7 @@
             return x >= 0 && x < this.townMap.width && y >= 0 && y < this.townMap.height;
         }
 
-        /** Updates the "Press ENTER" indicator when standing on a building/NPC tile in town. */
+        /** Updates the touch "press to interact" indicator when standing on a building/NPC tile in town. */
         checkTownProximity() {
             if (!this.townMap) return;
             const indicator = document.getElementById('town-location-indicator');
@@ -16178,21 +15969,21 @@
             if (building) {
                 indicator.style.display = 'block';
                 indicator.textContent = building.action === 'exit'
-                    ? 'Press ENTER to leave town'
-                    : `${building.label} - Press ENTER to enter`;
+                    ? 'Press ✋ to leave town'
+                    : `${building.label} - Press ✋ to enter`;
                 this.nearBuilding = building;
                 this.nearTownNPC = null;
                 this.nearFishingSpot = null;
             } else if (npcSpot) {
                 const npcData = (TOWNSFOLK_DATA[this.townMap.key] || TOWNSFOLK_DATA.brighthollow)[npcSpot.npcIndex];
                 indicator.style.display = 'block';
-                indicator.textContent = npcData ? `Talk to ${npcData.name} - Press ENTER` : 'Press ENTER to talk';
+                indicator.textContent = npcData ? `Talk to ${npcData.name} - Press ✋` : 'Press ✋ to talk';
                 this.nearBuilding = null;
                 this.nearTownNPC = npcSpot.npcIndex;
                 this.nearFishingSpot = null;
             } else if (fishingSpot) {
                 indicator.style.display = 'block';
-                indicator.textContent = '🎣 Press ENTER to fish';
+                indicator.textContent = '🎣 Press ✋ to fish';
                 this.nearBuilding = null;
                 this.nearTownNPC = null;
                 this.nearFishingSpot = fishingSpot;
@@ -16269,7 +16060,7 @@
             return !this.dungeonMap.isWall(x, y);
         }
 
-        /** Updates the "Press ENTER" indicator for chests/stairs/boss doors/vaults in a dungeon. */
+        /** Updates the touch "press to interact" indicator for chests/stairs/boss doors/vaults in a dungeon. */
         checkDungeonProximity() {
             if (!this.dungeonMap) return;
             const indicator = document.getElementById(`${this.dungeonMap.type}-location-indicator`);
@@ -16278,7 +16069,7 @@
             const chest = this.dungeonMap.getChestAt(x, y);
             if (chest) {
                 indicator.style.display = 'block';
-                indicator.textContent = 'Press ENTER to open chest';
+                indicator.textContent = 'Press ✋ to open chest';
                 this.nearDungeonFeature = { type: 'chest', ref: chest };
             } else if (this.dungeonMap.isOnExitTile()) {
                 const f = this.dungeonMap.floor;
@@ -16288,20 +16079,20 @@
                     || (f.exitType === 'shrine' && this.isArchetypeTrialComplete());
                 if (resolved) {
                     indicator.style.display = 'block';
-                    indicator.textContent = f.exitType === 'shrine' ? 'Press ENTER to leave the shrine' : 'Press ENTER to leave the dungeon';
+                    indicator.textContent = f.exitType === 'shrine' ? 'Press ✋ to leave the shrine' : 'Press ✋ to leave the dungeon';
                     this.nearDungeonFeature = { type: 'leave', ref: null };
                 } else {
-                    const label = f.exitType === 'stairs' ? 'Press ENTER to descend'
-                        : f.exitType === 'boss' ? 'Press ENTER to face what awaits...'
-                        : f.exitType === 'shrine' ? 'Press ENTER to approach the altar'
-                        : 'Press ENTER to open the vault';
+                    const label = f.exitType === 'stairs' ? 'Press ✋ to descend'
+                        : f.exitType === 'boss' ? 'Press ✋ to face what awaits...'
+                        : f.exitType === 'shrine' ? 'Press ✋ to approach the altar'
+                        : 'Press ✋ to open the vault';
                     indicator.style.display = 'block';
                     indicator.textContent = label;
                     this.nearDungeonFeature = { type: f.exitType, ref: f };
                 }
             } else if (x === this.dungeonMap.floor.entrance.x && y === this.dungeonMap.floor.entrance.y) {
                 indicator.style.display = 'block';
-                indicator.textContent = 'Press ENTER to leave';
+                indicator.textContent = 'Press ✋ to leave';
                 this.nearDungeonFeature = { type: 'leave', ref: null };
             } else {
                 indicator.style.display = 'none';
@@ -16332,17 +16123,18 @@
             if (!chest || chest.opened) return;
             chest.opened = true;
             const lootTable = LOOT_TABLES[getCurrentLootQuadrant()] || LOOT_TABLES.brighthollow;
-            // Gold trimmed way down from the old (80-140)*itemCount formula
-            // (which hit 300-700+ per chest on deeper floors) - a chest
-            // should feel like a nice find, not a payday.
-            const goldFound = 25 + Math.floor(Math.random() * 20) + (chest.itemCount - 1) * 15;
+            const goldFound = (80 + Math.floor(Math.random() * 60)) * chest.itemCount;
             this.party.gold += goldFound;
             this.updateGoldDisplays();
             this.audio.play('coin');
             const foundNames = [];
             for (let i = 0; i < chest.itemCount; i++) {
-                const item = rollTieredLootItem(lootTable, false);
-                if (item) {
+                const roll = Math.random();
+                let pool = lootTable.uncommon;
+                if (roll < 0.08 && lootTable.legendary && lootTable.legendary.length) pool = lootTable.legendary;
+                else if (roll < 0.32 && lootTable.rare && lootTable.rare.length) pool = lootTable.rare;
+                if (pool && pool.length) {
+                    const item = pool[Math.floor(Math.random() * pool.length)];
                     this.party.addItem({ ...item });
                     foundNames.push(item.name);
                 }
@@ -16362,19 +16154,18 @@
             }
             f.vaultOpened = true;
             const lootTable = LOOT_TABLES[getCurrentLootQuadrant()] || LOOT_TABLES.brighthollow;
-            // Was 700*floorIndex (2100+ gold on a floor 3 vault) - a vault
-            // should clearly beat a regular chest, just not by 5-10x.
-            const goldFound = 150 + 80 * this.dungeonMap.currentFloorIndex;
+            const goldFound = 700 * this.dungeonMap.currentFloorIndex;
             this.party.gold += goldFound;
             this.updateGoldDisplays();
             this.audio.play('coin');
-            // Capped at 2 rolls regardless of depth - it's meant to be a
-            // single special reward, not a second per-floor chest count.
-            const rolls = Math.min(2, this.dungeonMap.currentFloorIndex + 1);
+            const rolls = this.dungeonMap.currentFloorIndex + 1;
             const foundNames = [];
             for (let i = 0; i < rolls; i++) {
-                const item = rollTieredLootItem(lootTable, true);
-                if (item) {
+                const roll = Math.random();
+                let pool = (lootTable.rare && lootTable.rare.length) ? lootTable.rare : lootTable.uncommon;
+                if (roll < 0.35 && lootTable.legendary && lootTable.legendary.length) pool = lootTable.legendary;
+                if (pool && pool.length) {
+                    const item = pool[Math.floor(Math.random() * pool.length)];
                     this.party.addItem({ ...item });
                     foundNames.push(item.name);
                 }
@@ -16565,10 +16356,7 @@
             }
             this.audio.playMusic('battle', 'castle');
             this.battle.startEncounter(this.party, 'castle');
-            // boss_defeat quest progress now fires from Battle.endBattle()
-            // once the fight is actually won (see wasBossFight there) -
-            // it used to fire immediately here, before the battle even
-            // began.
+            this.updateQuestProgress('boss_defeat', 1);
         }
 
         /** Random encounters while walking dungeon corridors - elite chance scales with floor depth (30/40/50/60/70%). */
@@ -16707,7 +16495,7 @@
                 ${progressMessage}
                 <p><strong>Progress:</strong> ${progress}/${quest.goal}</p>
                 <p><strong>Reward:</strong> ${quest.reward.gold} G, ${quest.reward.item}</p>
-                <p style="color: #888; margin-top: 15px;">${quest.dialogue?.start || 'Complete this quest for rewards!'}</p>
+                <p style="color: #888; margin-top: 15px;">${quest.dialogue.start}</p>
                 ${!isComplete ? `
                     <p style="color: #ffaa00; margin-top: 10px;">Quest in progress - keep going!</p>
                 ` : `
@@ -17168,15 +16956,7 @@
         }
 
         showCraftingTab() {
-            // No longer wraps content in its own max-height/overflow div -
-            // that nested scroll container could trap a touch-scroll
-            // gesture before it ever reached the OK button below (worse on
-            // the Apply/Remove tab, which usually has much more content:
-            // every hero's weapon/armor rows plus the full gem list). The
-            // outer .popup-box already scrolls as a whole (max-height:80%;
-            // overflow-y:auto), so letting IT be the only scroll container
-            // keeps OK reachable by the same gesture as everything else.
-            let menuHTML = '<div>';
+            let menuHTML = '<div style="max-height: 420px; overflow-y: auto;">';
             menuHTML += this.gemCrafterTabBar('craft');
             menuHTML += this.getCraftingTabHTML();
             menuHTML += '</div>';
@@ -17184,8 +16964,7 @@
         }
 
         showApplyGemTab() {
-            // See the comment in showCraftingTab() - same fix, same reason.
-            let menuHTML = '<div>';
+            let menuHTML = '<div style="max-height: 420px; overflow-y: auto;">';
             menuHTML += this.gemCrafterTabBar('apply');
             menuHTML += this.getApplyGemTabHTML();
             menuHTML += '</div>';
@@ -17762,20 +17541,14 @@
                 else if (townText.includes('Sylvaris')) currentTown = 'sylvaris';
             }
             console.log('Current town for available quests:', currentTown);
-            // Was unioning in every prior region's town quests too (Duskmere
-            // showed Brighthollow's alongside its own, Sylvaris showed all
-            // three) - per Ray's request this now shows only the current
-            // region's board. It also never excluded quests already turned
-            // in (completedQuestIds), so a fully-completed quest kept
-            // reappearing as "available" forever once removed from the
-            // active list - that combined with the region-union is what
-            // made "Accept All" try to hand back everything from every
-            // region every time.
-            let availableQuests = QUEST_DATA.filter(quest =>
-                quest.town === currentTown &&
-                !this.quests.some(q => q.id === quest.id) &&
-                !this.completedQuestIds.has(quest.id)
-            );
+            let availableQuests = [];
+            if (currentTown === 'brighthollow') {
+                availableQuests = QUEST_DATA.filter(quest => quest.town === 'brighthollow' && !this.quests.some(q => q.id === quest.id));
+            } else if (currentTown === 'duskmere') {
+                availableQuests = QUEST_DATA.filter(quest => (quest.town === 'brighthollow' || quest.town === 'duskmere') && !this.quests.some(q => q.id === quest.id));
+            } else if (currentTown === 'sylvaris') {
+                availableQuests = QUEST_DATA.filter(quest => !this.quests.some(q => q.id === quest.id));
+            }
             console.log('Available quests found:', availableQuests.length);
             if (availableQuests.length === 0) {
                 content.innerHTML = '<p style="color: #888; text-align: center; padding: 20px;">No available quests in this town. Check back later or travel to other towns!</p>';
@@ -18580,46 +18353,6 @@
             this.ui.updateWorldHUD(this.party);
         }
 
-        /** Generic party-wide restore item handler for the inventory menu -
-         *  covers full_restore (Cabin), heal_all (Mega-Potion),
-         *  restore_mp_all (Mega-Ether), and full_restore_all (Megalixir).
-         *  Cabin keeps its own dedicated useCabinFromMenu() too (used by
-         *  the always-visible menu shortcut button), this just fixes the
-         *  path that goes through clicking the item itself. */
-        usePartyRestoreItem(itemName) {
-            const item = this.party.inventory.items.find(i => i.name === itemName);
-            if (!item || item.quantity <= 0) {
-                this.ui.showPopup('Error', 'Item no longer available!');
-                this.renderMenuInventory();
-                return;
-            }
-            item.quantity--;
-            if (item.quantity <= 0) {
-                this.party.inventory.items = this.party.inventory.items.filter(i => i.name !== itemName);
-            }
-            let message = '';
-            if (item.effect === 'full_restore' || item.effect === 'full_restore_all') {
-                this.party.heroes.forEach(hero => {
-                    hero.currentHp = hero.baseStats.maxHp;
-                    hero.currentMp = hero.baseStats.maxMp;
-                    hero.isDead = false;
-                });
-                message = 'All party members fully restored!\nHP and MP maxed out.';
-            } else if (item.effect === 'heal_all') {
-                this.party.heroes.filter(h => !h.isDead).forEach(h => h.heal(item.power));
-                message = `The whole party recovers ${item.power} HP!`;
-            } else if (item.effect === 'restore_mp_all') {
-                this.party.heroes.filter(h => !h.isDead).forEach(h => {
-                    h.currentMp = Math.min(h.baseStats.maxMp, h.currentMp + item.power);
-                });
-                message = `The whole party recovers ${item.power} MP!`;
-            }
-            this.ui.showPopup('Item Used', message);
-            this.renderMenu();
-            this.ui.updateWorldHUD(this.party);
-            this.selectedMenuItem = null;
-        }
-
         renderMenuInventory() {
             const container = document.getElementById('menu-inventory-list');
             const details = document.getElementById('menu-item-details');
@@ -18720,27 +18453,12 @@
                 return;
             }
 
-            if (item.effect === 'full_restore' || item.effect === 'heal_all' || item.effect === 'restore_mp_all' || item.effect === 'full_restore_all') {
-                // Cabin (full_restore) had a working dedicated menu button
-                // elsewhere, but reaching it THIS way - clicking the item in
-                // the inventory list - called window.game.useCabin(), a
-                // function that doesn't exist (the real one is
-                // useCabinFromMenu()). That's a hard JS error, not just a
-                // no-op: tapping "Use on Party" here would throw and leave
-                // the popup stuck. Mega-Potion/Mega-Ether/Megalixir
-                // (heal_all/restore_mp_all/full_restore_all) weren't
-                // special-cased here at all, so they fell through to the
-                // single-hero picker below and then hit useItemOnHero()'s
-                // switch, which had no case for any of them either - the
-                // item would just silently vanish from inventory with
-                // nothing shown. All four now route through one generic
-                // party-wide handler.
+            if (item.effect === 'full_restore') {
                 details.innerHTML = '<h4 style="color: var(--highlight);">' + item.name + '</h4>' +
-                    '<p>' + (item.desc || this.getItemEffectDesc(item)) + '</p>' +
+                    '<p>' + (item.desc || 'Fully restores all party members') + '</p>' +
                     '<p style="color: #888;">Quantity: ' + item.quantity + '</p>' +
-                    '<button class="menu-button" onclick="window.game.usePartyRestoreItem(\'' + item.name + '\')" style="margin-top: 15px; width: 100%;">Use on Party</button>' +
+                    '<button class="menu-button" onclick="window.game.useCabin()" style="margin-top: 15px; width: 100%;">Use on Party</button>' +
                     '<button class="menu-button" onclick="window.game.renderMenuInventory()" style="margin-top: 15px; width: 100%; padding: 5px;">⬅️ Back to Items</button>';
-                this.selectedMenuItem = item;
                 return;
             }
 
@@ -18824,14 +18542,6 @@
                     hero.currentMp = Math.min(hero.baseStats.maxMp, hero.currentMp + item.power);
                     const restored = hero.currentMp - oldMp;
                     this.ui.showPopup('Item Used', `${hero.name} recovered ${restored} MP!`);
-                    break;
-                case 'restore_all':
-                    // Missing entirely before - Elixir would deduct itself
-                    // from inventory and show nothing at all once you
-                    // picked a target.
-                    hero.currentHp = hero.baseStats.maxHp;
-                    hero.currentMp = hero.baseStats.maxMp;
-                    this.ui.showPopup('Item Used', `${hero.name}'s HP and MP were fully restored!`);
                     break;
                 case 'revive':
                     if (!hero.isDead) {
@@ -23397,6 +23107,15 @@ const QUEST_DATA = [
     window.game = new Game();
     injectAmbientLayers();
     setupMobileDpad();
+    // Auto-close the hamburger dropdown after any action inside it fires -
+    // its buttons are one-shot (save, open a journal, nudge zoom, etc.), so
+    // leaving the panel open after tapping one just blocks the view.
+    (function setupWorldMenuAutoClose() {
+        const panel = document.getElementById('hud-menu-panel');
+        if (panel) panel.addEventListener('click', (e) => {
+            if (e.target.closest('button')) setTimeout(closeWorldMenuPanel, 50);
+        });
+    })();
     preventMobileZoomGestures();
     fitGameContainer();
     window.addEventListener('resize', fitGameContainer);
