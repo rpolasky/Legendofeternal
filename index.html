@@ -1088,8 +1088,18 @@
         /*                      BATTLE SCREEN - ENHANCED                        */
         /* ====================================================================== */
         #battle-screen {
-            background: rgba(5, 0, 15, 0.6);
-            backdrop-filter: blur(2px);
+            background: rgba(5, 0, 15, 0.75);
+            /* backdrop-filter: blur() dropped here - a full-screen blur
+               recalculated every frame while .battle-window simultaneously
+               animates transform + clip-path (the spiral entrance below) is
+               a known-expensive combination on real mobile GPUs, and is the
+               most likely cause of the brief flicker/jank during the
+               world-to-battle transition (small/fast enough that it didn't
+               show up in automated screenshot testing, which runs on much
+               more powerful hardware than a phone). Bumped the plain
+               background dim up slightly (0.6 -> 0.75 alpha) to compensate
+               for losing the blur's contribution to obscuring the backdrop.
+            */
         }
 
         #battle-screen.active {
@@ -12662,7 +12672,7 @@
             if (!defeat && this.monsters.length > 0) {
                 this.monsters.forEach(monster => {
                     window.game.updateQuestProgress('monster_kill', 1, monster.name);
-                    window.game.trackMonsterKill(monster.name, monster.isBoss);
+                    window.game.trackMonsterKill(monster.name, monster.isBoss, monster.isElite, monster.isRareEncounter);
                     // Shadow Stalkers are part of the whole Brighthollow region's
                     // monster pool, not exclusive to the Shadow Grove dungeon - they
                     // (and Elite Shadow Stalkers) can spawn in any Brighthollow
@@ -14684,7 +14694,46 @@
         { id: 'true_elementalist', name: 'True Elementalist', icon: '🔥', desc: 'Reach level 20 as an Elementalist.',
             check: (game) => !!(game.party && game.party.heroes.some(h => h.archetype === 'elementalist' && h.level >= 20)) },
         { id: 'true_holy_paladin', name: 'True Holy Paladin', icon: '✨', desc: 'Reach level 20 as a Holy Paladin.',
-            check: (game) => !!(game.party && game.party.heroes.some(h => h.archetype === 'holy_paladin' && h.level >= 20)) }
+            check: (game) => !!(game.party && game.party.heroes.some(h => h.archetype === 'holy_paladin' && h.level >= 20)) },
+        // ---------------------------------------------------------------
+        // Added to rebalance completion % against story progress - the
+        // original 35 skewed too easy/early, so these lean on mid-to-late
+        // game systems (elite/rare encounters, gem crafting, legendary
+        // weapon forging, the final boss) instead of things a new save
+        // stumbles into within the first couple hours.
+        // ---------------------------------------------------------------
+        { id: 'elite_hunter', name: 'Elite Hunter', icon: '🎯', desc: 'Defeat 15 elite monsters.',
+            check: (game, s) => s.eliteKills >= 15 },
+        { id: 'veil_crosser', name: 'Veil Crosser', icon: '🌑', desc: 'Defeat a rare "Menacing" encounter out in the world.',
+            check: (game, s) => s.rareEncountersWon >= 1 },
+        { id: 'presence_hunter', name: 'Presence Hunter', icon: '👁️', desc: 'Defeat 5 rare "Menacing" encounters.',
+            check: (game, s) => s.rareEncountersWon >= 5 },
+        { id: 'gem_collector', name: 'Gem Collector', icon: '💠', desc: 'Own 5 crafted gems at once.',
+            check: (game) => !!(game.party && game.party.gems && game.party.gems.length >= 5) },
+        { id: 'master_jeweler', name: 'Master Jeweler', icon: '💎', desc: 'Craft a Flawless-tier gem.',
+            check: (game) => !!(game.party && game.party.gems && game.party.gems.some(g => g.name && g.name.startsWith('Flawless'))) },
+        { id: 'fragment_hoarder', name: 'Fragment Hoarder', icon: '🔶', desc: 'Hold 100 total gem fragments at once.',
+            check: (game) => !!(game.party && game.party.fragments && Object.values(game.party.fragments).reduce((a, b) => a + b, 0) >= 100) },
+        { id: 'legendary_smith', name: 'Legendary Smith', icon: '🔨', desc: 'Forge your first legendary weapon.',
+            check: (game) => !!(game.completedQuestIds && Object.values(LEGENDARY_WEAPONS).some(w => game.completedQuestIds.has(w.part3QuestId))) },
+        { id: 'legendary_master', name: 'Legendary Master', icon: '⚔️', desc: 'Forge all three legendary weapons.',
+            check: (game) => !!(game.completedQuestIds && Object.values(LEGENDARY_WEAPONS).every(w => game.completedQuestIds.has(w.part3QuestId))) },
+        { id: 'world_ender', name: 'World Ender', icon: '🔱', desc: 'Defeat Voraxis and save the realm.',
+            check: (game, s) => s.bossKills.has('Voraxis') },
+        { id: 'deep_pockets', name: 'Deep Pockets', icon: '👝', desc: 'Accumulate 20,000 gold at once.',
+            check: (game) => !!(game.party && game.party.gold >= 20000) },
+        { id: 'region_liberator', name: 'Region Liberator', icon: '🌍', desc: 'Complete at least 5 quests in every region.',
+            check: (game) => {
+                if (!game.completedQuestIds) return false;
+                const prefixes = ['brighthollow_', 'duskmere_', 'sylvaris_', 'chaos_'];
+                return prefixes.every(p => {
+                    let count = 0;
+                    game.completedQuestIds.forEach(id => { if (id.startsWith(p)) count++; });
+                    return count >= 5;
+                });
+            } },
+        { id: 'archetype_ascendant', name: 'Archetype Ascendant', icon: '🌟', desc: 'Reach level 30 with a specialized archetype.',
+            check: (game) => !!(game.party && game.party.heroes.some(h => h.archetype && h.level >= 30)) }
     ];
 
     // =====================================================================
@@ -14717,7 +14766,9 @@
                 fishRareCaught: 0,
                 fishMaterialCaught: 0,
                 archetypesChosen: new Set(),
-                trinityForged: false
+                trinityForged: false,
+                eliteKills: 0,
+                rareEncountersWon: 0
             };
         }
 
@@ -14730,6 +14781,8 @@
                 case 'monster_kill':
                     s.kills++;
                     if (data.isBoss && data.name) s.bossKills.add(data.name);
+                    if (data.isElite) s.eliteKills++;
+                    if (data.isRareEncounter) s.rareEncountersWon++;
                     break;
                 case 'elemental_kill':
                     if (data.element) { s.elementsUsed.add(data.element); s.elementalKillCount++; }
@@ -15978,10 +16031,10 @@
             }
         }
 
-        trackMonsterKill(monsterName, isBoss = false) {
+        trackMonsterKill(monsterName, isBoss = false, isElite = false, isRareEncounter = false) {
             this.monsterKills[monsterName] = (this.monsterKills[monsterName] || 0) + 1;
             this.updateQuestProgress('monster_kill', 1, monsterName);
-            if (this.achievements) this.achievements.report('monster_kill', { name: monsterName, isBoss: isBoss });
+            if (this.achievements) this.achievements.report('monster_kill', { name: monsterName, isBoss: isBoss, isElite: isElite, isRareEncounter: isRareEncounter });
         }
 
         trackElementalKill(element) {
@@ -16962,7 +17015,7 @@
                 ${progressMessage}
                 <p><strong>Progress:</strong> ${progress}/${quest.goal}</p>
                 <p><strong>Reward:</strong> ${quest.reward.gold} G, ${quest.reward.item}</p>
-                <p style="color: #888; margin-top: 15px;">${quest.dialogue.start}</p>
+                ${quest.dialogue && quest.dialogue.start ? `<p style="color: #888; margin-top: 15px;">${quest.dialogue.start}</p>` : ''}
                 ${!isComplete ? `
                     <p style="color: #ffaa00; margin-top: 10px;">Quest in progress - keep going!</p>
                 ` : `
@@ -17096,7 +17149,7 @@
             }
             const townsfolk = TOWNSFOLK_DATA;
             const npcs = townsfolk[townName] || townsfolk.brighthollow;
-            let npcListHTML = '<div style="max-height: 400px; overflow-y: auto; margin-bottom: 15px;">';
+            let npcListHTML = '';
             npcs.forEach((npc, index) => {
                 npcListHTML += `
                     <div style="background: rgba(0,0,0,0.3); margin: 10px 0; padding: 10px; border-radius: 5px; border-left: 4px solid var(--highlight); cursor: pointer;" 
@@ -17111,7 +17164,6 @@
                     </div>
                 `;
             });
-            npcListHTML += '</div>';
             npcListHTML += '<p style="color: #888; font-style: italic; text-align: center; margin-top: 10px;">Click on any townsfolk above to speak with them</p>';
             this.ui.showPopup(`Townsfolk of ${townName.charAt(0).toUpperCase() + townName.slice(1)}`, npcListHTML, true);
         }
@@ -17237,8 +17289,7 @@
         }
 
         showSpellRecipes() {
-            let menuHTML = '<div style="max-height: 400px; overflow-y: auto;">';
-            menuHTML += '<h3 style="color: var(--highlight);">Available Combinations</h3>';
+            let menuHTML = '<h3 style="color: var(--highlight);">Available Combinations</h3>';
             SPELL_COMBINATIONS.forEach(combo => {
                 const result = combo.result;
                 let elementIcon = '✨';
@@ -17269,7 +17320,6 @@
                     </div>
                 `;
             });
-            menuHTML += '</div>';
             menuHTML += '<p style="color: #888; margin-top: 15px;">Visit the Wizard to combine spells!</p>';
             this.ui.showPopup('Spell Combination Guide', menuHTML, true);
         }
@@ -17287,8 +17337,13 @@
             }
             this.spellcraftSpells = availableSpells;
             this.selectedSpellIndex = null;
-            let menuHTML = '<p>Select your first spell:</p>';
-            menuHTML += '<div style="max-height: 250px; overflow-y: auto;">';
+            let menuHTML = `
+                <div style="text-align: center; margin-bottom: 15px;">
+                    <button class="menu-button" onclick="window.game.showSpellRecipes()" 
+                            style="padding: 10px; font-size: 14px;">📚 View Spell Combinations</button>
+                </div>
+            `;
+            menuHTML += '<p>Select your first spell:</p>';
             availableSpells.forEach((spell, idx) => {
                 menuHTML += `
                     <div class="shop-item" onclick="window.game.selectFirstSpell(${idx})">
@@ -17297,13 +17352,6 @@
                     </div>
                 `;
             });
-            menuHTML += '</div>';
-            menuHTML += `
-                <div style="margin-top: 20px; text-align: center;">
-                    <button class="menu-button" onclick="window.game.showSpellRecipes()" 
-                            style="padding: 10px; font-size: 14px;">📚 View Spell Combinations</button>
-                </div>
-            `;
             this.ui.showPopup('Wizard\'s Study - Select Spell', menuHTML, true);
         }
 
@@ -17312,7 +17360,6 @@
             const firstSpell = this.spellcraftSpells[index];
             const availableSpells = this.spellcraftSpells.filter((_, i) => i !== index);
             let menuHTML = `<p>Select second spell to combine with ${firstSpell.name}:</p>`;
-            menuHTML += '<div style="max-height: 250px; overflow-y: auto;">';
             availableSpells.forEach((spell) => {
                 const originalIndex = this.spellcraftSpells.findIndex(s => s.name === spell.name && s.heroName === spell.heroName);
                 menuHTML += `
@@ -17322,7 +17369,6 @@
                     </div>
                 `;
             });
-            menuHTML += '</div>';
             this.ui.showPopup('Wizard\'s Study - Select Second Spell', menuHTML, true);
         }
 
@@ -17369,8 +17415,7 @@
                 }
                 return true;
             });
-            let menuHTML = '<div style="max-height: 300px; overflow-y: auto;">';
-            menuHTML += `<p style="color: #888; margin-bottom: 10px;">Secrets in ${currentRegion} region:</p>`;
+            let menuHTML = `<p style="color: #888; margin-bottom: 10px;">Secrets in ${currentRegion} region:</p>`;
             if (regionSecrets.length === 0) {
                 menuHTML += '<p style="color: #888; text-align: center; padding: 20px;">No hidden locations in this region yet.</p>';
             } else {
@@ -17385,7 +17430,6 @@
                     `;
                 });
             }
-            menuHTML += '</div>';
             menuHTML += '<p style="color: #888; margin-top: 15px;">Pay 200G to reveal a hidden location permanently.</p>';
             this.ui.showPopup('Explorer\'s Maps', menuHTML, true);
         }
@@ -17423,18 +17467,14 @@
         }
 
         showCraftingTab() {
-            let menuHTML = '<div style="max-height: 420px; overflow-y: auto;">';
-            menuHTML += this.gemCrafterTabBar('craft');
+            let menuHTML = this.gemCrafterTabBar('craft');
             menuHTML += this.getCraftingTabHTML();
-            menuHTML += '</div>';
             this.ui.showPopup('Gem Crafter', menuHTML, true);
         }
 
         showApplyGemTab() {
-            let menuHTML = '<div style="max-height: 420px; overflow-y: auto;">';
-            menuHTML += this.gemCrafterTabBar('apply');
+            let menuHTML = this.gemCrafterTabBar('apply');
             menuHTML += this.getApplyGemTabHTML();
-            menuHTML += '</div>';
             this.ui.showPopup('Gem Crafter', menuHTML, true);
         }
 
@@ -17448,6 +17488,11 @@
             let parts = Object.entries(gem.bonus || {}).map(([k, v]) => `+${v} ${labels[k] || k}`);
             if (gem.element) parts.push(`${gem.element.toUpperCase()} dmg`);
             return parts.join(', ');
+        }
+
+        selectGemColorTab(color) {
+            this.selectedGemColorTab = color;
+            this.showCraftingTab();
         }
 
         getCraftingTabHTML() {
@@ -17466,9 +17511,44 @@
                 html += '<p style="color: #888;">No fragments yet - monsters have a chance to drop them in battle!</p>';
             }
 
-            html += '<h3 style="color: var(--highlight);">Socket Gems (single color):</h3>';
+            // Color sub-tabs (per request - the flat combined list of 5
+            // colors x 4 tiers + hybrids was too long to scan) - only one
+            // color's (or Hybrid's) recipes render below at a time instead
+            // of the whole thing at once.
+            const activeColor = this.selectedGemColorTab || colors[0];
+            html += '<h3 style="color: var(--highlight); margin-top: 20px;">Socket Gems:</h3>';
+            html += '<div style="display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap;">';
             colors.forEach(color => {
-                html += `<div style="margin-bottom: 10px; border-left: 3px solid ${FRAGMENT_COLOR_HEX[color]}; padding-left: 8px;">`;
+                const isActive = activeColor === color;
+                html += `<button class="menu-button" onclick="window.game.selectGemColorTab('${color}')"
+                    style="padding: 5px 12px; font-size: 12px; border-left: 3px solid ${FRAGMENT_COLOR_HEX[color]};
+                    ${isActive ? `background: ${FRAGMENT_COLOR_HEX[color]}; color: #000;` : ''}">${GEM_FRAGMENT_INFO[color].icon} ${color}</button>`;
+            });
+            html += `<button class="menu-button" onclick="window.game.selectGemColorTab('Hybrid')"
+                style="padding: 5px 12px; font-size: 12px; ${activeColor === 'Hybrid' ? 'background: var(--highlight); color: #000;' : ''}">🔀 Hybrid</button>`;
+            html += '</div>';
+
+            if (activeColor === 'Hybrid') {
+                html += '<h4 style="color: #888; margin-bottom: 10px;">Hybrid Gems (two colors):</h4>';
+                HYBRID_GEM_RECIPES.forEach((recipe, index) => {
+                    const canCraft = Object.entries(recipe.cost).every(([c, q]) => (frags[c] || 0) >= q);
+                    html += `
+                        <div class="shop-item" onclick="window.game.craftHybridGem(${index})"
+                             style="${canCraft ? '' : 'opacity: 0.5; cursor: not-allowed;'}">
+                            <div>
+                                <span style="color: var(--highlight);">💠 ${recipe.name}</span>
+                                <div style="font-size: 11px; color: #888;">${recipe.desc}</div>
+                                <div style="font-size: 11px; color: #6cf;">${this.formatGemBonus(recipe)}</div>
+                            </div>
+                            <div style="text-align: right; color: ${canCraft ? '#fff' : '#f88'};">
+                                ${Object.entries(recipe.cost).map(([c, q]) => `${q} ${c}`).join(' + ')}
+                            </div>
+                        </div>
+                    `;
+                });
+            } else {
+                const color = activeColor;
+                html += `<h4 style="color: #888; margin-bottom: 10px;">${GEM_FRAGMENT_INFO[color].icon} ${color} Gems (single color):</h4>`;
                 SOCKET_GEM_TIERS[color].forEach(tierDef => {
                     const have = frags[color] || 0;
                     const canCraft = have >= tierDef.cost;
@@ -17484,26 +17564,7 @@
                         </div>
                     `;
                 });
-                html += '</div>';
-            });
-
-            html += '<h3 style="color: var(--highlight);">Hybrid Gems (two colors):</h3>';
-            HYBRID_GEM_RECIPES.forEach((recipe, index) => {
-                const canCraft = Object.entries(recipe.cost).every(([c, q]) => (frags[c] || 0) >= q);
-                html += `
-                    <div class="shop-item" onclick="window.game.craftHybridGem(${index})"
-                         style="${canCraft ? '' : 'opacity: 0.5; cursor: not-allowed;'}">
-                        <div>
-                            <span style="color: var(--highlight);">💠 ${recipe.name}</span>
-                            <div style="font-size: 11px; color: #888;">${recipe.desc}</div>
-                            <div style="font-size: 11px; color: #6cf;">${this.formatGemBonus(recipe)}</div>
-                        </div>
-                        <div style="text-align: right; color: ${canCraft ? '#fff' : '#f88'};">
-                            ${Object.entries(recipe.cost).map(([c, q]) => `${q} ${c}`).join(' + ')}
-                        </div>
-                    </div>
-                `;
-            });
+            }
             return html;
         }
 
@@ -17671,7 +17732,17 @@
 
         showApothecaryMenu() {
             const materials = this.party.materials || {};
-            let html = '<div style="max-height: 420px; overflow-y: auto;">';
+            // Single scroll region now: this used to wrap everything in its
+            // own max-height:420px;overflow-y:auto div NESTED inside
+            // .popup-box's own max-height:80%;overflow-y:auto - two
+            // independently-scrolling boxes stacked on top of each other,
+            // which is what caused the framing glitch (the inner 420px
+            // frame doesn't fit inside the outer ~324px visible area on a
+            // real phone screen, so its content gets clipped by the outer
+            // box's edge mid-row instead of scrolling cleanly). Letting the
+            // content flow naturally and rely on .popup-box's own scroll
+            // fixes it.
+            let html = '';
             html += '<h3 style="color: var(--highlight);">Your Materials:</h3>';
             html += '<div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px;">';
             const materialEntries = Object.entries(materials);
@@ -17717,7 +17788,6 @@
                     </div>
                 `;
             });
-            html += '</div>';
             this.ui.showPopup('Apothecary', html, true);
         }
 
@@ -17761,7 +17831,7 @@
          *  already in party.materials - see getLegendaryStage(). */
         showShrineMenu() {
             const mats = this.party.materials || {};
-            let html = '<div style="max-height: 440px; overflow-y: auto;">';
+            let html = '';
             const classOrder = ['warrior', 'mage', 'paladin'];
             classOrder.forEach(heroClass => {
                 const def = LEGENDARY_WEAPONS[heroClass];
@@ -17804,7 +17874,6 @@
                 }
                 html += `</div>`;
             });
-            html += '</div>';
             this.ui.showPopup('Shrine of Forging', html, true);
         }
 
@@ -17885,7 +17954,7 @@
 
         showQuestCompassMenu() {
             const active = this.quests.filter(q => q.progress < q.goal);
-            let html = '<div style="max-height: 420px; overflow-y: auto;">';
+            let html = '';
             if (this.trackedQuestId) {
                 html += `<div class="shop-item" onclick="window.game.trackQuest(null)" style="margin-bottom: 10px; border-color: #888;">
                     <span>🚫 Stop Tracking</span><span style="color: #888;">Clear compass</span>
@@ -17903,7 +17972,6 @@
                     </div>`;
                 });
             }
-            html += '</div>';
             this.ui.showPopup('Track a Quest', html, true);
         }
 
@@ -18104,7 +18172,7 @@
                 this.ui.showPopup('Merchant', "You don't have any items I can upgrade. Bring me rare or legendary gear!");
                 return;
             }
-            let menuHTML = '<div style="max-height: 300px; overflow-y: auto;">';
+            let menuHTML = '';
             upgradableItems.forEach((item, idx) => {
                 const currentUpgrade = item.upgradeLevel || 0;
                 const upgradeStats = UPGRADE_BENEFITS[item.category === 'weapons' ? 'weapon' : 'armor'];
@@ -18121,7 +18189,6 @@
                     </div>
                 `;
             });
-            menuHTML += '</div>';
             menuHTML += '<p style="color: #888; margin-top: 15px;">Upgraded items gain +2 ATK/DEF and +1 MAG per level!</p>';
             this.currentUpgradableItems = upgradableItems;
             this.ui.showPopup('Merchant - Item Upgrades', menuHTML, true);
@@ -18164,8 +18231,7 @@
         }
 
         showBountyBoard() {
-            let menuHTML = '<div style="max-height: 400px; overflow-y: auto;">';
-            menuHTML += `
+            let menuHTML = `
                 <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid var(--border-color); padding-bottom: 10px;">
                     <button class="menu-button" onclick="window.game.showMonsterBounties()" style="padding: 5px 15px; font-size: 14px; background: var(--highlight); color: #000;">👾 Monster Bounties</button>
                     <button class="menu-button" onclick="window.game.showTreasureBounties()" style="padding: 5px 15px; font-size: 14px;">👑 Treasure Bounties</button>
