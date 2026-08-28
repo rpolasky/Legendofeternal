@@ -3969,7 +3969,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v59</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v60</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -7123,6 +7123,21 @@
             return Math.floor(this.getEffectiveStats().magic * archetype.passive.amount);
         }
 
+        /** Weapon identity beyond stats: some weapons carry a
+         *  `bonusVsFamily` map (e.g. { goblin: 0.15 }) that gives extra
+         *  damage against monsters of that specific family (see
+         *  Monster.family). Returns a multiplier addition - 0 if the
+         *  equipped weapon has no bonus, or none applies to this target.
+         *  Read from both executeAttack() (physical) and the single-target
+         *  damage spell handler, the same two spots elementalWeakness/
+         *  elementalResist already apply from - a themed weapon's edge
+         *  carries through however its wielder actually deals damage. */
+        getWeaponFamilyBonus(target) {
+            const weapon = this.equipment.weapon;
+            if (!weapon || !weapon.bonusVsFamily || !target || !target.family) return 0;
+            return weapon.bonusVsFamily[target.family] || 0;
+        }
+
         canEquip(item) {
             if (item.type === 'weapon' || item.type === 'armor') {
                 if (item.mageOnly && this.heroClass !== 'mage') return false;
@@ -7358,6 +7373,27 @@
             this.poisonDuration = template.poisonDuration || 0;
             this.drops = template.drops || null;
             this.fragment = template.fragment || null;
+            // Monster "family" - a coarse creature-type tag (goblin, undead,
+            // shade, orc, elemental, etc.) used by weapon.bonusVsFamily to
+            // give weapons real identity beyond flat stats (see
+            // Hero.getWeaponFamilyBonus()), and by weaponDrop below to gate
+            // themed weapon drops to their own family's monsters.
+            this.family = template.family || null;
+            // Monster AI ability: a per-template chance to do something
+            // other than melee on its turn (heal, self-buff, or cast a
+            // damage spell) - see Battle.resolveMonsterAbility(). Absent on
+            // most templates, which keep the original flat-melee behavior.
+            this.abilityChance = template.abilityChance || 0;
+            this.abilityType = template.abilityType || null;
+            this.abilityPower = template.abilityPower || 0;
+            this.abilityStat = template.abilityStat || null;
+            this.abilityElement = template.abilityElement || null;
+            this.abilityName = template.abilityName || null;
+            // Rare themed-weapon drop, independent of the material/fragment
+            // rolls above - see the weaponDrop handling in Battle.endBattle().
+            // Only ever rolled for non-boss kills (isBoss keeps its own
+            // treasure-material economy untouched).
+            this.weaponDrop = template.weaponDrop || null;
         }
 
         takeDamage(amount) {
@@ -7392,45 +7428,57 @@
             maxLevel: 4,
             monsters: [
                 { name: 'Goblin', sprite: '👺', level: 1, hp: 30, attack: 8, defense: 3, speed: 5, exp: 15, gold: 10,
+                    family: 'goblin',
                     elementalWeakness: { fire: 1.5, lightning: 1.3 }, desc: 'Weak to fire and lightning',
                     drops: { material: 'Goblin Ear', chance: 0.7, quantity: 1 },
                     fragment: { color: 'Emerald', chance: 0.25 } },
                 { name: 'Wolf', sprite: '🐺', level: 2, hp: 45, attack: 12, defense: 4, speed: 8, exp: 25, gold: 15,
+                    family: 'beast',
                     elementalWeakness: { ice: 1.5 }, elementalResist: { lightning: 0.8 }, desc: 'Weak to ice, resists lightning',
                     drops: { material: 'Wolf Fang', chance: 0.7, quantity: 1 },
                     fragment: { color: 'Sapphire', chance: 0.25 } },
                 { name: 'Giant Rat', sprite: '🐀', level: 1, hp: 25, attack: 6, defense: 2, speed: 6, exp: 10, gold: 8,
+                    family: 'beast',
                     elementalWeakness: { fire: 1.3, lightning: 1.3 }, desc: 'Weak to fire and lightning',
                     drops: { material: 'Rat Tail', chance: 0.6, quantity: 1 },
                     fragment: { color: 'Emerald', chance: 0.25 } },
                 { name: 'Bandit', sprite: '🗡️', level: 2, hp: 40, attack: 10, defense: 5, speed: 5, exp: 20, gold: 25,
+                    family: 'raider',
                     desc: 'No elemental affinities',
                     drops: { material: 'Stolen Goods', chance: 0.5, quantity: 1 },
                     fragment: { color: 'Topaz', chance: 0.25 } },
                 { name: 'Wild Boar', sprite: '🐗', level: 3, hp: 60, attack: 14, defense: 6, speed: 4, exp: 35, gold: 20,
+                    family: 'beast',
                     elementalResist: { lightning: 0.7 }, desc: 'Tough hide resists lightning',
                     drops: { material: 'Boar Hide', chance: 0.7, quantity: 1 },
                     fragment: { color: 'Emerald', chance: 0.25 } },
                 { name: 'Goblin Scout', sprite: '🏹', level: 2, hp: 35, attack: 9, defense: 3, speed: 7, exp: 20, gold: 15,
+                    family: 'goblin',
                     elementalWeakness: { fire: 1.3, lightning: 1.3 }, desc: 'Fast and sneaky, weak to fire and lightning',
                     drops: { material: 'Goblin Ear', chance: 0.7, quantity: 1 },
                     fragment: { color: 'Emerald', chance: 0.25 } },
                 { name: 'Forest Spider', sprite: '🕷️', level: 3, hp: 40, attack: 11, defense: 4, speed: 6, exp: 30, gold: 18,
+                    family: 'venomous',
                     elementalWeakness: { fire: 1.4 }, desc: 'Venomous bite', poisonChance: 0.35, poisonDamage: 4, poisonDuration: 4,
                     drops: { material: 'Spider Silk', chance: 0.7, quantity: 1 },
                     fragment: { color: 'Amethyst', chance: 0.25 } },
                 { name: 'Goblin Warrior', sprite: '⚔️', level: 4, hp: 55, attack: 15, defense: 7, speed: 4, exp: 45, gold: 30,
+                    family: 'goblin',
                     elementalWeakness: { fire: 1.5, lightning: 1.2 }, desc: 'Stronger goblin, weak to fire, slightly weak to lightning',
                     drops: { material: 'Goblin Ear', chance: 0.8, quantity: 1 },
                     fragment: { color: 'Emerald', chance: 0.25 } },
                 { name: 'Elite Goblin', sprite: '👹', level: 5, hp: 120, attack: 25, defense: 10, speed: 6, exp: 120, gold: 100, isElite: true,
+                    family: 'goblin',
                     elementalWeakness: { fire: 1.5, lightning: 1.3 }, desc: 'Tough goblin chieftain, weak to fire and lightning',
                     drops: { material: 'Goblin Ear', chance: 0.8, quantity: 2 },
-                    fragment: { color: 'Emerald', chance: 0.25 } },
+                    fragment: { color: 'Emerald', chance: 0.25 },
+                    weaponDrop: { chance: 0.10, item: { name: 'Goblin Cleaver', type: 'weapon', attack: 12, warriorOnly: true, price: 350, bonusVsFamily: { goblin: 0.15 }, desc: 'Heavy axe stripped from a fallen goblin chieftain. 15% more damage to goblins.' } } },
                 { name: 'Shadow Stalker', sprite: '👤', level: 6, hp: 120, attack: 25, defense: 10, speed: 10, exp: 120, gold: 100, isElite: true,
+                    family: 'shade',
                     elementalWeakness: { fire: 1.5 }, elementalResist: { lightning: 1.3 }, desc: 'Moves between shadows, resists lightning',
                     drops: { material: 'Shadow Essence', chance: 0.7, quantity: 1 },
-                    fragment: { color: 'Amethyst', chance: 0.25 } }
+                    fragment: { color: 'Amethyst', chance: 0.25 },
+                    weaponDrop: { chance: 0.10, item: { name: 'Shadeblade', type: 'weapon', attack: 13, speed: 3, price: 420, bonusVsFamily: { shade: 0.2 }, desc: 'A jagged dagger that drinks ambient shadow. 20% more damage to creatures of shade.' } } }
             ]
         },
         PRAVOCA: {
@@ -7439,46 +7487,64 @@
             maxLevel: 8,
             monsters: [
                 { name: 'Skeleton', sprite: '💀', level: 4, hp: 60, attack: 15, defense: 8, speed: 4, exp: 40, gold: 25,
+                    family: 'undead',
                     elementalResist: { ice: 0.5, lightning: 0.7 }, elementalWeakness: { fire: 1.5 }, desc: 'Resists ice and lightning, weak to fire',
                     drops: { material: 'Bone Fragment', chance: 0.8, quantity: 1 },
                     fragment: { color: 'Amethyst', chance: 0.25 } },
                 { name: 'Orc', sprite: '👹', level: 5, hp: 80, attack: 18, defense: 10, speed: 5, exp: 60, gold: 40,
+                    family: 'orc',
                     elementalResist: { lightning: 0.8 }, desc: 'No elemental affinities, slightly resists lightning',
                     drops: { material: 'Orc Hide', chance: 0.7, quantity: 1 },
                     fragment: { color: 'Topaz', chance: 0.25 } },
                 { name: 'Wraith', sprite: '👻', level: 6, hp: 70, attack: 20, defense: 6, speed: 10, exp: 80, gold: 50,
+                    family: 'shade',
                     elementalResist: { ice: 0.5, fire: 0.5, lightning: 0.5 }, desc: 'Resists all elements',
                     drops: { material: 'Soul Essence', chance: 0.6, quantity: 1 },
                     fragment: { color: 'Amethyst', chance: 0.25 } },
                 { name: 'Swamp Thing', sprite: '🌿', level: 5, hp: 90, attack: 16, defense: 9, speed: 3, exp: 65, gold: 45,
+                    family: 'plant',
                     elementalWeakness: { fire: 1.4, lightning: 1.2 }, desc: 'Weak to fire and lightning',
                     drops: { material: 'Swamp Moss', chance: 0.7, quantity: 1 },
                     fragment: { color: 'Emerald', chance: 0.25 } },
                 { name: 'Zombie', sprite: '🧟', level: 4, hp: 70, attack: 12, defense: 5, speed: 2, exp: 45, gold: 30,
+                    family: 'undead',
                     elementalWeakness: { fire: 1.3 }, elementalResist: { lightning: 0.8 }, desc: 'Slow but tough, resists lightning',
                     poisonChance: 0.25, poisonDamage: 5, poisonDuration: 4,
                     drops: { material: 'Rotten Flesh', chance: 0.7, quantity: 1 },
                     fragment: { color: 'Amethyst', chance: 0.25 } },
                 { name: 'Ghoul', sprite: '👤', level: 5, hp: 65, attack: 17, defense: 7, speed: 6, exp: 55, gold: 38,
+                    family: 'undead',
                     elementalWeakness: { fire: 1.4 }, desc: 'Undead scavenger, weak to fire', poisonChance: 0.35, poisonDamage: 6, poisonDuration: 4,
                     drops: { material: 'Ghoul Claw', chance: 0.7, quantity: 1 },
                     fragment: { color: 'Amethyst', chance: 0.25 } },
                 { name: 'Orc Shaman', sprite: '🔮', level: 6, hp: 75, attack: 14, defense: 8, speed: 5, exp: 75, gold: 55,
+                    family: 'orc',
                     spell: 'Shadow Bolt', elementalResist: { lightning: 0.6 }, desc: 'Uses dark magic, resists lightning',
+                    // The `spell` field above sat unread for a long time (same
+                    // "defined but never used" class of bug the earlier audit
+                    // found elsewhere) - abilityChance/abilityType finally give
+                    // it a real effect: a chance to hurl a dark bolt instead of
+                    // its usual weak melee swing. See Battle.resolveMonsterAbility().
+                    abilityChance: 0.25, abilityType: 'spell_damage', abilityPower: 22, abilityName: 'Shadow Bolt',
                     drops: { material: 'Orc Hide', chance: 0.7, quantity: 1 },
                     fragment: { color: 'Topaz', chance: 0.25 } },
                 { name: 'Dark Knight', sprite: '⚔️', level: 7, hp: 120, attack: 25, defense: 15, speed: 6, exp: 120, gold: 80,
+                    family: 'knight',
                     elementalResist: { lightning: 0.7 }, desc: 'Fallen warrior, resists lightning',
                     drops: { material: 'Dark Steel', chance: 0.6, quantity: 1 },
                     fragment: { color: 'Topaz', chance: 0.25 } },
                 { name: 'Elite Orc', sprite: '👺', level: 8, hp: 200, attack: 32, defense: 18, speed: 6, exp: 200, gold: 180, isElite: true,
+                    family: 'orc',
                     elementalResist: { lightning: 0.6 }, desc: 'Orc war chief, resists lightning',
                     drops: { material: 'Orc Hide', chance: 0.8, quantity: 2 },
-                    fragment: { color: 'Topaz', chance: 0.25 } },
+                    fragment: { color: 'Topaz', chance: 0.25 },
+                    weaponDrop: { chance: 0.09, item: { name: 'Orcsplitter', type: 'weapon', attack: 20, defense: 2, warriorOnly: true, price: 680, bonusVsFamily: { orc: 0.18 }, desc: 'A brutal cleaver stripped from a fallen orc chieftain. 18% more damage to orcs.' } } },
                 { name: 'Dread Wraith', sprite: '👻', level: 8, hp: 180, attack: 30, defense: 12, speed: 12, exp: 220, gold: 200, isElite: true,
+                    family: 'shade',
                     elementalResist: { ice: 0.3, fire: 0.3, lightning: 0.3 }, desc: 'Powerful spirit, resists all elements',
                     drops: { material: 'Soul Essence', chance: 0.7, quantity: 2 },
-                    fragment: { color: 'Amethyst', chance: 0.25 } }
+                    fragment: { color: 'Amethyst', chance: 0.25 },
+                    weaponDrop: { chance: 0.09, item: { name: 'Grimward Rod', type: 'weapon', magic: 20, mageOnly: true, price: 700, bonusVsFamily: { undead: 0.18, shade: 0.18 }, desc: 'Carved with warding sigils that flare bright near anything that shouldn\'t still be moving. 18% more damage to undead and shades.' } } }
             ]
         },
         ELFHEIM: {
@@ -7487,46 +7553,66 @@
             maxLevel: 12,
             monsters: [
                 { name: 'Sand Worm', sprite: '🪱', level: 7, hp: 100, attack: 20, defense: 12, speed: 4, exp: 90, gold: 70,
+                    family: 'beast',
                     elementalWeakness: { ice: 1.4, lightning: 1.2 }, desc: 'Burrows in sand, weak to ice and lightning',
                     drops: { material: 'Sand Worm Tooth', chance: 0.7, quantity: 1 },
                     fragment: { color: 'Ruby', chance: 0.25 } },
                 { name: 'Mummy', sprite: '🧻', level: 8, hp: 130, attack: 22, defense: 14, speed: 3, exp: 110, gold: 85,
+                    family: 'undead',
                     elementalWeakness: { fire: 1.3 }, elementalResist: { lightning: 0.7 }, desc: 'Ancient cursed, resists lightning',
                     drops: { material: 'Mummy Wrapping', chance: 0.7, quantity: 1 },
                     fragment: { color: 'Amethyst', chance: 0.25 } },
                 { name: 'Desert Scorpion', sprite: '🦂', level: 8, hp: 110, attack: 24, defense: 12, speed: 7, exp: 120, gold: 90,
+                    family: 'venomous',
                     elementalWeakness: { ice: 1.3 }, elementalResist: { lightning: 0.8 }, desc: 'Poisonous stinger, resists lightning',
                     poisonChance: 0.4, poisonDamage: 8, poisonDuration: 4,
                     drops: { material: 'Scorpion Stinger', chance: 0.7, quantity: 1 },
                     fragment: { color: 'Ruby', chance: 0.25 } },
                 { name: 'Djinn', sprite: '🌪️', level: 9, hp: 120, attack: 26, defense: 10, speed: 10, exp: 140, gold: 110,
+                    family: 'elemental',
                     elementalResist: { fire: 0.7, lightning: 0.8 }, elementalWeakness: { ice: 1.4 }, desc: 'Fire spirit, resists fire and lightning',
+                    // 20% chance to whip up a self-buffing sandstorm instead
+                    // of attacking - a fitting "elemental spirit" behavior
+                    // and, alongside Orc Shaman, a working template for the
+                    // abilityChance pattern other monsters can reuse later.
+                    abilityChance: 0.2, abilityType: 'buff_self', abilityStat: 'attack', abilityPower: 1.35, abilityName: 'Sandstorm Veil',
                     drops: { material: 'Djinn Essence', chance: 0.6, quantity: 1 },
                     fragment: { color: 'Topaz', chance: 0.25 } },
                 { name: 'Sand Golem', sprite: '🗿', level: 9, hp: 180, attack: 24, defense: 18, speed: 2, exp: 150, gold: 120,
+                    family: 'construct',
                     elementalResist: { fire: 0.8, ice: 0.8, lightning: 0.6 }, desc: 'Living statue, resists all elements',
+                    // 18% chance to knit its own cracked stone back together
+                    // instead of attacking, rather than a self-buff - fits a
+                    // slow, tanky construct better than a burst of speed/power.
+                    abilityChance: 0.18, abilityType: 'heal_self', abilityPower: 45, abilityName: 'Reform',
                     drops: { material: 'Golem Core', chance: 0.6, quantity: 1 },
                     fragment: { color: 'Emerald', chance: 0.25 } },
                 { name: 'Camel Rider', sprite: '🐫', level: 7, hp: 95, attack: 21, defense: 10, speed: 8, exp: 100, gold: 80,
+                    family: 'raider',
                     desc: 'Desert nomad, no elemental affinities',
                     drops: { material: 'Nomad Goods', chance: 0.5, quantity: 1 },
                     fragment: { color: 'Emerald', chance: 0.25 } },
                 { name: 'Sand Spirit', sprite: '💨', level: 8, hp: 85, attack: 23, defense: 8, speed: 12, exp: 115, gold: 95,
+                    family: 'elemental',
                     elementalWeakness: { ice: 1.3 }, elementalResist: { lightning: 0.7 }, desc: 'Whirlwind of sand, resists lightning',
                     drops: { material: 'Sand Essence', chance: 0.7, quantity: 1 },
                     fragment: { color: 'Sapphire', chance: 0.25 } },
                 { name: 'Ancient Mummy Lord', sprite: '👑', level: 15, hp: 1200, attack: 55, defense: 30, speed: 6, exp: 2500, gold: 2000, isElite: true, isBoss: true,
+                    family: 'undead',
                     elementalWeakness: { fire: 1.5 }, elementalResist: { ice: 0.5, lightning: 0.7 }, desc: 'Pharaoh\'s guardian, weak to fire',
                     drops: { material: 'Pharaoh\'s Staff', chance: 1.0, quantity: 1, type: 'treasure' },
                     fragment: { color: 'Amethyst', chance: 0.25 } },
                 { name: 'Lesser Fire Elemental', sprite: '🔥', level: 10, hp: 130, attack: 25, defense: 10, speed: 7, exp: 180, gold: 150,
+                    family: 'elemental',
                     elementalResist: { fire: 0.3, lightning: 0.8 }, elementalWeakness: { ice: 1.5 }, desc: 'Living flame, weak to ice',
                     drops: { material: 'Fire Core', chance: 0.6, quantity: 1 },
                     fragment: { color: 'Ruby', chance: 0.25 } },
                 { name: 'Fire Elemental', sprite: '🔥', level: 12, hp: 190, attack: 32, defense: 14, speed: 8, exp: 250, gold: 220, isElite: true,
+                    family: 'elemental',
                     elementalResist: { fire: 0.2, lightning: 0.7 }, elementalWeakness: { ice: 1.8 }, desc: 'Living flame, resists lightning slightly',
                     drops: { material: 'Fire Core', chance: 0.7, quantity: 1 },
-                    fragment: { color: 'Ruby', chance: 0.25 } }
+                    fragment: { color: 'Ruby', chance: 0.25 },
+                    weaponDrop: { chance: 0.09, item: { name: 'Emberfang Blade', type: 'weapon', attack: 24, magic: 6, element: 'fire', warriorOnly: true, price: 950, bonusVsFamily: { elemental: 0.15 }, desc: 'Tempered in the elemental\'s own dying flame. 15% more damage to elemental creatures.' } } }
             ]
         },
         CHAOS: {
@@ -7535,39 +7621,49 @@
             maxLevel: 20,
             monsters: [
                 { name: 'Demon', sprite: '👿', level: 12, hp: 180, attack: 40, defense: 18, speed: 9, exp: 350, gold: 250,
+                    family: 'demon',
                     elementalWeakness: { ice: 1.5 }, elementalResist: { fire: 0.7, lightning: 0.7 }, desc: 'Weak to ice, resists fire and lightning',
                     drops: { material: 'Demon Horn', chance: 0.7, quantity: 1 },
                     fragment: { color: 'Amethyst', chance: 0.25 } },
                 { name: 'Dragon', sprite: '🐉', level: 15, hp: 500, attack: 50, defense: 25, speed: 5, exp: 1000, gold: 1000,
+                    family: 'dragon',
                     elementalResist: { fire: 0.5, ice: 0.5, lightning: 0.5 }, desc: 'Resists all elements equally',
                     drops: { material: 'Dragon Scale', chance: 0.8, quantity: 2 },
                     fragment: { color: 'Ruby', chance: 0.25 } },
                 { name: 'Lava Beast', sprite: '🌋', level: 13, hp: 220, attack: 38, defense: 20, speed: 4, exp: 400, gold: 300,
+                    family: 'elemental',
                     elementalResist: { fire: 0.3, lightning: 0.6 }, elementalWeakness: { ice: 1.7 }, desc: 'Born of magma, resists lightning',
                     drops: { material: 'Lava Core', chance: 0.7, quantity: 1 },
                     fragment: { color: 'Ruby', chance: 0.25 } },
                 { name: 'Flame Knight', sprite: '🔥', level: 14, hp: 240, attack: 42, defense: 22, speed: 6, exp: 450, gold: 350,
+                    family: 'knight',
                     elementalResist: { fire: 0.5, lightning: 0.7 }, elementalWeakness: { ice: 1.5 }, desc: 'Burning warrior, resists lightning',
                     drops: { material: 'Flame Steel', chance: 0.7, quantity: 1 },
                     fragment: { color: 'Ruby', chance: 0.25 } },
                 { name: 'Ice Demon', sprite: '❄️', level: 14, hp: 230, attack: 40, defense: 20, speed: 7, exp: 450, gold: 350,
+                    family: 'demon',
                     elementalResist: { ice: 0.5, lightning: 0.7 }, elementalWeakness: { fire: 1.5 }, desc: 'Frozen fiend, resists lightning',
                     drops: { material: 'Ice Crystal', chance: 0.7, quantity: 1 },
                     fragment: { color: 'Sapphire', chance: 0.25 } },
                 { name: 'Ember Knight', sprite: '⚔️', level: 16, hp: 280, attack: 48, defense: 24, speed: 8, exp: 600, gold: 500,
+                    family: 'knight',
                     elementalResist: { fire: 0.6, ice: 0.6, lightning: 0.4 }, desc: 'Servant of Voraxis, very resistant to lightning',
                     drops: { material: 'Ashen Shard', chance: 0.6, quantity: 1 },
                     fragment: { color: 'Ruby', chance: 0.25 } },
                 { name: 'Abyssal Demon', sprite: '🌑', level: 17, hp: 320, attack: 52, defense: 26, speed: 7, exp: 700, gold: 600,
+                    family: 'demon',
                     elementalResist: { fire: 0.6, ice: 0.6, lightning: 0.6 }, desc: 'From the void, resists all elements',
                     poisonChance: 0.15, poisonDamage: 15, poisonDuration: 4,
                     drops: { material: 'Abyss Essence', chance: 0.7, quantity: 1 },
                     fragment: { color: 'Amethyst', chance: 0.25 } },
                 { name: 'Ancient Dragon', sprite: '🐲', level: 18, hp: 1000, attack: 70, defense: 35, speed: 6, exp: 1800, gold: 1800, isElite: true,
+                    family: 'dragon',
                     elementalResist: { fire: 0.3, ice: 0.3, lightning: 0.5 }, desc: 'Elder dragon, slightly resistant to lightning',
                     drops: { material: 'Dragon Scale', chance: 1.0, quantity: 3 },
-                    fragment: { color: 'Ruby', chance: 0.25 } },
+                    fragment: { color: 'Ruby', chance: 0.25 },
+                    weaponDrop: { chance: 0.07, item: { name: 'Dragonscale Hewer', type: 'weapon', attack: 30, defense: 4, warriorOnly: true, price: 1400, bonusVsFamily: { dragon: 0.18 }, desc: 'Fashioned from a single shed scale, still warm. 18% more damage to dragons.' } } },
                 { name: 'Voraxis', sprite: '🔱', level: 20, hp: 2000, attack: 80, defense: 40, speed: 12, exp: 5000, gold: 5000, isElite: true,
+                    family: 'demon',
                     elementalResist: { fire: 0.5, ice: 0.5, lightning: 0.3 }, desc: 'The final boss, very resistant to lightning',
                     drops: { material: 'Ashen Core', chance: 1.0, quantity: 3 },
                     fragment: { color: 'Amethyst', chance: 0.25 } }
@@ -7582,25 +7678,25 @@
     const CASTLE_BOSSES = {
         'Goblin Keep': {
             name: 'Goblin King', sprite: '👑', level: 8, hp: 500, attack: 35, defense: 20, speed: 8,
-            exp: 800, gold: 600, isBoss: true,
+            exp: 800, gold: 600, isBoss: true, family: 'goblin',
             elementalWeakness: { fire: 1.5, lightning: 1.3 }, desc: 'Ruler of the goblins, weak to fire and lightning',
             drops: { material: 'Goblin Crown', chance: 1.0, quantity: 1, type: 'treasure', value: 500 }
         },
         'Dark Fortress': {
             name: 'Dread Knight', sprite: '⚔️', level: 12, hp: 800, attack: 45, defense: 28, speed: 8,
-            exp: 1500, gold: 1200, isBoss: true,
+            exp: 1500, gold: 1200, isBoss: true, family: 'knight',
             elementalResist: { ice: 0.5, lightning: 0.6 }, elementalWeakness: { fire: 1.3 }, desc: 'Dark champion, resists ice and lightning',
             drops: { material: 'Darksteel Plate', chance: 1.0, quantity: 1, type: 'treasure', value: 800 }
         },
         'Sunken Temple': {
             name: 'Ancient Mummy Lord', sprite: '👑', level: 15, hp: 1200, attack: 55, defense: 30, speed: 6,
-            exp: 2500, gold: 2000, isBoss: true,
+            exp: 2500, gold: 2000, isBoss: true, family: 'undead',
             elementalWeakness: { fire: 1.5 }, elementalResist: { ice: 0.5, lightning: 0.7 }, desc: 'Ancient pharaoh, weak to fire, resists ice',
             drops: { material: 'Pharaoh\'s Staff', chance: 1.0, quantity: 1, type: 'treasure', value: 1200 }
         },
         'Ashveil Spire': {
             name: 'Voraxis', sprite: '🔱', level: 20, hp: 2000, attack: 80, defense: 40, speed: 12,
-            exp: 5000, gold: 5000, isBoss: true,
+            exp: 5000, gold: 5000, isBoss: true, family: 'demon',
             elementalResist: { fire: 0.5, ice: 0.5, lightning: 0.3 }, desc: 'The final boss, very resistant to lightning',
             drops: { material: 'Ashen Core', chance: 1.0, quantity: 3, type: 'treasure', value: 2000 }
         }
@@ -11653,6 +11749,13 @@
                     elementalLogLines.push(`🛡️ ${target.name} resists ${elementalType}!`);
                 }
             }
+            // Weapon identity applies to Limit Break's physical component
+            // too - same weapon, same edge, just a bigger swing.
+            const familyBonus = hero.getWeaponFamilyBonus ? hero.getWeaponFamilyBonus(target) : 0;
+            if (familyBonus > 0) {
+                damage += Math.floor(damage * familyBonus);
+                elementalLogLines.push(`🗡️ ${hero.equipment.weapon.name} bites deep into ${target.name}!`);
+            }
             if (isCrit) {
                 damage = Math.floor(damage * 1.75);
                 elementalDamage = Math.floor(elementalDamage * 1.75);
@@ -12026,6 +12129,15 @@
                         elementalLogLines.push(`🛡️ ${target.name} resists ${elementalType}!`);
                     }
                 }
+            }
+            // Weapon identity: a weapon with bonusVsFamily hits harder
+            // against its own matched monster family (see
+            // Hero.getWeaponFamilyBonus()). Applied to the base physical
+            // damage before crit, same as the elemental gem bonus above.
+            const familyBonus = hero.getWeaponFamilyBonus ? hero.getWeaponFamilyBonus(target) : 0;
+            if (familyBonus > 0) {
+                damage += Math.floor(damage * familyBonus);
+                elementalLogLines.push(`🗡️ ${hero.equipment.weapon.name} bites deep into ${target.name}!`);
             }
             if (isCrit) {
                 damage = Math.floor(damage * 1.5);
@@ -12439,6 +12551,15 @@
                     damage = Math.floor(damage * target.elementalWeakness[spell.element]);
                     spellLogLines.push(`${target.name} is weak to ${spell.element}!`);
                 }
+                // Weapon identity extends to spells too - a caster channels
+                // their damage through their equipped weapon just as much as
+                // a physical swing, so a themed weapon's bonusVsFamily still
+                // applies here, same as elementalWeakness/elementalResist do.
+                const familyBonus = caster.getWeaponFamilyBonus ? caster.getWeaponFamilyBonus(target) : 0;
+                if (familyBonus > 0) {
+                    damage += Math.floor(damage * familyBonus);
+                    spellLogLines.push(`🗡️ ${caster.equipment.weapon.name} channels extra power into the spell!`);
+                }
                 if (caster.pendingAmplify) {
                     damage = Math.floor(damage * 2);
                     caster.pendingAmplify = false;
@@ -12802,6 +12923,13 @@
             livingMonsters.forEach((monster, seq) => {
                 const monsterIndex = this.monsters.indexOf(monster);
                 const startDelay = seq * STAGGER_MS;
+                // Decide this monster's action once, up front, rather than
+                // re-rolling inside the delayed callback below - keeps the
+                // roll's timing independent of whichever branch ends up
+                // firing. See Monster.abilityChance/abilityType and
+                // resolveMonsterAbility() - most monsters have no ability
+                // and always fall through to the normal melee swing below.
+                const useAbility = monster.abilityChance && Math.random() < monster.abilityChance;
 
                 setTimeout(() => {
                     if (!this.active) return;
@@ -12810,6 +12938,10 @@
 
                 setTimeout(() => {
                     if (!this.active) return;
+                    if (useAbility) {
+                        this.resolveMonsterAbility(monster, monsterIndex);
+                        return;
+                    }
                     const livingHeroes = this.party.heroes.filter(h => !h.isDead);
                     if (livingHeroes.length === 0) return;
                     const target = livingHeroes[Math.floor(Math.random() * livingHeroes.length)];
@@ -12906,6 +13038,83 @@
                     }, 500);
                 }
             }, totalDelay);
+        }
+
+        /** Resolves a monster's turn when its abilityChance roll succeeds
+         *  (see enemyPhase()) instead of the normal melee swing. Only a
+         *  handful of templates set abilityType today (Orc Shaman/
+         *  spell_damage, Djinn/buff_self, Sand Golem/heal_self) - this is
+         *  written generically so future templates can reuse any of the
+         *  three branches just by setting the right fields. */
+        resolveMonsterAbility(monster, monsterIndex) {
+            const monsterDiv = document.getElementById(`monster-${monsterIndex}`);
+            const label = monster.abilityName || 'a strange power';
+
+            if (monster.abilityType === 'heal_self') {
+                const healAmount = monster.abilityPower || Math.floor(monster.maxHp * 0.2);
+                const before = monster.currentHp;
+                monster.currentHp = Math.min(monster.maxHp, monster.currentHp + healAmount);
+                const actualHeal = monster.currentHp - before;
+                window.game.audio.play('heal');
+                this.log(`✨ ${monster.name} uses ${label}, recovering ${actualHeal} HP!`);
+                this.showDamage(monster, actualHeal, true);
+                if (monsterDiv) {
+                    monsterDiv.style.transition = 'box-shadow 0.4s';
+                    monsterDiv.style.boxShadow = '0 0 30px #66ff88';
+                    setTimeout(() => { monsterDiv.style.boxShadow = ''; }, 700);
+                }
+                this.updateMonsterDisplay();
+                return;
+            }
+
+            if (monster.abilityType === 'buff_self') {
+                const stat = monster.abilityStat || 'attack';
+                const power = monster.abilityPower || 1.3;
+                monster[stat] = Math.floor(monster[stat] * power);
+                window.game.audio.play('magic');
+                this.log(`🌀 ${monster.name} uses ${label} - its ${stat} surges!`);
+                if (monsterDiv) {
+                    monsterDiv.style.transition = 'box-shadow 0.4s';
+                    monsterDiv.style.boxShadow = '0 0 30px #ffaa00';
+                    setTimeout(() => { monsterDiv.style.boxShadow = ''; }, 700);
+                }
+                return;
+            }
+
+            if (monster.abilityType === 'spell_damage') {
+                const livingHeroes = this.party.heroes.filter(h => !h.isDead);
+                if (livingHeroes.length === 0) return;
+                const target = livingHeroes[Math.floor(Math.random() * livingHeroes.length)];
+                if (target.getEvadeChance && Math.random() < target.getEvadeChance()) {
+                    window.game.audio.play('enemy_hit');
+                    this.log(`${target.name} evades ${monster.name}'s ${label}!`);
+                    this.showDamage(target, 'MISS');
+                    this.updatePartyDisplay();
+                    return;
+                }
+                let damage = monster.abilityPower || Math.floor(monster.attack * 1.2);
+                if (this.party.elementalWardBattles > 0) {
+                    damage = Math.floor(damage * 0.7);
+                }
+                const actualDamage = target.takeDamage(damage);
+                window.game.audio.play('magic');
+                const heroDiv = getBattleElement(target);
+                if (heroDiv) {
+                    heroDiv.classList.add('hero-hit');
+                    this.createHeroHitEffect(heroDiv);
+                    hitFlash(heroDiv, true);
+                    playHeroRecoilAnim(target);
+                    setTimeout(() => { heroDiv.classList.remove('hero-hit'); }, 300);
+                }
+                shakeBattleScreen(false);
+                this.showDamage(target, actualDamage);
+                this.log(`🔮 ${monster.name} casts ${label} on ${target.name} for ${actualDamage} damage!`);
+                if (target.isDead) {
+                    this.log(`${target.name} has fallen!`);
+                }
+                this.updatePartyDisplay();
+                return;
+            }
         }
 
         nextTurn() {
@@ -13111,6 +13320,28 @@
                     this.log(`💎 A ${monster.fragment.color} Gem Fragment glimmers among the remains! (+${fragQty})`);
                     materialsFound.push({ name: `${monster.fragment.color} Fragment`, quantity: fragQty });
                     this.showDropSparkles(FRAGMENT_COLOR_HEX[monster.fragment.color] || '#ffffff');
+                }
+                // Themed weapon drop: a separate, independent roll from the
+                // material/fragment rolls above, only ever present on elite
+                // ("mini-boss") monster templates - see the weaponDrop field
+                // set on Elite Goblin, Shadow Stalker, Elite Orc, Dread
+                // Wraith, Fire Elemental, and Ancient Dragon. Deliberately
+                // excluded from real story bosses (isBoss), which keep their
+                // own treasure-material/bounty economy untouched. The rare
+                // world "mini-boss" encounter (isRareEncounter - see
+                // checkRandomEncounter()) reuses the same elite template, so
+                // it gets a real chance boost here rather than a separate
+                // drop table, since it's meant to feel like the better shot
+                // at the same reward, not a different reward entirely.
+                if (monster.weaponDrop && !monster.isBoss) {
+                    const rareBonus = monster.isRareEncounter ? 0.10 : 0;
+                    if (Math.random() < Math.min(1, monster.weaponDrop.chance + rareBonus + lootChanceBonus)) {
+                        const item = { ...monster.weaponDrop.item };
+                        this.party.addItem(item);
+                        this.log(`⚔️ ${monster.name} dropped a rare weapon: ${item.name}!`);
+                        materialsFound.push({ name: item.name, quantity: 1 });
+                        this.showDropSparkles('#ffd700');
+                    }
                 }
             });
             // Use dungeonMap.locationName rather than state.currentScreen, which is
@@ -13993,7 +14224,7 @@
                 { name: 'Spider Silk', type: 'material', price: 45, desc: 'Gleaming spider silk - rare material' },
                 { name: 'Iron Sword+', type: 'weapon', attack: 8, price: 250, desc: 'Superior iron blade' },
                 { name: 'Bronze Shield', type: 'shield', defense: 6, price: 200, desc: 'Sturdy bronze shield' },
-                { name: 'Goblin Cleaver', type: 'weapon', attack: 12, price: 350, warriorOnly: true, desc: 'Heavy axe effective against goblins' },
+                { name: 'Goblin Cleaver', type: 'weapon', attack: 12, price: 350, warriorOnly: true, bonusVsFamily: { goblin: 0.15 }, desc: 'Heavy axe effective against goblins. 15% more damage to goblins.' },
                 { name: 'Spellbinder Staff', type: 'weapon', attack: 4, magic: 14, price: 380, mageOnly: true, desc: 'Captures ambient magical energy' },
                 { name: 'Dawnbringer Mace', type: 'weapon', attack: 8, magic: 6, price: 360, paladinOnly: true, desc: 'Glows faintly with holy light' },
                 { name: 'Berserker Hide', type: 'armor', defense: 12, attack: 3, price: 320, warriorOnly: true, desc: 'Increases ferocity in battle' },
@@ -14041,7 +14272,8 @@
                 { name: 'Crystal Skull', type: 'material', price: 400, desc: 'Mysterious crystal skull - ultra rare' },
                 { name: 'Hellfire Greatsword', type: 'weapon', attack: 32, magic: 12, element: 'fire', price: 1800, warriorOnly: true, desc: 'Wreathed in demonic flames' },
                 { name: 'Glacial Scepter', type: 'weapon', attack: 10, magic: 35, element: 'ice', price: 1900, mageOnly: true, desc: 'Freezes the very air around it' },
-                { name: 'Thunderbolt Greathammer', type: 'weapon', attack: 24, magic: 18, element: 'lightning', price: 1850, paladinOnly: true, desc: 'Calls lightning with each strike' }
+                { name: 'Thunderbolt Greathammer', type: 'weapon', attack: 24, magic: 18, element: 'lightning', price: 1850, paladinOnly: true, desc: 'Calls lightning with each strike' },
+                { name: 'Boneshear Warhammer', type: 'weapon', attack: 26, defense: 4, price: 950, warriorOnly: true, bonusVsFamily: { undead: 0.2 }, desc: 'Cracks bone like dry kindling. The dead do not rise twice from its blow. 20% more damage to undead.' }
             ]
         },
         sylvaris: {
@@ -14063,7 +14295,8 @@
                 { name: 'Elemental Rod', type: 'weapon', magic: 25, attack: 10, price: 2000, mageOnly: true, desc: 'Rod of the elements' },
                 { name: 'Fire Core', type: 'material', price: 500, desc: 'Pure fire elemental core' },
                 { name: 'Golden Idol', type: 'material', price: 600, desc: 'Priceless golden idol' },
-                { name: 'Firaga Tome', type: 'spell_tome', spell: 'Firaga', price: 2500, desc: 'Ultimate fire magic tome' }
+                { name: 'Firaga Tome', type: 'spell_tome', spell: 'Firaga', price: 2500, desc: 'Ultimate fire magic tome' },
+                { name: 'Sandwarden Scepter', type: 'weapon', magic: 24, attack: 10, price: 2100, mageOnly: true, bonusVsFamily: { elemental: 0.2, construct: 0.15 }, desc: 'Attuned to the desert\'s restless spirits. 20% more damage to elemental creatures, 15% to constructs.' }
             ]
         },
         chaos: {
@@ -14096,7 +14329,8 @@
                 { name: 'Void Crystal', type: 'material', price: 800, desc: 'Crystal from the void' },
                 { name: 'Inferno Claymore', type: 'weapon', attack: 48, magic: 18, element: 'fire', price: 2800, warriorOnly: true, desc: 'Leaves a trail of fire with each swing' },
                 { name: 'Absolute Zero Rod', type: 'weapon', attack: 14, magic: 52, element: 'ice', price: 3000, mageOnly: true, desc: 'Can freeze enemies solid' },
-                { name: 'Tempest Avenger', type: 'weapon', attack: 38, magic: 24, element: 'lightning', price: 2900, paladinOnly: true, desc: 'Channels the power of storms' }
+                { name: 'Tempest Avenger', type: 'weapon', attack: 38, magic: 24, element: 'lightning', price: 2900, paladinOnly: true, desc: 'Channels the power of storms' },
+                { name: 'Dragonbane Zweihander', type: 'weapon', attack: 40, price: 2700, warriorOnly: true, bonusVsFamily: { dragon: 0.2, demon: 0.15 }, desc: 'A massive two-handed blade forged to hunt what the world fears most. 20% more damage to dragons, 15% to demons.' }
             ]
         }
     };
@@ -15769,7 +16003,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v59]');
+            console.log('Game starting... [build v60]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
