@@ -5,7 +5,7 @@
 // shell (manifest + icons). Bump CACHE_VERSION any time you ship an
 // updated index.html so installed devices pick up the new build instead
 // of continuing to serve the stale cached copy.
-const CACHE_VERSION = 'legend-of-eternal-v44';
+const CACHE_VERSION = 'legend-of-eternal-v49';
 const CORE_ASSETS = [
     './',
     './index.html',
@@ -61,6 +61,14 @@ const CORE_ASSETS = [
     './assets/heroes/warrior.png',
     './assets/heroes/mage.png',
     './assets/heroes/paladin.png',
+    './assets/npcs/oratio.png',
+    './assets/npcs/ouzo.png',
+    './assets/npcs/ley.png',
+    './assets/npcs/prime.png',
+    './assets/npcs/linail.png',
+    './assets/tiles/nature.png',
+    './assets/tiles/ashlands.png',
+    './assets/tiles/desert.png',
     './assets/town/door.png',
     './assets/town/window.png',
     './assets/town/roof.png',
@@ -69,7 +77,8 @@ const CORE_ASSETS = [
     './assets/town/castle_window.png',
     './assets/town/fountain.png',
     './assets/town/fence.png',
-    './assets/items/tome.png'
+    './assets/items/tome.png',
+    './assets/ui/title-bg.jpg'
 ];
 
 self.addEventListener('install', (event) => {

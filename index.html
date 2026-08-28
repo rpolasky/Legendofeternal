@@ -75,31 +75,14 @@
             touch-action: none;
         }
 
-        /* Town/cave/castle/ruins/spring live OUTSIDE #game-container now (see
-           .walkable-viewport) as real position:fixed siblings with z-index
-           10 (from .screen.active). #game-container itself always exists in
-           the DOM with an opaque black background - normally that's fine
-           because it sits below those screens at its default stacking level,
-           invisible behind whichever walkable-viewport is currently active.
-           But when a battle starts from one of those screens, the backdrop's
-           z-index:10 painted ON TOP of #game-container, hiding #battle-screen
-           inside it entirely (no amount of z-index on #battle-screen itself
-           can escape - a child's z-index is only ever compared within its
-           own parent's stacking context, never against the parent's
-           siblings). The fix is NOT a permanent z-index bump on
-           #game-container (that made its opaque black box permanently cover
-           every location screen, even outside battle - the "black frame"
-           bug). Instead, JS toggles body.battle-active only while a battle
-           is actually up (see switchScreen()'s 'battle' branches), so
-           #game-container is elevated above the walkable-viewport only for
-           that window and sits back below it - invisible - the rest of the
-           time. 25 stays above every walkable-viewport/screen (10) and
-           start-screen (20), while staying safely below the side rails
-           (55/60) and menu/shop viewport-overlays (250) that must remain
-           tappable over it. */
-        body.battle-active #game-container {
-            z-index: 25;
-        }
+        /* battle-screen is a real position:fixed full-viewport screen now
+           too (see .battle-viewport), just like town/cave/castle/ruins -
+           it no longer lives inside #game-container, so the z-index
+           elevation hack that used to be needed here (to punch
+           #battle-screen up above the walkable-viewport backdrop while a
+           fight was up) is gone; ordinary DOM-order z-index:10 tie-breaking
+           (see .screen.active) handles it since battle-screen is placed
+           after the walkable-viewport screens in the HTML. */
 
         /* ====================================================================== */
         /*                 MOBILE RESPONSIVE SCALING + ROTATE PROMPT             */
@@ -146,37 +129,75 @@
            screen. This is what lets the D-pad/party status/minimap/quick
            buttons live in the unused margins instead of floating over the
            gameplay view. */
+        /* #hud-top-bar is now just a floating corner cluster (hamburger +
+           gold pill), not a full-width reserved strip - it no longer eats
+           any vertical space from fitGameContainer()'s layout math (see
+           TOPBAR_H handling there), so the world view can render larger.
+           The 11 buttons that used to live in a strip now live inside
+           #hud-menu-panel, a dropdown toggled by the hamburger. */
         #hud-top-bar {
             display: none;
             position: fixed;
-            top: 0; left: 0; right: 0;
-            height: 48px;
+            top: 10px; left: 10px;
             z-index: 60;
-            background: rgba(10, 10, 26, 0.92);
-            border-bottom: 2px solid var(--border-color);
             align-items: center;
-            justify-content: space-between;
-            padding: 0 14px;
-            gap: 10px;
-            backdrop-filter: blur(4px);
+            gap: 8px;
         }
         #hud-top-bar.visible { display: flex; }
+        .hud-hamburger-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: rgba(26, 15, 46, 0.72);
+            border: 2px solid rgba(106, 74, 138, 0.9);
+            box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+            color: var(--text-color);
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(3px);
+        }
+        .hud-hamburger-btn:active { background: rgba(106, 74, 138, 0.9); }
         .hud-top-gold {
             color: var(--gold-color);
             font-weight: bold;
-            font-size: 14px;
+            font-size: 13px;
             white-space: nowrap;
-        }
-        .hud-top-buttons {
+            background: rgba(26, 15, 46, 0.72);
+            border: 2px solid rgba(106, 74, 138, 0.9);
+            border-radius: 10px;
+            padding: 0 12px;
+            height: 40px;
             display: flex;
-            gap: 6px;
-            flex-wrap: nowrap;
+            align-items: center;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+            backdrop-filter: blur(3px);
         }
-        .hud-top-buttons .menu-button {
-            padding: 5px 10px;
-            font-size: 15px;
+
+        /* Dropdown panel that used to be the always-visible top bar's button
+           strip. Anchored under the hamburger, floats above the canvas. */
+        #hud-menu-panel {
+            display: none;
+            position: fixed;
+            top: 56px; left: 10px;
+            z-index: 61;
+            background: rgba(20, 12, 38, 0.95);
+            border: 2px solid var(--highlight, #8a5fc0);
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+            padding: 8px;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+            backdrop-filter: blur(4px);
+        }
+        #hud-menu-panel.open { display: grid; }
+        #hud-menu-panel .menu-button {
+            padding: 8px 6px;
+            font-size: 17px;
             margin: 0;
             line-height: 1;
+            min-width: 40px;
         }
 
         #hud-side-left, #hud-side-right {
@@ -189,9 +210,20 @@
             display: flex;
             flex-direction: column;
             transition: width 0.15s ease;
+            /* These rails now float ON TOP of the full-bleed canvas instead
+               of living in reserved side margins - the rail box itself must
+               not swallow taps in the empty space around the D-pad/buttons,
+               or the world/map underneath would be untappable there. Each
+               actual control re-enables pointer-events itself below. */
+            pointer-events: none;
         }
         #hud-side-left { left: 0; align-items: flex-start; }
         #hud-side-right { right: 0; align-items: flex-end; }
+        #hud-side-left .hud-icon-btn,
+        #hud-side-left .dpad-btn,
+        #hud-side-right .touch-action-btn {
+            pointer-events: auto;
+        }
 
         /* #hud-side-right holds a variable-height party-status block ABOVE
            the D-pad/action buttons. With the rail's own overflow-y:auto
@@ -214,7 +246,8 @@
             min-height: 0;
             overflow-y: auto;
         }
-        #hud-side-right #mobile-controls {
+        #hud-side-right #mobile-actions-wrap,
+        #hud-side-left #mobile-dpad-wrap {
             flex-shrink: 0;
         }
 
@@ -234,9 +267,6 @@
         }
         .rail-section.visible { display: block; }
 
-        #rail-party-status {
-            padding: 12px 10px;
-        }
         .rail-heading {
             color: var(--highlight);
             font-size: 11px;
@@ -244,12 +274,73 @@
             margin-bottom: 8px;
             text-align: center;
         }
-        #hud-side-left .party-status-mini {
+
+        /* --- Party icon button (left rail) + the overlay it opens ---
+           Replaces the always-visible left "PARTY" panel: a single small
+           icon sits in the rail (doesn't compete with the D-pad for
+           space), and tapping it floats the full party status on top of
+           the world instead of reserving permanent screen real estate. */
+        .hud-icon-btn {
+            display: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: rgba(26, 15, 46, 0.72);
+            border: 2px solid rgba(106, 74, 138, 0.9);
+            box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+            color: var(--text-color);
+            font-size: 18px;
+            align-items: center;
+            justify-content: center;
+            /* Extra top margin clears the floating hamburger button, which
+               sits fixed at the same (10px, 10px) corner and would
+               otherwise render directly on top of this. */
+            margin: 60px 10px 10px;
+            backdrop-filter: blur(3px);
+        }
+        .hud-icon-btn.visible { display: flex; }
+        .hud-icon-btn:active { background: rgba(106, 74, 138, 0.9); }
+
+        #hud-party-overlay {
+            display: none;
+            position: fixed;
+            top: 56px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 62;
+            width: min(320px, 80vw);
+            max-height: 70vh;
+            overflow-y: auto;
+            background: rgba(20, 12, 38, 0.95);
+            border: 2px solid var(--highlight, #8a5fc0);
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+            padding: 12px;
+            backdrop-filter: blur(4px);
+        }
+        #hud-party-overlay.open { display: block; }
+        .hud-party-overlay-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--highlight);
+            font-size: 13px;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+        .hud-party-overlay-header button {
+            background: none;
+            border: none;
+            color: var(--text-color);
+            font-size: 16px;
+            padding: 2px 6px;
+        }
+        #hud-party-overlay .party-status-mini {
             display: flex;
             flex-direction: column;
             gap: 8px;
         }
-        #hud-side-left .hero-mini {
+        #hud-party-overlay .hero-mini {
             text-align: left;
             padding: 6px 8px;
         }
@@ -288,10 +379,12 @@
             image-rendering: pixelated;
         }
 
-        /* #mobile-controls now lives inside #hud-side-right as a normal
-           flex child (pushed to the bottom of the rail with margin-top:auto)
-           instead of absolutely overlaying the game canvas. */
-        #mobile-controls {
+        /* .mobile-controls-part covers the two rail children that used to
+           be one #mobile-controls block: the D-pad (now left rail) and the
+           Talk/Menu/Reset buttons (right rail). Both still pin to the
+           bottom of their rail via margin-top:auto, and share the same
+           visibility toggle behavior as the old element did. */
+        .mobile-controls-part {
             display: none;
             flex-direction: column;
             align-items: center;
@@ -299,19 +392,21 @@
             margin-top: auto;
             padding: 12px 10px 16px;
         }
-        #mobile-controls.visible { display: flex; }
+        .mobile-controls-part.visible { display: flex; }
 
         .dpad {
             position: relative;
             width: 144px;
             height: 144px;
         }
+        /* Translucent with a clearly visible border, per request, so the
+           D-pad reads as "there" without blocking the view behind it. */
         .dpad-btn {
             position: absolute;
             width: 48px;
             height: 48px;
-            background: rgba(26, 26, 46, 0.85);
-            border: 2px solid rgba(106, 74, 138, 0.9);
+            background: rgba(26, 26, 46, 0.32);
+            border: 2px solid rgba(180, 140, 255, 0.85);
             border-radius: 10px;
             color: var(--text-color);
             font-size: 18px;
@@ -321,9 +416,11 @@
             touch-action: none;
             user-select: none;
             -webkit-user-select: none;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+            backdrop-filter: blur(1px);
         }
         .dpad-btn:active {
-            background: rgba(106, 74, 138, 0.9);
+            background: rgba(106, 74, 138, 0.75);
             border-color: var(--highlight);
         }
         .dpad-up { left: 48px; top: 0; }
@@ -336,100 +433,77 @@
             top: 48px;
             width: 48px;
             height: 48px;
-            background: rgba(10, 10, 26, 0.4);
+            background: rgba(10, 10, 26, 0.18);
+            border: 1px solid rgba(180, 140, 255, 0.4);
             border-radius: 8px;
         }
 
+        /* Talk/Menu/Reset: icon-only now (text label dropped), grouped in
+           a deep-purple shadowed frame per request instead of loose
+           buttons floating in the rail. */
+        .hud-action-frame {
+            background: rgba(20, 12, 38, 0.7);
+            border: 2px solid rgba(106, 74, 138, 0.9);
+            border-radius: 14px;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.55);
+            backdrop-filter: blur(3px);
+        }
         .touch-actions {
             display: flex;
             flex-direction: column;
-            gap: 10px;
-            width: 100%;
+            gap: 8px;
             align-items: center;
+            padding: 8px;
         }
         .touch-action-btn {
             touch-action: none;
-            width: 100%;
-            max-width: 140px;
-            height: 48px;
+            width: 44px;
+            height: 44px;
             background: rgba(26, 26, 46, 0.85);
             border: 2px solid rgba(106, 74, 138, 0.9);
             border-radius: 10px;
             color: var(--text-color);
-            font-size: 16px;
+            font-size: 19px;
             display: flex;
-            flex-direction: row;
             align-items: center;
             justify-content: center;
-            gap: 6px;
             user-select: none;
             -webkit-user-select: none;
         }
-        .touch-action-btn span {
-            font-size: 10px;
-            letter-spacing: 0.5px;
-            color: #cfc0ee;
-        }
+        .touch-action-btn span { display: none; }
         .touch-action-btn:active {
             background: rgba(106, 74, 138, 0.9);
             border-color: var(--highlight);
+        }
+        /* Exit only makes sense inside a town/dungeon (not the open world,
+           which has no "exit" concept) - hidden by default, shown per
+           screen by updateHudVisibility(). Red to match the old Exit
+           button's warning color since it's the one destructive-ish nav
+           action in the frame. */
+        .touch-action-btn.touch-exit {
+            display: none;
+            background: rgba(80, 20, 20, 0.85);
+            border-color: rgba(255, 68, 68, 0.85);
+        }
+        .touch-action-btn.touch-exit.visible { display: flex; }
+        .touch-action-btn.touch-exit:active {
+            background: rgba(139, 0, 0, 0.9);
+            border-color: #ff4444;
         }
 
         /* Hide all of this chrome on devices with a mouse/trackpad - it's a
            touch-first system, and desktop already has the old in-canvas
            world-hud-style controls plus keyboard/mouse. */
         @media (hover: hover) and (pointer: fine) {
-            #hud-top-bar, #hud-side-left, #hud-side-right { display: none !important; }
+            #hud-top-bar, #hud-side-left, #hud-side-right, #hud-menu-panel, #hud-party-overlay { display: none !important; }
         }
 
-        /* ====================================================================== */
-        /*         BATTLE RAIL MODE - hero cards + commands relocated out        */
-        /* ====================================================================== */
-        /* When body.battle-rail-mode is active (see enterBattleRailMode() in
-           the script), #battle-hud-party and #battle-commands have been
-           physically moved (not duplicated - the exact same DOM nodes, so
-           all existing selectCommand()/render logic keeps working untouched)
-           into the side rails. .battle-ui then only needs to hold the log,
-           so it shrinks way down, handing most of that space back to
-           .battle-background - directly fixing "the battle screen is too
-           tiny to see/tap". */
-        body.battle-rail-mode .battle-ui {
-            height: 80px;
-        }
-        body.battle-rail-mode .battle-background {
-            height: calc(100% - 80px);
-        }
-        body.battle-rail-mode .battle-hud-row {
-            display: none;
-        }
-        body.battle-rail-mode .battle-log {
-            padding: 8px 14px;
-        }
-
-        #hud-side-left #battle-hud-party {
-            flex-direction: column;
-            overflow-x: visible;
-            overflow-y: auto;
-            width: 100%;
-            gap: 8px;
-            padding: 10px;
-        }
-        #hud-side-left .hud-hero-card {
-            width: 100%;
-            min-width: 0;
-        }
-
-        #hud-side-right #battle-commands {
-            width: 100%;
-            grid-template-columns: 1fr;
-            padding: 10px;
-            gap: 8px;
-        }
-        #hud-side-right .cmd-btn {
-            padding: 14px 10px;
-            font-size: 13px;
-            min-height: 46px;
-        }
+        /* battle-rail-mode (which used to relocate #battle-hud-party and
+           #battle-commands into the side rails on wide-margin screens) has
+           been fully replaced: battle-screen is a real full-viewport
+           screen now (see .battle-viewport) with its own compact icon
+           command bar and per-hero info cards, so there's no longer a
+           separate "roomier" rail layout to relocate into. */
 
         /* ====================================================================== */
         /*                      SCREEN TRANSITIONS                              */
@@ -466,13 +540,13 @@
         /*   chrome (z-index 55-60) stays visible and tappable on top of the     */
         /*   now-wider canvas instead of being covered by it.                    */
         /* ====================================================================== */
-        .walkable-viewport {
+        .walkable-viewport, .battle-viewport {
             position: fixed !important;
             inset: 0 !important;
             width: 100vw !important;
             height: 100vh !important;
         }
-        .walkable-viewport.active {
+        .walkable-viewport.active, .battle-viewport.active {
             /* switchScreen() sets style.display='block' (not 'flex') when
                activating a screen, silently overriding .location-screen's
                own display:flex rule - which meant .location-canvas's flex:1
@@ -483,13 +557,12 @@
             display: flex !important;
             flex-direction: column !important;
             overflow: hidden !important;
-            /* Room is reserved on the right for the D-pad/action-button
-               rail (kept, per the request) - nothing reserved on the left
-               anymore, so the canvas can use that previously-blank space.
-               Must match LOCATION_RAIL_W in the script, which sizes
-               #hud-side-right to the same 170px while one of these screens
-               is active. */
-            padding-right: 170px;
+            /* Chrome (D-pad left, action-button frame right) now floats on
+               top of the canvas instead of living in reserved side margins
+               - the canvas/control-bar go completely edge-to-edge. See
+               #hud-side-left/#hud-side-right pointer-events handling below,
+               which lets taps pass through the empty space around the
+               floating controls to reach the world/map underneath. */
             box-sizing: border-box;
         }
 
@@ -583,9 +656,12 @@
         /* ====================================================================== */
         #start-screen {
             background: linear-gradient(180deg, #0a001a 0%, #1a0a2e 30%, #2a1a3e 60%, #0a0a1a 100%);
+            background-image: url('assets/ui/title-bg.jpg');
+            background-size: cover;
+            background-position: center;
             display: none;
             flex-direction: column;
-            justify-content: center;
+            justify-content: flex-end;
             align-items: center;
             text-align: center;
             position: relative;
@@ -602,55 +678,46 @@
             display: flex !important;
         }
 
-        /* Animated background particles */
-        #start-screen::before {
-            content: '';
+        /* The h1/subtitle are hidden now - the key art already has a
+           painted "Legend of Eternal" logo baked in (see .start-screen
+           background-image above), so a second plain-text title on top
+           would just duplicate it. Left in the DOM rather than deleted so
+           there's still a real heading for screen readers. */
+        #start-screen h1, #start-screen .subtitle {
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: 
-                radial-gradient(2px 2px at 20% 30%, rgba(255,215,0,0.3), transparent),
-                radial-gradient(2px 2px at 40% 70%, rgba(255,215,0,0.2), transparent),
-                radial-gradient(2px 2px at 60% 20%, rgba(255,215,0,0.3), transparent),
-                radial-gradient(2px 2px at 80% 80%, rgba(255,215,0,0.2), transparent);
-            background-size: 200px 200px;
-            animation: starsFloat 20s linear infinite;
+            width: 1px; height: 1px;
+            overflow: hidden;
+            clip: rect(0,0,0,0);
+        }
+
+        /* A handful of small leaves drift down from the top and sway side
+           to side, looping continuously - purely decorative ambient motion
+           over the key art (per request). Each .leaf gets a randomized
+           left position/delay/duration inline (see the script that spawns
+           them) so they don't all fall in lockstep. */
+        .start-screen-leaves {
+            position: absolute;
+            inset: 0;
             pointer-events: none;
+            z-index: 2;
+            overflow: hidden;
         }
-
-        @keyframes starsFloat {
-            0% { transform: translateY(0); }
-            100% { transform: translateY(-200px); }
-        }
-
-        #start-screen h1 {
-            font-size: 64px;
-            color: var(--highlight);
-            text-shadow: 0 0 40px rgba(255,215,0,0.4),
-                         0 0 80px rgba(255,215,0,0.2),
-                         4px 4px 0px #000;
-            margin-bottom: 10px;
-            letter-spacing: 8px;
-            animation: titleGlow 3s infinite ease-in-out;
-            position: relative;
-            z-index: 1;
-        }
-
-        @keyframes titleGlow {
-            0%, 100% { text-shadow: 0 0 40px rgba(255,215,0,0.4), 0 0 80px rgba(255,215,0,0.2), 4px 4px 0px #000; }
-            50% { text-shadow: 0 0 60px rgba(255,215,0,0.6), 0 0 120px rgba(255,215,0,0.3), 4px 4px 0px #000; }
-        }
-
-        .subtitle {
+        .leaf {
+            position: absolute;
+            top: -40px;
             font-size: 18px;
-            color: #8888bb;
-            margin-bottom: 30px;
-            letter-spacing: 6px;
-            position: relative;
-            z-index: 1;
-            text-shadow: 0 0 20px rgba(136,136,187,0.3);
+            opacity: 0.75;
+            filter: drop-shadow(0 2px 3px rgba(0,0,0,0.4));
+            animation: leafFall linear infinite, leafSway ease-in-out infinite;
+            will-change: transform;
+        }
+        @keyframes leafFall {
+            0% { transform: translateY(-5vh); }
+            100% { transform: translateY(105vh); }
+        }
+        @keyframes leafSway {
+            0%, 100% { margin-left: 0px; }
+            50% { margin-left: 40px; }
         }
 
         /* Enhanced Buttons */
@@ -711,41 +778,131 @@
             box-shadow: 0 6px 30px rgba(255,215,0,0.3);
         }
 
-        /* Save slots - Enhanced */
+        /* Bottom dock: everything (save-slot cards + action buttons) now
+           lives in a gradient scrim anchored to the bottom of the screen,
+           so the top ~60% stays clear for the key art (logo, town,
+           heroes) instead of UI elements competing with it for attention. */
+        .start-screen-dock {
+            position: relative;
+            z-index: 3;
+            width: 100%;
+            max-width: 640px;
+            padding: 18px 16px 16px;
+            background: linear-gradient(180deg, transparent 0%, rgba(5,2,15,0.55) 25%, rgba(5,2,15,0.88) 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .start-slots-row {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+            justify-content: center;
+        }
+
+        /* Save slots - now compact preview cards instead of plain text
+           boxes: each shows the party's classes/levels and gold/date at a
+           glance when a save exists, so you can tell your three files
+           apart without opening them. */
         .save-slot {
-            background: rgba(0,0,0,0.6);
-            padding: 20px;
+            background: rgba(10,5,20,0.75);
+            padding: 8px 10px;
             border: 2px solid var(--border-color);
             border-radius: 8px;
-            min-width: 150px;
-            transition: all 0.3s ease;
+            flex: 1 1 0;
+            min-width: 0;
+            max-width: 190px;
+            transition: all 0.25s ease;
             position: relative;
             z-index: 1;
             backdrop-filter: blur(5px);
+            cursor: pointer;
         }
 
-        .save-slot:hover {
+        .save-slot:hover, .save-slot:active {
             border-color: var(--highlight);
-            transform: translateY(-5px);
+            transform: translateY(-3px);
             box-shadow: var(--glow-gold);
         }
 
         .save-slot.has-save {
             border-color: var(--gold-color);
-            background: rgba(255,215,0,0.05);
+            background: rgba(255,215,0,0.08);
+        }
+
+        .save-slot.slot-selected {
+            border-color: #fff;
+            box-shadow: 0 0 0 2px var(--gold-color), var(--glow-gold);
         }
 
         .save-slot h3 {
             color: var(--highlight);
-            margin-bottom: 8px;
-            font-size: 14px;
+            margin-bottom: 4px;
+            font-size: 11px;
+            letter-spacing: 1px;
         }
 
         .save-slot .slot-info {
             color: #8888bb;
+            font-size: 10px;
+            min-height: 34px;
+            margin-bottom: 0;
+            line-height: 1.4;
+        }
+
+        .slot-heroes {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+            font-size: 12px;
+            margin-bottom: 2px;
+        }
+
+        .slot-heroes .hero-chip {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1px;
+        }
+
+        .slot-heroes .hero-chip .lvl {
+            font-size: 8px;
+            color: #cfc0ee;
+        }
+
+        .slot-meta {
+            color: #cfc0ee;
+            font-size: 9px;
+        }
+
+        .slot-empty {
+            color: #77779a;
+            font-style: italic;
+        }
+
+        .start-actions-primary {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+            justify-content: center;
+        }
+        .start-actions-primary .menu-button {
+            flex: 1 1 0;
+            max-width: 220px;
+            margin: 0;
+        }
+
+        .start-actions-secondary {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+        }
+        .start-actions-secondary .menu-button {
+            padding: 6px 12px;
             font-size: 11px;
-            min-height: 40px;
-            margin-bottom: 10px;
+            margin: 0;
         }
 
         /* ====================================================================== */
@@ -766,9 +923,18 @@
         }
 
         #world-canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
+            /* Was position:absolute/top:0/left:0 sized to a fixed 1024x768
+               design canvas that #game-container then letterbox-scaled to
+               fit the screen (which is what kept leaving black bars down
+               the sides). world-canvas now lives in the same real,
+               dynamically-resized full-viewport system as
+               town/cave/castle/ruins (see .walkable-viewport +
+               fitLocationCanvas()), so it just needs to be a normal flex
+               child that fills the space between the D-pad/action rails. */
+            flex: 1;
+            width: 100%;
+            min-height: 0;
+            min-width: 0;
             z-index: 1;
             background: #000;
             image-rendering: pixelated;
@@ -922,8 +1088,18 @@
         /*                      BATTLE SCREEN - ENHANCED                        */
         /* ====================================================================== */
         #battle-screen {
-            background: rgba(5, 0, 15, 0.6);
-            backdrop-filter: blur(2px);
+            background: rgba(5, 0, 15, 0.75);
+            /* backdrop-filter: blur() dropped here - a full-screen blur
+               recalculated every frame while .battle-window simultaneously
+               animates transform + clip-path (the spiral entrance below) is
+               a known-expensive combination on real mobile GPUs, and is the
+               most likely cause of the brief flicker/jank during the
+               world-to-battle transition (small/fast enough that it didn't
+               show up in automated screenshot testing, which runs on much
+               more powerful hardware than a phone). Bumped the plain
+               background dim up slightly (0.6 -> 0.75 alpha) to compensate
+               for losing the blur's contribution to obscuring the backdrop.
+            */
         }
 
         #battle-screen.active {
@@ -943,14 +1119,13 @@
 
         .battle-window {
             position: relative;
-            width: 94%;
-            height: 90%;
-            max-width: 1000px;
-            max-height: 720px;
+            /* Full screen now (was 94%/90% with a max-width/height cap and
+               rounded corners, floating like a window over a letterboxed
+               backdrop) - battle-screen is a real full-viewport screen now
+               (see .battle-viewport), so this just needs to fill it. */
+            width: 100%;
+            height: 100%;
             background: linear-gradient(180deg, #0a001a 0%, #1a0a2e 40%, #2a1a3e 70%, #0a0a1a 100%);
-            border: 4px solid var(--border-color);
-            border-radius: 16px;
-            box-shadow: 0 0 0 4px rgba(0,0,0,0.4), 0 20px 60px rgba(0,0,0,0.85), var(--glow-gold);
             overflow: hidden;
             display: flex;
             flex-direction: column;
@@ -986,8 +1161,11 @@
             position: relative;
             display: flex;
             justify-content: space-between;
-            padding: 30px 50px;
-            height: calc(100% - 295px);
+            padding: 14px 30px;
+            /* Full height now - the command bar floats as a small pill
+               overlay (see .battle-ui) instead of reserving a fixed strip
+               across the bottom, so the battlefield/heroes get all of it. */
+            height: 100%;
             background: radial-gradient(ellipse at 30% 40%, #2a1a4e 0%, #0a0a1a 70%);
             transition: background 0.6s ease;
         }
@@ -1058,9 +1236,9 @@
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             grid-auto-rows: min-content;
-            gap: 16px 14px;
+            gap: 10px 10px;
             width: 56%;
-            padding-top: 20px;
+            padding-top: 10px;
             align-content: start;
             justify-items: center;
         }
@@ -1078,12 +1256,12 @@
            behavior, so this is the one rule in effect now. */
         .monster-sprite {
             width: 100%;
-            max-width: 170px;
+            max-width: 100px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: flex-start;
-            font-size: clamp(30px, 12vw, 46px);
+            font-size: clamp(20px, 7vw, 30px);
             position: relative;
             animation: monsterFloat 2.5s infinite ease-in-out;
             cursor: pointer;
@@ -1108,8 +1286,8 @@
            overlap risk to guard against, and a big fixed size reads as
            more imposing than one tied to a single 1/3-width column. */
         .monster-sprite.boss {
-            width: 250px;
-            max-width: 250px;
+            width: 150px;
+            max-width: 150px;
             animation: bossFloat 2s infinite ease-in-out;
             filter: drop-shadow(0 10px 8px rgba(0,0,0,0.5)) drop-shadow(0 0 24px rgba(255,68,68,0.6));
         }
@@ -1126,13 +1304,13 @@
            pixel art for attention or forcing the name line's font down. */
         .monster-level-badge {
             position: absolute;
-            top: -14px;
-            right: -10px;
+            top: -10px;
+            right: -6px;
             background: rgba(0,0,0,0.88);
-            border: 3px solid var(--border-color);
-            border-radius: 14px;
-            padding: 4px 14px;
-            font-size: 30px;
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            padding: 2px 8px;
+            font-size: 18px;
             font-weight: bold;
             color: var(--highlight);
             z-index: 26;
@@ -1141,33 +1319,33 @@
         }
 
         .monster-sprite.boss .monster-level-badge {
-            top: -18px;
-            right: -14px;
-            padding: 6px 20px;
-            font-size: 38px;
-            border-width: 4px;
+            top: -14px;
+            right: -10px;
+            padding: 4px 14px;
+            font-size: 26px;
+            border-width: 3px;
         }
 
         /* Elemental weakness/resistance badges */
         .monster-elemental-badge {
             position: absolute;
-            left: -36px;
+            left: -22px;
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 4px;
             top: 50%;
             transform: translateY(-50%);
             z-index: 25;
         }
 
         .elemental-weakness, .elemental-resist {
-            width: 32px;
-            height: 32px;
+            width: 22px;
+            height: 22px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 16px;
+            font-size: 12px;
             font-weight: bold;
             box-shadow: 0 2px 8px rgba(0,0,0,0.5);
             transition: transform 0.2s;
@@ -1229,22 +1407,22 @@
         .monster-info {
             background: rgba(0,0,0,0.9);
             border: 1px solid var(--border-color);
-            padding: 5px 8px;
-            margin-top: 4px;
-            font-size: 14px;
+            padding: 3px 6px;
+            margin-top: 3px;
+            font-size: 11px;
             width: 100%;
             text-align: center;
             border-radius: 4px;
             white-space: normal;
-            line-height: 1.3;
+            line-height: 1.25;
             word-break: break-word;
         }
 
         .monster-hp-bar {
             width: 100%;
-            height: 10px;
+            height: 7px;
             background: #333;
-            margin-top: 4px;
+            margin-top: 3px;
             border-radius: 4px;
             overflow: hidden;
         }
@@ -1257,18 +1435,39 @@
 
         /* Party Battle Area - bare pixel sprites on the stage, no panel chrome.
            Heroes stand in a vertical column on the right, facing the monsters
-           on the left (mirrors classic JRPG battle framing). All the name/HP/
-           MP/Limit/EXP info that used to live inside this box now renders in
-           the #battle-hud-party bar at the bottom of the screen instead. */
+           on the left (mirrors classic JRPG battle framing). Name/HP/MP/
+           Limit/EXP info renders in each hero's own .hud-hero-card, anchored
+           beside its sprite via the shared .hero-slot wrapper (see
+           updatePartyDisplay()). */
         .party-battle-area {
             width: 40%;
             display: flex;
             flex-direction: column;
             align-items: flex-end;
             justify-content: space-evenly;
-            gap: 14px;
-            padding-top: 10px;
-            padding-right: 10px;
+            gap: 6px;
+            padding-top: 4px;
+            padding-right: 6px;
+            /* Keeps the bottom-most hero's card clear of the floating
+               command pill (see .battle-ui), which now overlays the
+               bottom-center of the screen instead of reserving its own
+               row. */
+            padding-bottom: 90px;
+            min-height: 0;
+        }
+
+        /* Stable per-hero wrapper: pairs each animated .battle-hero sprite
+           with its own info card as a plain sibling, so the card stays
+           anchored beside the character (per request: hero info moved
+           next to/behind the character it belongs to, instead of a shared
+           strip at the bottom) without getting dragged along by the
+           sprite's own attack-lunge transform. Card sits to the right of
+           the avatar - heroes face left toward the monsters, so the card
+           reads as sitting just behind their shoulder. */
+        .hero-slot {
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
 
         .battle-hero {
@@ -1315,13 +1514,31 @@
             animation: none;
         }
 
+        /* Ally-target highlight (shown while picking who a heal/buff spell
+           or item targets) - a real CSS class + :active pseudo-class
+           instead of inline styles driven by onmouseover/onmouseout, which
+           is what let the green tint get stuck permanently on a touch
+           device: a touch fires "mouseover" without any guaranteed
+           "mouseout" to undo it, so the old inline backgroundColor could
+           survive long after target selection ended. :active has no such
+           failure mode - it can't get stuck, since the browser itself
+           clears it the moment the touch/click ends, not application code. */
+        .battle-hero.targetable {
+            border: 2px solid #00ff00;
+            cursor: pointer;
+            border-radius: 8px;
+        }
+        .battle-hero.targetable:active {
+            background-color: rgba(0, 255, 0, 0.3);
+        }
+
         .battle-hero .hero-avatar {
-            width: 116px;
-            height: 116px;
+            width: 84px;
+            height: 84px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 20px;
+            font-size: 18px;
             flex-shrink: 0;
             filter: drop-shadow(0 8px 6px rgba(0,0,0,0.55));
             image-rendering: pixelated;
@@ -1340,12 +1557,11 @@
            needs is accounted for by the larger gap on .party-battle-area
            below, so adjacent heroes' padded zones never touch. */
         .battle-hero {
-            padding: 10px;
+            padding: 5px;
         }
 
-        /* Reused generic stat-bar/fill styles - now rendered inside the
-           bottom #battle-hud-party bar instead of the old panel that used
-           to wrap the hero avatar in battle. */
+        /* Reused generic stat-bar/fill styles - rendered inside each hero's
+           .hud-hero-card, anchored beside its sprite on the battlefield. */
         .stat-bar {
             display: flex;
             align-items: center;
@@ -1369,7 +1585,7 @@
            with the "HP 219/225" label, so it needs its own tighter width
            rather than the general 130px default used elsewhere. */
         .hud-hero-card .stat-bar .bar {
-            width: 62px;
+            width: 46px;
             max-width: none;
         }
 
@@ -1441,48 +1657,39 @@
             font-weight: normal;
         }
 
-        /* Battle UI - Enhanced. Now a column: the log on top (full width),
-           and the party status HUD + command menu sharing the row below. */
+        /* Battle UI - a small floating pill hugging just the command icons
+           (per request: "shorten the sides of it to only encompass the
+           battle command icons") instead of a full-width strip across the
+           bottom that ate space on either side of the buttons for no
+           reason and reserved height the battlefield/heroes could use. */
         .battle-ui {
-            height: 295px;
-            background: rgba(0,0,0,0.9);
-            border-top: 4px solid var(--border-color);
+            position: absolute;
+            bottom: 14px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 12;
+            width: auto;
+            background: rgba(0,0,0,0.85);
+            border: 2px solid var(--border-color);
+            border-radius: 16px;
+            padding: 8px 10px;
             display: flex;
-            flex-direction: column;
             backdrop-filter: blur(5px);
-        }
-
-        /* ====================================================================== */
-        /*    PARTY HUD ROW - hero cards (name + stacked bars) + command menu    */
-        /* ====================================================================== */
-        .battle-hud-row {
-            display: flex;
-            gap: 10px;
-            padding: 8px 12px;
-            border-top: 2px solid var(--border-color);
-            background: rgba(0,0,0,0.35);
-            flex: 0 0 auto;
-        }
-
-        .battle-hud-party {
-            flex: 1;
-            display: flex;
-            gap: 8px;
-            overflow-x: auto;
-            min-width: 0;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.5);
         }
 
         /* One card per hero: name + status up top, stacked HP/MP/Limit/EXP
-           bars below - replaces the old separate "names" + "stats" panels
-           so the party fits without needing to scroll vertically no matter
-           how many heroes are in the party (cards grow sideways, not down). */
+           bars below. Now anchored beside its character on the battlefield
+           (see .hero-slot) instead of a shared bottom strip, so it's a
+           compact fixed-width card rather than a flexible strip segment. */
         .hud-hero-card {
-            background: linear-gradient(180deg, rgba(20,20,50,0.92), rgba(10,10,30,0.92));
+            background: linear-gradient(180deg, rgba(20,20,50,0.85), rgba(10,10,30,0.85));
             border: 2px solid #3a3a6a;
             border-radius: 6px;
-            padding: 6px 10px;
-            min-width: 170px;
-            flex: 1 1 170px;
+            padding: 3px 6px;
+            width: 106px;
+            flex-shrink: 0;
+            backdrop-filter: blur(2px);
             transition: background 0.25s ease, border-color 0.25s ease;
         }
 
@@ -1562,16 +1769,51 @@
             animation: limitBreakPulse 1.1s ease-in-out infinite;
         }
 
+        /* Combat log is now a toggled overlay (press the 📜 button to show
+           it, press again to hide) instead of an always-visible strip
+           permanently eating battlefield space - matches the same
+           show/hide pattern as the world screen's hamburger menu/party
+           overlay. */
+        .battle-log-toggle-btn {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 15;
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: rgba(26, 15, 46, 0.72);
+            border: 2px solid rgba(106, 74, 138, 0.9);
+            box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+            color: var(--text-color);
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(3px);
+        }
+        .battle-log-toggle-btn:active { background: rgba(106, 74, 138, 0.9); }
+
         .battle-log {
-            flex: 1;
-            min-height: 0;
-            padding: 12px 20px;
+            display: none;
+            position: absolute;
+            top: 56px;
+            left: 10px;
+            z-index: 15;
+            width: min(360px, 70vw);
+            max-height: min(50vh, 320px);
+            padding: 12px 16px;
             overflow-y: auto;
-            font-size: 14px;
+            font-size: 13px;
             line-height: 1.5;
             font-family: 'Courier New', monospace;
-            background: rgba(0,0,0,0.3);
+            background: rgba(10, 5, 20, 0.92);
+            border: 2px solid var(--highlight, #8a5fc0);
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
         }
+        .battle-log.open { display: block; }
 
         .battle-log .entry {
             margin-bottom: 4px;
@@ -1603,37 +1845,34 @@
             to { opacity: 1; transform: translateX(0); }
         }
 
-        /* Battle Commands - Enhanced */
+        /* Battle Commands - icon-only. .battle-ui (the pill wrapping this)
+           already provides the padding/background, so this just lays out
+           the icons themselves. */
         .battle-commands {
-            width: 280px;
-            padding: 12px;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
+            display: flex;
+            align-items: center;
             gap: 8px;
-            align-content: center;
-            align-self: center;
         }
 
         .cmd-btn {
             background: linear-gradient(135deg, rgba(42,42,74,0.9), rgba(26,26,46,0.9));
             border: 2px solid var(--border-color);
             color: var(--text-color);
-            padding: 10px;
+            width: 52px;
+            height: 52px;
             font-family: inherit;
-            font-size: 13px;
-            line-height: 1.2;
+            font-size: 22px;
+            line-height: 1;
             cursor: pointer;
             transition: all 0.2s ease;
-            border-radius: 6px;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            border-radius: 10px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.3);
             position: relative;
             display: flex;
             align-items: center;
             justify-content: center;
             overflow: hidden;
+            flex-shrink: 0;
         }
 
         .cmd-btn::after {
@@ -1666,7 +1905,18 @@
             transform: scale(0.95);
         }
 
+        /* Limit Break keeps its text label (per request - "LIMIT BREAK" is
+           genuinely useful to read, unlike Attack/Magic/Item/Run which are
+           obvious from their icons alone), so it needs auto width instead
+           of the other commands' fixed 52x52 icon square. */
         .limit-break-btn {
+            width: auto;
+            padding: 0 18px;
+            font-size: 13px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            gap: 6px;
             background: linear-gradient(135deg, #6a1a8a, #b03050) !important;
             border-color: #ff66cc !important;
             color: #fff !important;
@@ -1676,6 +1926,12 @@
         .limit-break-btn:hover {
             border-color: #ffd0ff !important;
             box-shadow: 0 4px 25px rgba(255,102,204,0.6) !important;
+        }
+
+        .cmd-btn.auto-active {
+            background: linear-gradient(135deg, #6a5010, #ffaa00) !important;
+            border-color: #ffaa00 !important;
+            color: #1a1a1a !important;
         }
 
         /* Limit break option descriptions moved to a tap-friendly popup (see
@@ -1724,6 +1980,54 @@
             letter-spacing: normal;
         }
 
+        /* Magic/Item list popup (see #battle-action-overlay in the HTML) -
+           same row-per-option shape as .limit-break-option above, just in
+           the standard purple/gold theme instead of limit break's magenta,
+           and with a right-aligned cost/quantity tag instead of a
+           description line. */
+        .battle-action-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 16px;
+            max-height: 50vh;
+            overflow-y: auto;
+        }
+        .battle-action-option {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            background: linear-gradient(135deg, rgba(42,42,74,0.9), rgba(26,26,46,0.9));
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-color);
+            padding: 12px 14px;
+            text-align: left;
+            cursor: pointer;
+            font-family: inherit;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .battle-action-option:hover,
+        .battle-action-option:active {
+            border-color: var(--highlight);
+            box-shadow: 0 4px 20px rgba(255,215,0,0.2);
+        }
+        .battle-action-option.disabled {
+            opacity: 0.5;
+        }
+        .battle-action-name {
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .battle-action-cost {
+            font-size: 12px;
+            color: #cfc0ee;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
         @keyframes limitBreakPulse {
             0%, 100% { box-shadow: 0 0 10px rgba(255,102,204,0.4), 0 2px 10px rgba(0,0,0,0.3); }
             50% { box-shadow: 0 0 26px rgba(255,102,204,0.9), 0 2px 10px rgba(0,0,0,0.3); }
@@ -1735,16 +2039,7 @@
             transform: none !important;
         }
 
-        #auto-battle-btn {
-            grid-column: span 2;
-            background: linear-gradient(135deg, rgba(74,74,106,0.9), rgba(54,54,86,0.9));
-            border-color: #6a6a8a;
-        }
-
-        #auto-battle-btn.active {
-            background: linear-gradient(135deg, rgba(255,170,0,0.3), rgba(255,215,0,0.2));
-            border-color: var(--gold-color);
-            color: var(--gold-color);
+        #auto-battle-btn.auto-active {
             animation: autoPulse 1s infinite;
         }
 
@@ -2672,19 +2967,14 @@
             animation: overlayFade 0.3s ease;
         }
 
-        /* #fishing-overlay is the one .popup-overlay instance still nested
-           inside #game-container (out of scope for this pass), so it needs
-           its own position:absolute override - otherwise the position:fixed
-           above (correct for popup-overlay/lore-overlay, which now live
-           outside the container) would make it fixed relative to the
-           transformed container's containing block, which resolves
-           differently than plain absolute and can misalign it slightly. */
-        #fishing-overlay {
-            position: absolute;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-        }
+        /* fishing-overlay now uses the plain .popup-overlay rule above like
+           every other popup (position:fixed at real full-viewport size) -
+           it used to need its own position:absolute override + a
+           body.fishing-active z-index hack on #game-container because it
+           was still nested inside that old scaled container. Moving it out
+           to be a real sibling (see the HTML) both fixes that and is the
+           actual reason it renders full-size now instead of shrunk down
+           with the rest of that box. */
 
         @keyframes overlayFade {
             from { opacity: 0; }
@@ -2755,28 +3045,39 @@
         /*                      FISHING MINIGAME                                */
         /* ====================================================================== */
         .fishing-box {
-            min-width: 460px;
+            min-width: 560px;
+            /* Generic popups cap at 80% of viewport height, which works
+               fine for text dialogs but leaves too little room for the
+               fishing track on a short landscape phone screen (this is
+               also why the box was overflowing/clipping its own Reel!
+               button off the bottom edge before this fix). */
+            max-height: 94vh;
+            padding: 18px 30px;
             text-align: center;
         }
 
         .fishing-instructions {
             color: #a8c0d8;
-            font-size: 13px;
-            margin-bottom: 16px;
+            font-size: 14px;
+            margin-bottom: 12px;
         }
 
         .fishing-layout {
             display: flex;
-            gap: 18px;
+            gap: 24px;
             justify-content: center;
             align-items: flex-start;
-            margin-bottom: 14px;
+            margin-bottom: 4px;
         }
 
         .fishing-track {
             position: relative;
-            width: 64px;
-            height: 280px;
+            width: 84px;
+            /* Sized to reliably fit the rest of the dialog (header,
+               instructions, result line, buttons) within a real landscape
+               phone's viewport height without clipping - see .fishing-box
+               above. Taller on genuinely tall viewports via the vh term. */
+            height: min(230px, 46vh);
             background: linear-gradient(180deg, #0d3446 0%, #0a1f30 60%, #071620 100%);
             border: 2px solid var(--border-color);
             border-radius: 10px;
@@ -2962,6 +3263,41 @@
             color: #d0c0e0;
             font-weight: normal;
             margin-top: 2px;
+        }
+
+        /* Rare world encounter warning (see showRareEncounterWarning() in
+           the script) - appended straight to <body> as position:fixed
+           rather than into #game-container like .achievement-toast above,
+           so it isn't subject to that element's transform/scale (the same
+           containing-block trap that made battle/fishing/the world map
+           render tiny/misplaced earlier - see those fixes' comments). */
+        .rare-encounter-toast {
+            position: fixed;
+            left: 50%;
+            top: 22%;
+            transform: translateX(-50%) translateY(-16px) scale(0.94);
+            background: linear-gradient(135deg, rgba(20,4,10,0.96), rgba(50,8,20,0.96));
+            border: 2px solid #ff3355;
+            border-radius: 12px;
+            padding: 16px 30px;
+            color: #ffb3c0;
+            font-weight: bold;
+            font-size: 15px;
+            text-align: center;
+            box-shadow: 0 0 40px rgba(255,20,50,0.5);
+            z-index: 2000;
+            opacity: 0;
+            transition: opacity 0.5s ease, transform 0.5s ease;
+            pointer-events: none;
+            animation: rareEncounterPulse 1.4s ease-in-out infinite;
+        }
+        .rare-encounter-toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0) scale(1);
+        }
+        @keyframes rareEncounterPulse {
+            0%, 100% { box-shadow: 0 0 40px rgba(255,20,50,0.5); }
+            50% { box-shadow: 0 0 60px rgba(255,20,50,0.8); }
         }
 
         /* ====================================================================== */
@@ -3424,89 +3760,12 @@
                 height: 6px;
             }
 
-            .battle-background {
-                padding: 15px 20px;
-                height: calc(100% - 300px);
-            }
-
-            /* .monster-sprite override REMOVED here - it's fluid now (see
-               the base rule's own comment for why: fills its grid column,
-               capped by max-width, so a static px guess for "compact UI"
-               would just fight that and go back to the fixed-size overlap
-               risk this was trying to avoid). */
-
-            .party-battle-area {
-                width: 34%;
-            }
-
-            .battle-hero .hero-avatar {
-                width: 122px;
-                height: 122px;
-                font-size: 20px;
-            }
-
-            .battle-ui {
-                height: 300px;
-            }
-
-            /* Not enough width for hero cards + commands side by side on
-               narrow screens, so stack the HUD above the command menu. */
-            .battle-hud-row {
-                flex-direction: column;
-                padding: 6px 8px;
-                gap: 6px;
-            }
-
-            .battle-hud-party {
-                overflow-x: auto;
-            }
-
-            .hud-hero-card {
-                min-width: 120px;
-                flex: 1 1 120px;
-                padding: 5px 8px;
-            }
-
-            .hud-hero-name {
-                font-size: 11px;
-            }
-
-            .hud-hero-status {
-                font-size: 8px;
-            }
-
-            .hud-hpmp-row {
-                gap: 2px;
-            }
-
-            .stat-bar {
-                font-size: 9px;
-            }
-
-            .hud-hero-card .stat-bar .bar {
-                width: 44px;
-            }
-
-            .hud-limit-label {
-                font-size: 8px;
-                width: 26px;
-            }
-
-            .battle-commands {
-                width: 100%;
-                padding: 6px 0 0 0;
-                gap: 4px;
-            }
-
-            .cmd-btn {
-                padding: 6px;
-                font-size: 10px;
-            }
-
-            .battle-log {
-                font-size: 11px;
-                padding: 8px 10px;
-            }
+            /* battle-* overrides removed here: the base rules (see main
+               battle CSS block) are now sized directly for real device
+               pixels - battle-screen is a true full-viewport screen (see
+               .battle-viewport) instead of living inside the 1024x768
+               scaled #game-container, so there's no separate "compact for
+               a shrunk design box" pass needed anymore. */
 
             .location-info {
                 font-size: 14px;
@@ -3537,6 +3796,19 @@
                 padding: 20px;
                 min-width: 280px;
                 max-width: 90%;
+            }
+
+            /* .fishing-box needs its own override here since this
+               .popup-box rule (same specificity, later in the cascade)
+               would otherwise win back over the base .fishing-box rule's
+               tighter padding/min-width, undoing the vertical-space
+               reclaiming that keeps the Reel!/Leave buttons from clipping
+               off the bottom edge on short landscape screens. */
+            .fishing-box {
+                padding: 14px 24px;
+                min-width: 0;
+                width: min(560px, 92vw);
+                max-width: 92vw;
             }
 
             .popup-box h3 {
@@ -3577,85 +3849,9 @@
                 font-size: 11px;
             }
 
-            .battle-log {
-                font-size: 9px;
-                padding: 6px;
-            }
-
-            .battle-commands {
-                width: 150px;
-                padding: 4px;
-                gap: 3px;
-            }
-
-            .cmd-btn {
-                padding: 4px;
-                font-size: 8px;
-            }
-
-            .party-battle-area {
-                width: 32%;
-            }
-
-            .battle-hero .hero-avatar {
-                width: 96px;
-                height: 96px;
-                font-size: 14px;
-            }
-
-            /* .monster-sprite override REMOVED - it's fluid now (fills its
-               grid column automatically at any width, see the base rule). */
-
-            .battle-ui {
-                height: 280px;
-            }
-
-            .battle-background {
-                height: calc(100% - 280px);
-            }
-
-            .battle-hud-row {
-                flex-direction: column;
-                padding: 4px 6px;
-                gap: 4px;
-            }
-
-            .battle-hud-party {
-                overflow-x: auto;
-            }
-
-            .hud-hero-card {
-                min-width: 95px;
-                flex: 1 1 95px;
-                padding: 4px 6px;
-            }
-
-            .hud-hero-name {
-                font-size: 9px;
-            }
-
-            .hud-hero-status {
-                font-size: 7px;
-            }
-
-            .hud-limit-label {
-                width: 20px;
-                font-size: 7px;
-            }
-
-            .stat-bar {
-                font-size: 8px;
-                gap: 3px;
-            }
-
-            .hud-hero-card .stat-bar .bar {
-                width: 34px;
-            }
-
-            .battle-commands {
-                width: 100%;
-                padding: 4px 0 0 0;
-            }
+            /* battle-* overrides removed here too, same reasoning as the
+               1100px block above - real full-viewport screen now, base
+               rules already fit real device pixels directly. */
 
             .location-ui .menu-button {
                 font-size: 8px;
@@ -3672,6 +3868,12 @@
             .popup-box {
                 padding: 15px;
                 min-width: 200px;
+            }
+
+            .fishing-box {
+                padding: 10px 16px;
+                min-width: 0;
+                width: min(560px, 92vw);
             }
 
             .popup-box h3 {
@@ -3699,26 +3901,41 @@
     <!--   of how small/large the game itself is currently scaled to.      -->
     <!-- ================================================================= -->
     <div id="hud-top-bar">
+        <button type="button" class="hud-hamburger-btn" onclick="toggleWorldMenuPanel()" title="Menu">☰</button>
         <div id="hud-gold" class="hud-top-gold">💰 G: 0</div>
-        <div class="hud-top-buttons">
-            <button class="menu-button" onclick="window.game.saveGame()" title="Save">💾</button>
-            <button class="menu-button" onclick="window.game.loadGame()" title="Load">📂</button>
-            <button class="menu-button" onclick="window.game.toggleMenu()" title="Menu">📋</button>
-            <button class="menu-button" onclick="window.game.openWorldMap()" title="World Map">🗺️</button>
-            <button class="menu-button" onclick="window.game.openLoreJournal()" title="Lore">📖</button>
-            <button class="menu-button" onclick="window.game.openLegendaryJournal()" title="Legendary Weapons">⚔️</button>
-            <button class="menu-button" onclick="window.game.showQuestCompassMenu()" title="Track Quest">🧭</button>
-            <button class="menu-button" onclick="nudgeCanvasZoom('world-canvas', 1.2)" title="Zoom In">➕</button>
-            <button class="menu-button" onclick="nudgeCanvasZoom('world-canvas', 0.8)" title="Zoom Out">➖</button>
-            <button class="menu-button" onclick="window.game.renderer.resetZoom(); resetAllCanvasZoom();" title="Reset View">🔄</button>
-            <button class="menu-button" onclick="toggleFullscreen()" title="Fullscreen">⛶</button>
+    </div>
+    <div id="hud-menu-panel">
+        <button class="menu-button" onclick="window.game.saveGame()" title="Save">💾</button>
+        <button class="menu-button" onclick="window.game.loadGame()" title="Load">📂</button>
+        <button class="menu-button" onclick="window.game.toggleMenu()" title="Menu">📋</button>
+        <button class="menu-button" onclick="window.game.openWorldMap()" title="World Map">🗺️</button>
+        <button class="menu-button" onclick="window.game.openLoreJournal()" title="Lore">📖</button>
+        <button class="menu-button" onclick="window.game.openLegendaryJournal()" title="Legendary Weapons">⚔️</button>
+        <button class="menu-button" onclick="window.game.showQuestCompassMenu()" title="Track Quest">🧭</button>
+        <button class="menu-button" onclick="nudgeCanvasZoom('world-canvas', 1.2)" title="Zoom In">➕</button>
+        <button class="menu-button" onclick="nudgeCanvasZoom('world-canvas', 0.8)" title="Zoom Out">➖</button>
+        <button class="menu-button" onclick="window.game.renderer.resetZoom(); resetAllCanvasZoom();" title="Reset View">🔄</button>
+        <button class="menu-button" onclick="toggleFullscreen()" title="Fullscreen">⛶</button>
+    </div>
+
+    <div id="hud-party-overlay">
+        <div class="hud-party-overlay-header">
+            <span>⚔️ PARTY</span>
+            <button type="button" onclick="togglePartyOverlay()" title="Close">✖</button>
         </div>
+        <div class="party-status-mini" id="party-status-mini"></div>
     </div>
 
     <div id="hud-side-left">
-        <div id="rail-party-status" class="rail-section">
-            <div class="rail-heading">⚔️ PARTY</div>
-            <div class="party-status-mini" id="party-status-mini"></div>
+        <button type="button" id="hud-party-icon-btn" class="hud-icon-btn" onclick="togglePartyOverlay()" title="Party Status">⚔️</button>
+        <div id="mobile-dpad-wrap" class="mobile-controls-part">
+            <div class="dpad" id="dpad">
+                <button type="button" class="dpad-btn dpad-up" data-dir="up" aria-label="Move up">▲</button>
+                <button type="button" class="dpad-btn dpad-down" data-dir="down" aria-label="Move down">▼</button>
+                <button type="button" class="dpad-btn dpad-left" data-dir="left" aria-label="Move left">◀</button>
+                <button type="button" class="dpad-btn dpad-right" data-dir="right" aria-label="Move right">▶</button>
+                <div class="dpad-center"></div>
+            </div>
         </div>
     </div>
 
@@ -3730,18 +3947,12 @@
             <div class="rail-heading">⚔️ PARTY</div>
             <div class="party-status-mini" id="location-party-status-mini"></div>
         </div>
-        <div id="mobile-controls">
-            <div class="dpad" id="dpad">
-                <button type="button" class="dpad-btn dpad-up" data-dir="up" aria-label="Move up">▲</button>
-                <button type="button" class="dpad-btn dpad-down" data-dir="down" aria-label="Move down">▼</button>
-                <button type="button" class="dpad-btn dpad-left" data-dir="left" aria-label="Move left">◀</button>
-                <button type="button" class="dpad-btn dpad-right" data-dir="right" aria-label="Move right">▶</button>
-                <div class="dpad-center"></div>
-            </div>
+        <div id="mobile-actions-wrap" class="mobile-controls-part hud-action-frame">
             <div class="touch-actions">
                 <button type="button" class="touch-action-btn touch-interact" id="touch-interact-btn">✋<span>TALK/ENTER</span></button>
                 <button type="button" class="touch-action-btn touch-menu" id="touch-menu-btn">📋<span>MENU</span></button>
                 <button type="button" class="touch-action-btn touch-reset" id="touch-reset-btn">🔄<span>RESET</span></button>
+                <button type="button" class="touch-action-btn touch-exit" id="touch-exit-btn" title="Exit">🚪<span>EXIT</span></button>
             </div>
         </div>
     </div>
@@ -3754,78 +3965,23 @@
         <!-- ================================================================= -->
         <!--                         WORLD MAP SCREEN                          -->
         <!-- ================================================================= -->
-        <div id="world-screen" class="screen">
-            <canvas id="world-canvas" width="1024" height="768"></canvas>
+        <!-- world-screen now lives in the WALKABLE LOCATION VIEWPORTS
+             section below (real screen space, dynamically sized canvas) -
+             see that section for why. -->
 
-            <div class="location-indicator" id="location-indicator">Press ENTER to enter</div>
-            <div id="quest-compass-arrow" style="display: none;">➤</div>
-        </div>
+        <!-- worldmap-screen now lives right after #game-container closes
+             below (real screen space) instead of being nested inside it -
+             it used to just get the .viewport-overlay CLASS added without
+             actually being moved in the DOM, which doesn't work: a
+             `transform` on an ancestor (here, #game-container's scale/
+             translate, always active - see fitGameContainer()) creates a
+             new containing block for position:fixed descendants, so the
+             class's position:fixed;inset:0 was resolving against
+             #game-container's small transformed box instead of the real
+             viewport, rendering the map tiny and off-center instead of
+             full-screen. -->
 
-        <!-- ================================================================= -->
-        <!--                      FULL WORLD MAP SCREEN                        -->
-        <!-- ================================================================= -->
-        <div id="worldmap-screen" class="screen menu-screen" style="background: var(--panel-bg); display: none;">
-            <div class="menu-header" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; border-bottom: 2px solid var(--border-color); background: rgba(0,0,0,0.3);">
-                <h2 style="color: var(--highlight); font-size: 22px;">🗺️ WORLD MAP</h2>
-                <div style="display: flex; gap: 8px;">
-                    <button class="menu-button" onclick="if(window.game && window.game.worldMapRenderer) window.game.worldMapRenderer.zoomIn()" style="padding: 4px 12px; font-size: 12px;">➕</button>
-                    <button class="menu-button" onclick="if(window.game && window.game.worldMapRenderer) window.game.worldMapRenderer.zoomOut()" style="padding: 4px 12px; font-size: 12px;">➖</button>
-                    <button class="menu-button" onclick="if(window.game && window.game.worldMapRenderer) window.game.worldMapRenderer.resetView()" style="padding: 4px 12px; font-size: 12px;">🔄</button>
-                    <button class="menu-button" onclick="if(window.game) window.game.closeWorldMap()" style="padding: 4px 12px; font-size: 12px;">✖ Close</button>
-                </div>
-            </div>
-            
-            <div id="worldmap-container" style="position: relative; width: 100%; height: calc(100% - 100px); overflow: hidden; background: #0a0a1a;">
-                <canvas id="worldmap-canvas" width="1024" height="668" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; image-rendering: pixelated; background: #0a0a1a; display: block; cursor: grab;"></canvas>
-                <div id="worldmap-coords" style="position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.8); border: 1px solid var(--border-color); padding: 4px 12px; color: var(--highlight); font-size: 12px; z-index: 10; border-radius: 4px;">X: 0, Y: 0</div>
-            </div>
-            
-            <div class="worldmap-legend" style="padding: 8px 15px; border-top: 2px solid var(--border-color); display: flex; gap: 15px; justify-content: center; background: rgba(0,0,0,0.3); flex-wrap: wrap;">
-                <div class="legend-item" style="display: flex; align-items: center; gap: 5px;"><span style="color: var(--gold-color);">🟫</span> Town</div>
-                <div class="legend-item" style="display: flex; align-items: center; gap: 5px;"><span style="color: #888;">⛰️</span> Cave</div>
-                <div class="legend-item" style="display: flex; align-items: center; gap: 5px;"><span style="color: #ff4444;">🏯</span> Castle</div>
-                <div class="legend-item" style="display: flex; align-items: center; gap: 5px;"><span style="color: #88ff88;">💧</span> Spring</div>
-                <div class="legend-item" style="display: flex; align-items: center; gap: 5px;"><span style="color: #ffaa00;">🏛️</span> Ruins</div>
-                <div class="legend-item" style="display: flex; align-items: center; gap: 5px;"><span style="color: #00ff00;">⬤</span> You Are Here</div>
-            </div>
-        </div>
 
-        <!-- ================================================================= -->
-        <!--                         BATTLE SCREEN                             -->
-        <!-- ================================================================= -->
-        <div id="battle-screen" class="screen" style="display: none;">
-            <div class="battle-window" id="battle-window">
-                <div class="battle-shake-wrapper" id="battle-shake-wrapper">
-                    <div id="battle-gold" style="position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.85); border: 2px solid var(--gold-color); padding: 5px 18px; color: var(--gold-color); font-size: 16px; font-weight: bold; z-index: 10; border-radius: 6px;">💰 G: 0</div>
-
-                    <div class="battle-background" id="battle-background">
-                        <div class="battle-silhouettes" id="battle-silhouettes"></div>
-                        <div class="parallax-container">
-                            <div class="parallax-layer stars"></div>
-                            <div class="parallax-layer embers" id="battle-parallax-secondary"></div>
-                        </div>
-                        <div class="ambient-glow-pulse"></div>
-                        <canvas id="fx-canvas"></canvas>
-                        <div class="monsters-area" id="monsters-area"></div>
-                        <div class="party-battle-area" id="party-battle-area"></div>
-                    </div>
-
-                    <div class="battle-ui">
-                        <div class="battle-log" id="battle-log"></div>
-                        <div class="battle-hud-row">
-                            <div class="battle-hud-party" id="battle-hud-party"></div>
-                            <div class="battle-commands" id="battle-commands">
-                                <button class="cmd-btn" onclick="window.game.battle.selectCommand('attack')">⚔️ Attack</button>
-                                <button class="cmd-btn" onclick="window.game.battle.selectCommand('magic')">🔮 Magic</button>
-                                <button class="cmd-btn" onclick="window.game.battle.selectCommand('item')">🎒 Item</button>
-                                <button class="cmd-btn" onclick="window.game.battle.selectCommand('run')">🏃 Run</button>
-                                <button class="cmd-btn" id="auto-battle-btn" onclick="window.game.battle.toggleAutoBattle()">⚡ Auto Battle</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
 
         <!-- ================================================================= -->
         <!--                          SHOP SCREEN                              -->
@@ -3871,30 +4027,41 @@
              persistent "Lore" journal opened from the world screen's control
              bar, which grows a new chapter each time a story boss falls. -->
 
-        <!-- ================================================================= -->
-        <!--                         FISHING MINIGAME                          -->
-        <!-- ================================================================= -->
-        <div class="popup-overlay" id="fishing-overlay">
-            <div class="popup-box fishing-box">
-                <h3>🎣 Fishing Hole</h3>
-                <div class="fishing-instructions">Click <strong>REEL!</strong> when the bobber is inside the glowing zone.</div>
-                <div class="fishing-layout">
-                    <div class="fishing-track" id="fishing-track">
-                        <div class="fishing-zone" id="fishing-zone"></div>
-                        <div class="fishing-bobber" id="fishing-bobber">🎣</div>
-                    </div>
-                    <div class="fishing-side">
-                        <div class="fishing-catch-log" id="fishing-catch-log"></div>
-                    </div>
-                </div>
-                <div class="fishing-result" id="fishing-result">&nbsp;</div>
-                <div class="fishing-buttons">
-                    <button class="menu-button primary" id="fishing-reel-btn" onclick="window.game.reelFish()">🪝 REEL!</button>
-                    <button class="menu-button" style="background:#8b0000; border-color:#ff4444;" onclick="window.game.cancelFishing()">🚪 Leave</button>
-                </div>
+        <!-- fishing-overlay now lives outside #game-container as a real
+             popup-overlay sibling below, alongside the other popups (was
+             the one exception still nested inside the old scaled
+             container, which is exactly why it rendered small - it was
+             shrunk along with everything else in that box instead of
+             sizing off the real screen). -->
+    </div>
+
+    <!-- ================================================================= -->
+    <!--                      FULL WORLD MAP SCREEN                        -->
+    <!-- ================================================================= -->
+    <div id="worldmap-screen" class="screen menu-screen viewport-overlay" style="background: var(--panel-bg); display: none;">
+        <div class="menu-header" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; border-bottom: 2px solid var(--border-color); background: rgba(0,0,0,0.3);">
+            <h2 style="color: var(--highlight); font-size: 22px;">🗺️ WORLD MAP</h2>
+            <div style="display: flex; gap: 8px;">
+                <button class="menu-button" onclick="if(window.game && window.game.worldMapRenderer) window.game.worldMapRenderer.zoomIn()" style="padding: 4px 12px; font-size: 12px;">➕</button>
+                <button class="menu-button" onclick="if(window.game && window.game.worldMapRenderer) window.game.worldMapRenderer.zoomOut()" style="padding: 4px 12px; font-size: 12px;">➖</button>
+                <button class="menu-button" onclick="if(window.game && window.game.worldMapRenderer) window.game.worldMapRenderer.resetView()" style="padding: 4px 12px; font-size: 12px;">🔄</button>
+                <button class="menu-button" onclick="if(window.game) window.game.closeWorldMap()" style="padding: 4px 12px; font-size: 12px;">✖ Close</button>
             </div>
         </div>
 
+        <div id="worldmap-container" style="position: relative; width: 100%; height: calc(100% - 100px); overflow: hidden; background: #0a0a1a;">
+            <canvas id="worldmap-canvas" width="1024" height="668" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; image-rendering: pixelated; background: #0a0a1a; display: block; cursor: grab; touch-action: none;"></canvas>
+            <div id="worldmap-coords" style="position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.8); border: 1px solid var(--border-color); padding: 4px 12px; color: var(--highlight); font-size: 12px; z-index: 10; border-radius: 4px;">X: 0, Y: 0</div>
+        </div>
+
+        <div class="worldmap-legend" style="padding: 8px 15px; border-top: 2px solid var(--border-color); display: flex; gap: 15px; justify-content: center; background: rgba(0,0,0,0.3); flex-wrap: wrap;">
+            <div class="legend-item" style="display: flex; align-items: center; gap: 5px;"><span style="color: var(--gold-color);">🟫</span> Town</div>
+            <div class="legend-item" style="display: flex; align-items: center; gap: 5px;"><span style="color: #888;">⛰️</span> Cave</div>
+            <div class="legend-item" style="display: flex; align-items: center; gap: 5px;"><span style="color: #ff4444;">🏯</span> Castle</div>
+            <div class="legend-item" style="display: flex; align-items: center; gap: 5px;"><span style="color: #88ff88;">💧</span> Spring</div>
+            <div class="legend-item" style="display: flex; align-items: center; gap: 5px;"><span style="color: #ffaa00;">🏛️</span> Ruins</div>
+            <div class="legend-item" style="display: flex; align-items: center; gap: 5px;"><span style="color: #00ff00;">⬤</span> You Are Here</div>
+        </div>
     </div>
 
     <!-- ================================================================= -->
@@ -3904,6 +4071,12 @@
     <!--   the script) instead of being locked to a fixed 1024px design      -->
     <!--   width with unused letterbox margin beside it on phones.            -->
     <!-- ================================================================= -->
+        <div id="world-screen" class="screen location-screen walkable-viewport" style="display: none;">
+            <canvas id="world-canvas" width="1024" height="768"></canvas>
+
+            <div class="location-indicator" id="location-indicator">Press ✋ to enter</div>
+            <div id="quest-compass-arrow" style="display: none;">➤</div>
+        </div>
         <div id="town-screen" class="screen location-screen walkable-viewport" style="display: none;">
             <div id="town-gold" style="position: absolute; top: 60px; right: 15px; background: rgba(0,0,0,0.85); border: 2px solid var(--gold-color); padding: 4px 16px; color: var(--gold-color); font-size: 15px; font-weight: bold; z-index: 40; border-radius: 6px;">💰 G: 0</div>
             
@@ -3911,51 +4084,27 @@
             
             <div id="town-info" style="position: absolute !important; top: 15px !important; left: 50% !important; transform: translateX(-50%) !important; background: rgba(0,0,0,0.9); border: 2px solid var(--highlight); padding: 8px 25px; font-size: 18px; color: var(--highlight); text-align: center; z-index: 30; border-radius: 8px; box-shadow: 0 0 30px rgba(0,0,0,0.7), 0 0 20px rgba(255,215,0,0.2); width: auto; min-width: 200px;">Welcome to Town</div>
 
-            <div class="location-indicator" id="town-location-indicator">Press ENTER to interact</div>
-            
-            <div class="town-controls-bar">
-                <div class="town-controls-hint">🕹️ WASD / Arrow Keys to walk &nbsp;•&nbsp; ENTER to interact</div>
-                <button class="menu-button" onclick="window.game.toggleMenu()" style="padding: 6px 16px; font-size: 13px; margin: 0;">📋 Menu</button>
-                <button class="menu-button" onclick="window.game.exitLocation()" style="background: #8b0000; border-color: #ff4444; padding: 6px 18px; font-size: 13px; margin: 0;">🚪 Exit Town</button>
-            </div>
+            <div class="location-indicator" id="town-location-indicator">Press ✋ to interact</div>
         </div>
         <div id="cave-screen" class="screen location-screen walkable-viewport" style="display: none;">
             <canvas id="cave-canvas" class="location-canvas" width="1024" height="700"></canvas>
             <div class="location-info">🕯️ Dark Cave - Watch your step...</div>
 
-            <div class="location-indicator" id="cave-location-indicator">Press ENTER to interact</div>
-
-            <div class="walk-controls-bar">
-                <div class="town-controls-hint">🕹️ WASD / Arrow Keys to walk &nbsp;•&nbsp; ENTER to interact</div>
-                <button class="menu-button" onclick="window.game.toggleMenu()" style="padding: 6px 16px; font-size: 13px; margin: 0;">📋 Menu</button>
-                <button class="menu-button" onclick="window.game.exitLocation()" style="background: #8b0000; border-color: #ff4444; padding: 6px 18px; font-size: 13px; margin: 0;">🚪 Exit Cave</button>
-            </div>
+            <div class="location-indicator" id="cave-location-indicator">Press ✋ to interact</div>
         </div>
         <div id="castle-screen" class="screen location-screen walkable-viewport" style="display: none;">
             <canvas id="castle-canvas" class="location-canvas" width="1024" height="700"></canvas>
             <div class="location-info" style="color: #ff6644;">⚠️ Final Castle - Danger Ahead!</div>
             <div id="castle-gold" style="position: absolute; top: 60px; right: 15px; background: rgba(0,0,0,0.85); border: 2px solid var(--gold-color); padding: 4px 16px; color: var(--gold-color); font-size: 15px; font-weight: bold; z-index: 40; border-radius: 6px;">💰 G: 0</div>
 
-            <div class="location-indicator" id="castle-location-indicator">Press ENTER to interact</div>
-
-            <div class="walk-controls-bar">
-                <div class="town-controls-hint">🕹️ WASD / Arrow Keys to walk &nbsp;•&nbsp; ENTER to interact</div>
-                <button class="menu-button" onclick="window.game.toggleMenu()" style="padding: 6px 16px; font-size: 13px; margin: 0;">📋 Menu</button>
-                <button class="menu-button" onclick="window.game.exitLocation()" style="background: #8b0000; border-color: #ff4444; padding: 6px 18px; font-size: 13px; margin: 0;">🚪 Exit Castle</button>
-            </div>
+            <div class="location-indicator" id="castle-location-indicator">Press ✋ to interact</div>
         </div>
         <div id="ruins-screen" class="screen location-screen walkable-viewport" style="display: none;">
             <canvas id="ruins-canvas" class="location-canvas" width="1024" height="700"></canvas>
             <div class="location-info">🏛️ Ancient Ruins - Mystery Awaits</div>
             <div id="ruins-gold" style="position: absolute; top: 60px; right: 15px; background: rgba(0,0,0,0.85); border: 2px solid var(--gold-color); padding: 4px 16px; color: var(--gold-color); font-size: 15px; font-weight: bold; z-index: 40; border-radius: 6px;">💰 G: 0</div>
 
-            <div class="location-indicator" id="ruins-location-indicator">Press ENTER to interact</div>
-
-            <div class="walk-controls-bar">
-                <div class="town-controls-hint">🕹️ WASD / Arrow Keys to walk &nbsp;•&nbsp; ENTER to interact</div>
-                <button class="menu-button" onclick="window.game.toggleMenu()" style="padding: 6px 16px; font-size: 13px; margin: 0;">📋 Menu</button>
-                <button class="menu-button" onclick="window.game.exitLocation()" style="background: #8b0000; border-color: #ff4444; padding: 6px 18px; font-size: 13px; margin: 0;">🚪 Exit</button>
-            </div>
+            <div class="location-indicator" id="ruins-location-indicator">Press ✋ to interact</div>
         </div>
         <div id="spring-screen" class="screen location-screen walkable-viewport" style="display: none;">
             <canvas id="spring-canvas" class="location-canvas" width="1024" height="668"></canvas>
@@ -3973,6 +4122,47 @@
             </div>
         </div>
 
+        <!-- battle-screen: real full-viewport screen (see world-screen's
+             comment above for why) instead of living inside the old
+             1024x768 letterboxed #game-container. Placed last among the
+             full-viewport screens so it naturally paints on top of
+             whichever backdrop screen (world/town/cave/etc.) is still
+             marked .active underneath it during a fight - see
+             switchScreen()'s 'battle' branch, which keeps the backdrop's
+             .active class so it stays visible, dimmed, behind this. -->
+        <div id="battle-screen" class="screen battle-viewport" style="display: none;">
+            <div class="battle-window" id="battle-window">
+                <div class="battle-shake-wrapper" id="battle-shake-wrapper">
+                    <div id="battle-gold" style="position: absolute; bottom: 14px; left: 14px; background: rgba(0,0,0,0.85); border: 2px solid var(--gold-color); padding: 5px 18px; color: var(--gold-color); font-size: 16px; font-weight: bold; z-index: 10; border-radius: 6px;">💰 G: 0</div>
+
+                    <button type="button" class="battle-log-toggle-btn" id="battle-log-toggle-btn" title="Combat Log" onclick="toggleBattleLog()">📜</button>
+                    <div class="battle-log" id="battle-log"></div>
+
+                    <div class="battle-background" id="battle-background">
+                        <div class="battle-silhouettes" id="battle-silhouettes"></div>
+                        <div class="parallax-container">
+                            <div class="parallax-layer stars"></div>
+                            <div class="parallax-layer embers" id="battle-parallax-secondary"></div>
+                        </div>
+                        <div class="ambient-glow-pulse"></div>
+                        <canvas id="fx-canvas"></canvas>
+                        <div class="monsters-area" id="monsters-area"></div>
+                        <div class="party-battle-area" id="party-battle-area"></div>
+                    </div>
+
+                    <div class="battle-ui">
+                        <div class="battle-commands" id="battle-commands">
+                            <button class="cmd-btn" title="Attack" onclick="window.game.battle.selectCommand('attack')">⚔️</button>
+                            <button class="cmd-btn" title="Magic" onclick="window.game.battle.selectCommand('magic')">🔮</button>
+                            <button class="cmd-btn" title="Item" onclick="window.game.battle.selectCommand('item')">🎒</button>
+                            <button class="cmd-btn" title="Run" onclick="window.game.battle.selectCommand('run')">🏃</button>
+                            <button class="cmd-btn" id="auto-battle-btn" title="Auto Battle" onclick="window.game.battle.toggleAutoBattle()">⚡</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     <!-- ================================================================= -->
     <!--   VIEWPORT OVERLAYS (real screen space, NOT scaled with game-container)  -->
     <!--   Moved out of #game-container so text renders at true device pixel  -->
@@ -3982,41 +4172,40 @@
         <div id="start-screen" class="screen active viewport-overlay">
             <h1>⚔️ LEGEND OF ETERNAL</h1>
             <div class="subtitle">✦ A Retro RPG Adventure ✦</div>
-            
-            <div style="display: flex; gap: 15px; margin: 20px 0; flex-wrap: wrap; justify-content: center; position: relative; z-index: 1;">
-                <div class="save-slot" id="slot1-container">
-                    <h3>📀 SLOT 1</h3>
-                    <div class="slot-info" id="slot1-info">Empty</div>
-                    <button class="menu-button" onclick="window.game.selectSlot(1)">▶ Play</button>
+            <div class="start-screen-leaves" id="start-screen-leaves"></div>
+
+            <div class="start-screen-dock">
+                <div class="start-actions-secondary">
+                    <button class="menu-button primary" onclick="if(window.game) window.game.newGame();">🆕 New Game</button>
+                    <button class="menu-button" onclick="if(window.game) window.game.loadGame();">📂 Load</button>
+                    <button class="menu-button" onclick="if(window.game) window.game.saveGame();">💾 Save</button>
+                    <button class="menu-button" onclick="if(window.game) window.game.deleteSave();">🗑️ Delete</button>
+                    <button class="menu-button" onclick="if(window.game) window.game.showInstructions();">📖 Help</button>
+                    <button class="menu-button" onclick="toggleFullscreen()">⛶ Full Screen</button>
                 </div>
-                
-                <div class="save-slot" id="slot2-container">
-                    <h3>📀 SLOT 2</h3>
-                    <div class="slot-info" id="slot2-info">Empty</div>
-                    <button class="menu-button" onclick="window.game.selectSlot(2)">▶ Play</button>
+
+                <div class="start-slots-row">
+                    <div class="save-slot" id="slot1-container" onclick="window.game.selectSlot(1)">
+                        <h3>SLOT 1</h3>
+                        <div class="slot-info" id="slot1-info">
+                            <div class="slot-empty">✨ Begin a new journey</div>
+                        </div>
+                    </div>
+
+                    <div class="save-slot" id="slot2-container" onclick="window.game.selectSlot(2)">
+                        <h3>SLOT 2</h3>
+                        <div class="slot-info" id="slot2-info">
+                            <div class="slot-empty">✨ Begin a new journey</div>
+                        </div>
+                    </div>
+
+                    <div class="save-slot" id="slot3-container" onclick="window.game.selectSlot(3)">
+                        <h3>SLOT 3</h3>
+                        <div class="slot-info" id="slot3-info">
+                            <div class="slot-empty">✨ Begin a new journey</div>
+                        </div>
+                    </div>
                 </div>
-                
-                <div class="save-slot" id="slot3-container">
-                    <h3>📀 SLOT 3</h3>
-                    <div class="slot-info" id="slot3-info">Empty</div>
-                    <button class="menu-button" onclick="window.game.selectSlot(3)">▶ Play</button>
-                </div>
-            </div>
-            
-            <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; position: relative; z-index: 1;">
-                <button class="menu-button primary" onclick="if(window.game) window.game.newGame();">🆕 New Game</button>
-                <button class="menu-button" onclick="if(window.game) window.game.loadGame();">📂 Load</button>
-                <button class="menu-button" onclick="if(window.game) window.game.saveGame();">💾 Save</button>
-                <button class="menu-button" onclick="if(window.game) window.game.deleteSave();">🗑️ Delete</button>
-            </div>
-            
-            <div style="margin-top: 10px; position: relative; z-index: 1;">
-                <button class="menu-button" onclick="if(window.game) window.game.showInstructions();">📖 Help</button>
-                <button class="menu-button" onclick="toggleFullscreen()">⛶ Full Screen</button>
-            </div>
-            
-            <div style="position: absolute; bottom: 15px; left: 0; right: 0; text-align: center; font-size: 12px; color: #444466; z-index: 1; letter-spacing: 2px;">
-                ⚡ Use Arrow Keys / WASD to move ⚡
             </div>
         </div>
         <div id="shop-screen" class="screen menu-screen viewport-overlay" style="display: none;">
@@ -4209,6 +4398,31 @@
                 </div>
             </div>
         </div>
+
+        <!-- ================================================================= -->
+        <!--                         FISHING MINIGAME                          -->
+        <!-- ================================================================= -->
+        <div class="popup-overlay" id="fishing-overlay">
+            <div class="popup-box fishing-box">
+                <h3>🎣 Fishing Hole</h3>
+                <div class="fishing-instructions">Click <strong>REEL!</strong> when the bobber is inside the glowing zone.</div>
+                <div class="fishing-layout">
+                    <div class="fishing-track" id="fishing-track">
+                        <div class="fishing-zone" id="fishing-zone"></div>
+                        <div class="fishing-bobber" id="fishing-bobber">🎣</div>
+                    </div>
+                    <div class="fishing-side">
+                        <div class="fishing-catch-log" id="fishing-catch-log"></div>
+                    </div>
+                </div>
+                <div class="fishing-result" id="fishing-result">&nbsp;</div>
+                <div class="fishing-buttons">
+                    <button class="menu-button primary" id="fishing-reel-btn" onclick="window.game.reelFish()">🪝 REEL!</button>
+                    <button class="menu-button" style="background:#8b0000; border-color:#ff4444;" onclick="window.game.cancelFishing()">🚪 Leave</button>
+                </div>
+            </div>
+        </div>
+
         <div class="popup-overlay" id="popup-overlay">
             <div class="popup-box" id="popup-box">
                 <h3 id="popup-title">Title</h3>
@@ -4231,6 +4445,22 @@
                 <h3>💥 Limit Break</h3>
                 <div class="limit-break-modal-options" id="limit-break-options"></div>
                 <button class="menu-button" onclick="document.getElementById('limit-break-overlay').classList.remove('active')">⬅️ Back</button>
+            </div>
+        </div>
+        <!-- Shared list-style popup for the Magic and Item battle commands
+             (showMagicMenu()/showBattleItemMenu() in the script populate
+             this the same way showLimitBreakMenu() populates the one
+             above) - each spell/item gets its own row with an icon, name,
+             and MP cost/quantity, instead of being crammed as text into
+             the compact icon-only #battle-commands buttons (illegible -
+             those are sized for single emoji, not spell names). Tapping a
+             row both closes this and starts targeting; Back just closes it
+             and leaves the main command icons untouched underneath. -->
+        <div class="popup-overlay" id="battle-action-overlay">
+            <div class="popup-box limit-break-box" id="battle-action-box">
+                <h3 id="battle-action-title">🔮 Magic</h3>
+                <div class="battle-action-list" id="battle-action-list"></div>
+                <button class="menu-button" onclick="document.getElementById('battle-action-overlay').classList.remove('active')">⬅️ Back</button>
             </div>
         </div>
         <div class="popup-overlay" id="lore-overlay">
@@ -4414,14 +4644,16 @@
     // Town/cave/castle/ruins/spring now render as their own full-viewport
     // .walkable-viewport elements (see CSS) instead of being locked inside
     // #game-container's 1024x768 letterboxed scale, so their canvas can use
-    // real screen width via fitLocationCanvas() below. LOCATION_RAIL_W is
-    // the fixed width reserved on the right for the D-pad/action buttons
-    // (144px dpad + padding) - it must match .walkable-viewport.active's
-    // padding-right in the CSS above, since that padding is what keeps the
-    // canvas from rendering underneath the rail. No margin is reserved on
-    // the left anymore - that's the space this whole change reclaims.
-    const LOCATION_RAIL_W = 170;
-    const WALKABLE_VIEWPORT_SCREENS = ['town', 'cave', 'castle', 'ruins', 'spring'];
+    // real screen width via fitLocationCanvas() below. DPAD_RAIL_W is the
+    // fixed width reserved on the LEFT for the D-pad (144px dpad + padding),
+    // ACTION_RAIL_W the smaller width reserved on the RIGHT for the
+    // icon-only Talk/Menu/Reset frame - both must match
+    // .walkable-viewport.active's padding-left/padding-right in the CSS
+    // above, since that padding is what keeps the canvas from rendering
+    // underneath either rail.
+    const DPAD_RAIL_W = 170;
+    const ACTION_RAIL_W = 90;
+    const WALKABLE_VIEWPORT_SCREENS = ['world', 'town', 'cave', 'castle', 'ruins', 'spring'];
 
     /** Scales #game-container (a fixed 1024x768 design) to fit whatever
      *  viewport it's running in - phone, tablet, or desktop window - while
@@ -4445,21 +4677,28 @@
         const isPortrait = vh > vw;
         if (rotateOverlay) rotateOverlay.classList.toggle('visible', isNarrow && isPortrait);
 
-        const availH = Math.max(200, vh - TOPBAR_H);
+        // The world screen's old top bar is now a floating hamburger corner
+        // button (see #hud-top-bar CSS) instead of a full-width strip, so it
+        // no longer needs a reserved horizontal band up top - reclaiming
+        // that height lets the world view render noticeably larger. Every
+        // other screen keeps the original reserved TOPBAR_H unchanged.
+        const screenName = window.game && window.game.state ? window.game.state.currentScreen : null;
+        const topbarReserve = screenName === 'world' ? 0 : TOPBAR_H;
+
+        const availH = Math.max(200, vh - topbarReserve);
         const scale = Math.min(vw / DESIGN_W, availH / DESIGN_H);
         const renderedW = DESIGN_W * scale;
         const renderedH = DESIGN_H * scale;
         const left = (vw - renderedW) / 2;
-        const top = TOPBAR_H + (availH - renderedH) / 2;
+        const top = topbarReserve + (availH - renderedH) / 2;
         container.style.transform = `translate(${left}px, ${top}px) scale(${scale})`;
 
         // Town/cave/castle/ruins/spring no longer live inside the scaled
         // #game-container (see .walkable-viewport in the CSS), so the
         // letterbox 'left' margin computed above doesn't apply to them -
         // they get a fixed right-only rail instead (see updateSideRails).
-        const screenName = window.game && window.game.state ? window.game.state.currentScreen : null;
         const isWalkableViewport = WALKABLE_VIEWPORT_SCREENS.includes(screenName);
-        updateSideRails(left, TOPBAR_H, vh - TOPBAR_H, isWalkableViewport);
+        updateSideRails(left, topbarReserve, vh - topbarReserve, isWalkableViewport);
         if (isWalkableViewport) fitLocationCanvas(screenName);
     }
 
@@ -4475,17 +4714,17 @@
      *  rails aren't sized from the letterbox margin at all - there IS no
      *  letterbox margin for those screens anymore, since their canvas fills
      *  the real viewport width (see fitLocationCanvas). Instead the left
-     *  rail collapses to 0 (reclaimed entirely for the canvas, which is the
-     *  whole point of this) and the right rail gets a fixed LOCATION_RAIL_W
-     *  just wide enough for the D-pad/buttons. */
+     *  rail gets a fixed DPAD_RAIL_W just wide enough for the D-pad, and the
+     *  right rail gets the smaller ACTION_RAIL_W for the icon-only
+     *  Talk/Menu/Reset frame. */
     function updateSideRails(marginPx, topPx, heightPx, isWalkableViewport) {
         const left = document.getElementById('hud-side-left');
         const right = document.getElementById('hud-side-right');
 
         if (isWalkableViewport) {
             document.body.classList.add('using-side-rails');
-            if (left) { left.style.top = `${topPx}px`; left.style.height = `${heightPx}px`; left.style.width = '0px'; }
-            if (right) { right.style.top = `${topPx}px`; right.style.height = `${heightPx}px`; right.style.width = `${LOCATION_RAIL_W}px`; }
+            if (left) { left.style.top = `${topPx}px`; left.style.height = `${heightPx}px`; left.style.width = `${DPAD_RAIL_W}px`; }
+            if (right) { right.style.top = `${topPx}px`; right.style.height = `${heightPx}px`; right.style.width = `${ACTION_RAIL_W}px`; }
             return;
         }
 
@@ -4513,7 +4752,7 @@
      *  a no-op read+maybe-write, and resizing a canvas that hasn't actually
      *  changed size is cheap. */
     function fitLocationCanvas(screenName) {
-        const canvasIds = { town: 'town-canvas', cave: 'cave-canvas', castle: 'castle-canvas', ruins: 'ruins-canvas', spring: 'spring-canvas' };
+        const canvasIds = { world: 'world-canvas', town: 'town-canvas', cave: 'cave-canvas', castle: 'castle-canvas', ruins: 'ruins-canvas', spring: 'spring-canvas' };
         const canvasId = canvasIds[screenName];
         const canvas = canvasId ? document.getElementById(canvasId) : null;
         if (!canvas) return;
@@ -4526,61 +4765,12 @@
         }
     }
 
-    /** Physically relocates #battle-hud-party into the left rail and
-     *  #battle-commands into the right rail (only when there's enough
-     *  margin for rails to be showing at all) - moves the actual DOM nodes
-     *  rather than duplicating their contents, so every existing bit of
-     *  code that does battleCommandsEl.innerHTML = ... or reads/writes
-     *  #battle-hud-party keeps working unchanged, it's just rendering into
-     *  a different (roomier, real-touch-sized) part of the screen. Frees
-     *  most of .battle-ui's height back to the actual battlefield view. */
-    function enterBattleRailMode() {
-        if (!document.body.classList.contains('using-side-rails')) return;
-        const hudParty = document.getElementById('battle-hud-party');
-        const commands = document.getElementById('battle-commands');
-        const leftRail = document.getElementById('hud-side-left');
-        const rightRail = document.getElementById('hud-side-right');
-        if (!hudParty || !commands || !leftRail || !rightRail) return;
-
-        let partyHome = document.getElementById('rail-battle-party');
-        if (!partyHome) {
-            partyHome = document.createElement('div');
-            partyHome.id = 'rail-battle-party';
-            partyHome.className = 'rail-section';
-            leftRail.appendChild(partyHome);
-        }
-        let commandsHome = document.getElementById('rail-battle-commands');
-        if (!commandsHome) {
-            commandsHome = document.createElement('div');
-            commandsHome.id = 'rail-battle-commands';
-            commandsHome.className = 'rail-section';
-            rightRail.insertBefore(commandsHome, rightRail.firstChild);
-        }
-
-        partyHome.appendChild(hudParty);
-        commandsHome.appendChild(commands);
-        partyHome.classList.add('visible');
-        commandsHome.classList.add('visible');
-        document.body.classList.add('battle-rail-mode');
-    }
-
-    /** Reverses enterBattleRailMode(), moving #battle-hud-party and
-     *  #battle-commands back to their normal spot inside .battle-hud-row. */
-    function exitBattleRailMode() {
-        if (!document.body.classList.contains('battle-rail-mode')) return;
-        const hudParty = document.getElementById('battle-hud-party');
-        const commands = document.getElementById('battle-commands');
-        const hudRow = document.querySelector('.battle-hud-row');
-        if (hudRow) {
-            if (hudParty) hudRow.appendChild(hudParty);
-            if (commands) hudRow.appendChild(commands);
-        }
-        const partyHome = document.getElementById('rail-battle-party');
-        const commandsHome = document.getElementById('rail-battle-commands');
-        if (partyHome) partyHome.classList.remove('visible');
-        if (commandsHome) commandsHome.classList.remove('visible');
-        document.body.classList.remove('battle-rail-mode');
-    }
+    /** enterBattleRailMode()/exitBattleRailMode() were removed: battle-screen
+     *  is a real full-viewport screen now with its own compact icon command
+     *  bar and per-hero info cards anchored to each character (see
+     *  updatePartyDisplay()'s .hero-slot), so there's no longer a separate
+     *  "relocate into the side rails when there's room" mode to enter or
+     *  exit - the same layout now works at any screen size. */
 
     /** Shows/hides the persistent touch chrome (top bar, D-pad, party
      *  status rail, minimap rail) based on which screen is active - the
@@ -4598,9 +4788,11 @@
             const el = document.getElementById(id);
             if (el) el.classList.toggle('visible', show);
         };
-        setVisible('mobile-controls', isWalkable);
+        setVisible('mobile-dpad-wrap', isWalkable);
+        setVisible('mobile-actions-wrap', isWalkable);
+        setVisible('touch-exit-btn', isWalkable && !isWorld);
         setVisible('hud-top-bar', isWorld);
-        setVisible('rail-party-status', isWorld);
+        setVisible('hud-party-icon-btn', isWorld);
         setVisible('rail-minimap', isWorld);
         // rail-location-party (the mini party-status box that used to sit
         // above the D-pad on town/cave/castle/ruins) is intentionally never
@@ -4609,6 +4801,52 @@
         // in that cramped a space. Removing it also frees up the whole rail
         // height for the D-pad/action buttons instead of splitting it.
         setVisible('rail-location-party', false);
+        // Leaving the world screen (or entering battle/menus) should close
+        // any open floating panels rather than leave them stranded on top
+        // of whatever's shown next.
+        if (!isWorld) {
+            closeWorldMenuPanel();
+            closePartyOverlay();
+        }
+    }
+
+    /** Hamburger dropdown (world screen only) - replaces the old always-on
+     *  top button strip. Toggled open/closed by the hamburger icon; closes
+     *  itself after any button inside is tapped since the buttons are
+     *  one-shot actions (save, open a journal, nudge zoom, etc.). */
+    function toggleWorldMenuPanel() {
+        const panel = document.getElementById('hud-menu-panel');
+        if (!panel) return;
+        panel.classList.toggle('open');
+    }
+    function closeWorldMenuPanel() {
+        const panel = document.getElementById('hud-menu-panel');
+        if (panel) panel.classList.remove('open');
+    }
+
+    /** Party status overlay (world screen only) - replaces the old
+     *  always-on left "PARTY" rail panel with a tap-to-show overlay. */
+    function togglePartyOverlay() {
+        const panel = document.getElementById('hud-party-overlay');
+        if (!panel) return;
+        panel.classList.toggle('open');
+    }
+    function closePartyOverlay() {
+        const panel = document.getElementById('hud-party-overlay');
+        if (panel) panel.classList.remove('open');
+    }
+
+    /** Combat log overlay (battle screen) - press the 📜 button to show
+     *  the log, press again to hide it, same show/hide pattern as the
+     *  world screen's hamburger menu/party overlay above. */
+    function toggleBattleLog() {
+        const log = document.getElementById('battle-log');
+        if (!log) return;
+        log.classList.toggle('open');
+    }
+    function closeBattleLog() {
+        const log = document.getElementById('battle-log');
+        if (log) log.classList.remove('open');
     }
 
     /** Wires the on-screen D-pad + Interact/Menu buttons: press-and-hold a
@@ -4679,6 +4917,13 @@
                 if (window.game && window.game.renderer && window.game.renderer.resetZoom) window.game.renderer.resetZoom();
             });
         }
+        const exitBtn = document.getElementById('touch-exit-btn');
+        if (exitBtn) {
+            exitBtn.addEventListener('pointerup', (e) => {
+                e.preventDefault();
+                if (window.game && window.game.exitLocation) window.game.exitLocation();
+            });
+        }
     }
 
     /** Unified touch-gesture handler for a map canvas: one finger taps to
@@ -4697,6 +4942,15 @@
         let pinchStartDist = 1, pinchStartScale = 1;
         let pinchStartMidX = 0, pinchStartMidY = 0;
         let panStartTX = 0, panStartTY = 0;
+        // World's own zoom actually redraws with a different tile density
+        // (see Renderer.renderWorld()), unlike the CSS-transform scale
+        // below which just visually stretches whatever was already drawn -
+        // that's why CSS zoom-out never revealed more surrounding map, it
+        // was capped at "no scaling" as the outer limit and wouldn't have
+        // helped even if it went lower. Only the world screen gets this
+        // treatment; town/dungeon keep the CSS-transform approach as-is.
+        const isWorldZoom = context === 'world' && typeof renderer.zoom === 'number';
+        let pinchStartRendererZoom = 1;
 
         const zoomState = { scale: 1, tx: 0, ty: 0, minScale: 1, maxScale: 2.5 };
         canvas.style.transformOrigin = 'center center';
@@ -4707,6 +4961,7 @@
         canvas._resetZoomPan = () => {
             zoomState.scale = 1; zoomState.tx = 0; zoomState.ty = 0;
             applyTransform();
+            if (isWorldZoom && typeof renderer.resetZoom === 'function') renderer.resetZoom();
         };
         // Exposes a button-friendly nudge (used by the world-hud's ZOOM +/-
         // buttons) that shares this exact same CSS-transform zoom the pinch
@@ -4715,6 +4970,11 @@
         // uniformly scaled for mobile (two different zoom systems trying to
         // recenter around two different things).
         canvas._nudgeZoom = (factor) => {
+            if (isWorldZoom) {
+                renderer.zoom = Math.max(renderer.minZoom, Math.min(renderer.maxZoom, renderer.zoom * factor));
+                if (window.game && window.game.world) renderer.renderWorld(window.game.world);
+                return;
+            }
             zoomState.scale = Math.max(zoomState.minScale, Math.min(zoomState.maxScale, zoomState.scale * factor));
             applyTransform();
         };
@@ -4733,6 +4993,7 @@
                 const pts = Array.from(pointers.values());
                 pinchStartDist = dist(pts[0], pts[1]) || 1;
                 pinchStartScale = zoomState.scale;
+                pinchStartRendererZoom = isWorldZoom ? renderer.zoom : 1;
                 const m = mid(pts[0], pts[1]);
                 pinchStartMidX = m.x; pinchStartMidY = m.y;
                 panStartTX = zoomState.tx; panStartTY = zoomState.ty;
@@ -4748,6 +5009,18 @@
                 const pts = Array.from(pointers.values());
                 const newDist = dist(pts[0], pts[1]) || 1;
                 const newMid = mid(pts[0], pts[1]);
+                if (isWorldZoom) {
+                    // Redraw-based zoom: reveals genuinely more/less map
+                    // instead of stretching the same fixed render. No pan
+                    // component here - the world camera already recenters
+                    // on the player every frame, so a separate pinch-pan
+                    // offset would just fight that each time you move.
+                    let newZoom = pinchStartRendererZoom * (newDist / pinchStartDist);
+                    newZoom = Math.max(renderer.minZoom, Math.min(renderer.maxZoom, newZoom));
+                    renderer.zoom = newZoom;
+                    if (window.game && window.game.world) renderer.renderWorld(window.game.world);
+                    return;
+                }
                 let newScale = pinchStartScale * (newDist / pinchStartDist);
                 newScale = Math.max(zoomState.minScale, Math.min(zoomState.maxScale, newScale));
                 zoomState.scale = newScale;
@@ -4808,6 +5081,12 @@
         VIEWPORT_WIDTH: 32,
         VIEWPORT_HEIGHT: 24,
         ENCOUNTER_RATE: 0.06,
+        // Rare "mini-boss" world encounter (see checkRandomEncounter()):
+        // 0.6% flat chance per step, with a cooldown afterward so it can't
+        // fire again immediately - keeps it feeling like a rare event
+        // rather than just another regular fight in disguise.
+        RARE_ENCOUNTER_RATE: 0.006,
+        RARE_ENCOUNTER_COOLDOWN_STEPS: 60,
         TERRAIN: {
             GRASS: 0,
             FOREST: 1,
@@ -6058,10 +6337,19 @@
             // rather than shrinking tiles down to fit the whole floor at once like towns do.
             const viewTop = 36;
             const viewH = height - viewTop;
-            const tilesW = Math.ceil(width / ts) + 2;
-            const tilesH = Math.ceil(viewH / ts) + 2;
-            const startCol = Math.floor(dungeonState.playerX - tilesW / 2);
-            const startRow = Math.floor(dungeonState.playerY - tilesH / 2);
+            // Buffer tiles are added on BOTH sides symmetrically (see edgeBuffer
+            // below) so the player's own tile lands exactly on the true visual
+            // center of the screen - it used to only get added once before
+            // halving, which shifted the centered tile ~1 tile right/down of
+            // where it visually should be (same bug, same fix, as the
+            // overworld map's renderWorld()).
+            const visibleTilesW = Math.ceil(width / ts);
+            const visibleTilesH = Math.ceil(viewH / ts);
+            const edgeBuffer = 2;
+            const startCol = Math.floor(dungeonState.playerX - visibleTilesW / 2) - edgeBuffer;
+            const startRow = Math.floor(dungeonState.playerY - visibleTilesH / 2) - edgeBuffer;
+            const tilesW = visibleTilesW + edgeBuffer * 2;
+            const tilesH = visibleTilesH + edgeBuffer * 2;
             // Cached for tap-to-walk screen->tile inversion (see screenToTile below).
             this.lastStartCol = startCol;
             this.lastStartRow = startRow;
@@ -6307,18 +6595,13 @@
                 target.style.display = 'flex';
                 this.currentScreen = screenName;
                 updateHudVisibility(screenName);
-                // Elevates #game-container (which still holds #battle-screen)
-                // above the walkable-viewport backdrop screen for exactly the
-                // duration of the battle - see the body.battle-active rule on
-                // #game-container. Must be added before fitGameContainer() so
-                // the container is already stacked correctly by the time it
-                // resizes/repaints.
-                document.body.classList.add('battle-active');
                 if (typeof fitGameContainer === 'function') fitGameContainer();
-                if (typeof enterBattleRailMode === 'function') enterBattleRailMode();
                 if (window.game && window.game.updateGoldDisplays) {
                     window.game.updateGoldDisplays();
                 }
+                // Fresh fight, fresh log state - don't leave the overlay
+                // open from a previous encounter.
+                if (typeof closeBattleLog === 'function') closeBattleLog();
                 // Replay the spiral entrance every time a battle starts.
                 // Remove + force a reflow before re-adding so the
                 // animation restarts even if the class was left over
@@ -6344,14 +6627,11 @@
             // elements at once while a battle is up, and currentActive
             // (a querySelector) just grabs whichever one is first in DOM
             // order (world-screen, not battle-screen) - so comparing
-            // against it silently skipped this whole branch, including
-            // exitBattleRailMode(), any time battle ended.
+            // against it silently skipped this whole branch.
             const battleScreenEl = document.getElementById('battle-screen');
             if (battleScreenEl && battleScreenEl.classList.contains('active')) {
-                if (typeof exitBattleRailMode === 'function') exitBattleRailMode();
                 battleScreenEl.classList.remove('active');
                 battleScreenEl.style.display = 'none';
-                document.body.classList.remove('battle-active');
                 const staleBackdrop = this.battleBackdropScreen;
                 this.battleBackdropScreen = null;
                 if (staleBackdrop && staleBackdrop !== target) {
@@ -9657,24 +9937,41 @@
             this.ctx = this.canvas ? this.canvas.getContext('2d') : null;
             this.zoom = 0.5;
             this.minZoom = 0.25;
-            this.maxZoom = 2.0;
+            this.maxZoom = 4.0;
             this.offsetX = 0;
             this.offsetY = 0;
             this.dragging = false;
-            this.lastMouseX = 0;
-            this.lastMouseY = 0;
-            this.clickThreshold = 5;
-            this.dragStartX = 0;
-            this.dragStartY = 0;
+            this.clickThreshold = 6;
             this.worldMap = null;
             this.setupEventListeners();
         }
 
+        /** worldmap-screen is a real full-viewport screen now (see
+         *  .viewport-overlay), not locked inside #game-container's old
+         *  1024x668 design-space letterbox - so the canvas needs its own
+         *  width/height attributes resized to match its real on-screen box
+         *  (same reasoning/pattern as fitLocationCanvas() for town/cave/
+         *  etc.), or it'd still render tiny and blurry-stretched despite
+         *  the container itself now being full size. */
+        resizeCanvas() {
+            if (!this.canvas) return;
+            const container = document.getElementById('worldmap-container');
+            if (!container) return;
+            const rect = container.getBoundingClientRect();
+            const w = Math.max(100, Math.round(rect.width));
+            const h = Math.max(100, Math.round(rect.height));
+            if (this.canvas.width !== w || this.canvas.height !== h) {
+                this.canvas.width = w;
+                this.canvas.height = h;
+            }
+        }
+
         setupEventListeners() {
             if (!this.canvas) return;
-            this.canvas.addEventListener('wheel', (e) => {
+            const canvas = this.canvas;
+            canvas.addEventListener('wheel', (e) => {
                 e.preventDefault();
-                const rect = this.canvas.getBoundingClientRect();
+                const rect = canvas.getBoundingClientRect();
                 const mouseX = e.clientX - rect.left;
                 const mouseY = e.clientY - rect.top;
                 const oldZoom = this.zoom;
@@ -9685,45 +9982,99 @@
                 this.offsetY = mouseY - (mouseY - this.offsetY) * scaleChange;
                 this.render();
             });
-            this.canvas.addEventListener('mousedown', (e) => {
-                this.dragging = false;
-                this.dragStartX = e.clientX;
-                this.dragStartY = e.clientY;
-                this.lastMouseX = e.clientX;
-                this.lastMouseY = e.clientY;
-                this.canvas.style.cursor = 'grabbing';
+
+            // Pointer events unify mouse + touch + pen: one finger drags to
+            // pan (and a still finger counts as a tap, opening that tile's
+            // info, matching the old click behavior), two fingers pinch to
+            // zoom (anchored under the pinch midpoint, same math as the
+            // wheel handler above) and can also pan together.
+            const pointers = new Map();
+            let gestureMode = null; // null | 'pan' | 'pinch'
+            let panLastX = 0, panLastY = 0;
+            let downX = 0, downY = 0, downT = 0;
+            let pinchLastDist = 1, pinchLastMidX = 0, pinchLastMidY = 0;
+
+            const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+            const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+
+            canvas.addEventListener('pointerdown', (e) => {
+                try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* non-fatal - gesture still works without capture */ }
+                pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+                if (pointers.size === 1) {
+                    gestureMode = 'pan';
+                    this.dragging = false;
+                    downX = e.clientX; downY = e.clientY; downT = Date.now();
+                    panLastX = e.clientX; panLastY = e.clientY;
+                    canvas.style.cursor = 'grabbing';
+                } else if (pointers.size === 2) {
+                    gestureMode = 'pinch';
+                    const pts = Array.from(pointers.values());
+                    pinchLastDist = dist(pts[0], pts[1]) || 1;
+                    const m = mid(pts[0], pts[1]);
+                    pinchLastMidX = m.x; pinchLastMidY = m.y;
+                }
             });
-            this.canvas.addEventListener('mousemove', (e) => {
-                if (this.lastMouseX !== 0) {
-                    const dx = e.clientX - this.dragStartX;
-                    const dy = e.clientY - this.dragStartY;
-                    if (Math.abs(dx) > this.clickThreshold || Math.abs(dy) > this.clickThreshold) {
+
+            canvas.addEventListener('pointermove', (e) => {
+                if (!pointers.has(e.pointerId)) return;
+                pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+                if (gestureMode === 'pan' && pointers.size === 1) {
+                    const dx = e.clientX - panLastX;
+                    const dy = e.clientY - panLastY;
+                    if (Math.abs(e.clientX - downX) > this.clickThreshold || Math.abs(e.clientY - downY) > this.clickThreshold) {
                         this.dragging = true;
                     }
                     if (this.dragging) {
-                        this.offsetX += e.clientX - this.lastMouseX;
-                        this.offsetY += e.clientY - this.lastMouseY;
+                        this.offsetX += dx;
+                        this.offsetY += dy;
                         this.render();
                     }
-                    this.lastMouseX = e.clientX;
-                    this.lastMouseY = e.clientY;
+                    panLastX = e.clientX; panLastY = e.clientY;
+                } else if (gestureMode === 'pinch' && pointers.size === 2) {
+                    const pts = Array.from(pointers.values());
+                    const newDist = dist(pts[0], pts[1]) || 1;
+                    const newMid = mid(pts[0], pts[1]);
+                    const rect = canvas.getBoundingClientRect();
+                    const midCanvasX = newMid.x - rect.left;
+                    const midCanvasY = newMid.y - rect.top;
+                    const oldZoom = this.zoom;
+                    let newZoom = oldZoom * (newDist / pinchLastDist);
+                    newZoom = Math.max(this.minZoom, Math.min(this.maxZoom, newZoom));
+                    const scaleChange = newZoom / oldZoom;
+                    this.zoom = newZoom;
+                    this.offsetX = midCanvasX - (midCanvasX - this.offsetX) * scaleChange;
+                    this.offsetY = midCanvasY - (midCanvasY - this.offsetY) * scaleChange;
+                    // Two-finger drag pans too, standard pinch UX.
+                    this.offsetX += newMid.x - pinchLastMidX;
+                    this.offsetY += newMid.y - pinchLastMidY;
+                    pinchLastDist = newDist;
+                    pinchLastMidX = newMid.x; pinchLastMidY = newMid.y;
+                    this.render();
                 }
             });
-            this.canvas.addEventListener('mouseup', (e) => {
-                if (!this.dragging && this.worldMap) {
-                    this.handleMapClick(e);
+
+            const endPointer = (e) => {
+                pointers.delete(e.pointerId);
+                if (pointers.size === 0) {
+                    if (gestureMode === 'pan' && !this.dragging && this.worldMap && (Date.now() - downT) < 600) {
+                        this.handleMapClick(e);
+                    }
+                    this.dragging = false;
+                    gestureMode = null;
+                    canvas.style.cursor = 'grab';
+                } else if (pointers.size === 1) {
+                    // Dropped from two fingers to one mid-pinch - rearm pan
+                    // from here instead of jumping (or letting the eventual
+                    // lift-off of the remaining finger register as a tap).
+                    const remaining = Array.from(pointers.values())[0];
+                    panLastX = remaining.x; panLastY = remaining.y;
+                    downX = remaining.x; downY = remaining.y;
+                    this.dragging = true;
+                    gestureMode = 'pan';
                 }
-                this.dragging = false;
-                this.lastMouseX = 0;
-                this.lastMouseY = 0;
-                this.canvas.style.cursor = 'grab';
-            });
-            this.canvas.addEventListener('mouseleave', () => {
-                this.dragging = false;
-                this.lastMouseX = 0;
-                this.lastMouseY = 0;
-                this.canvas.style.cursor = 'grab';
-            });
+            };
+            canvas.addEventListener('pointerup', endPointer);
+            canvas.addEventListener('pointercancel', endPointer);
         }
 
         handleMapClick(e) {
@@ -9749,14 +10100,20 @@
 
         setWorldMap(worldMap) {
             this.worldMap = worldMap;
+            this.resizeCanvas();
             this.resetView();
         }
 
         resetView() {
             if (!this.worldMap || !this.canvas) return;
+            this.resizeCanvas();
+            // Center the player's current position instead of always
+            // snapping to the map's top-left corner, so opening the map
+            // starts you looking at where you actually are.
+            const tileSize = 4;
             this.zoom = 0.5;
-            this.offsetX = 0;
-            this.offsetY = 0;
+            this.offsetX = this.canvas.width / 2 - this.worldMap.playerX * tileSize * this.zoom;
+            this.offsetY = this.canvas.height / 2 - this.worldMap.playerY * tileSize * this.zoom;
             this.render();
         }
 
@@ -9849,7 +10206,14 @@
             this.minimapCtx = this.minimapCanvas ? this.minimapCanvas.getContext('2d') : null;
             this.tileSize = CONFIG.TILE_SIZE;
             this.game = window.game;
-            this.zoom = 1.0;
+            // Dialed back slightly from 1.35 - close enough to read tiles/
+            // sprites clearly, but 1.35 didn't leave much surrounding view
+            // to see what's coming. Pinch-zoom now actually redraws at a
+            // different tile density (see setupCanvasTouch's 'world'
+            // branch) instead of just CSS-scaling the same fixed render, so
+            // zooming out from here genuinely reveals more map instead of
+            // being capped at "no zoom" as the outer limit.
+            this.zoom = 1.15;
             this.minZoom = 0.5;
             this.maxZoom = 2.0;
             this.offsetX = 0;
@@ -9952,7 +10316,7 @@
         }
 
         resetZoom() {
-            this.zoom = 1.0;
+            this.zoom = 1.15;
             this.offsetX = 0;
             this.offsetY = 0;
             if (window.game && window.game.world) {
@@ -9977,12 +10341,23 @@
             ctx.save();
             ctx.translate(this.offsetX, this.offsetY);
             ctx.scale(this.zoom, this.zoom);
-            const tilesW = Math.ceil(this.canvas.width / (ts * this.zoom)) + 4;
-            const tilesH = Math.ceil(this.canvas.height / (ts * this.zoom)) + 4;
-            const startCol = Math.floor(worldMap.playerX - tilesW / 2);
-            const startRow = Math.floor(worldMap.playerY - tilesH / 2);
-            const endCol = startCol + tilesW;
-            const endRow = startRow + tilesH;
+            // Half-width/height in tiles of what's actually visible, plus a
+            // couple of extra tiles of drawn-but-offscreen buffer on EACH
+            // side to avoid pop-in at the edges while panning. The buffer
+            // used to only get added once (via `+4` before halving), which
+            // shifted the centered tile ~2 tiles right/down of true canvas
+            // center instead of landing exactly on it - much more visible
+            // now that the default zoom is higher (fewer tiles fit on
+            // screen, so a fixed-tile offset eats a bigger fraction of it).
+            // Splitting the buffer evenly here keeps the player's own tile
+            // exactly centered regardless of zoom.
+            const halfTilesW = this.canvas.width / (ts * this.zoom) / 2;
+            const halfTilesH = this.canvas.height / (ts * this.zoom) / 2;
+            const edgeBuffer = 2;
+            const startCol = Math.floor(worldMap.playerX - halfTilesW) - edgeBuffer;
+            const startRow = Math.floor(worldMap.playerY - halfTilesH) - edgeBuffer;
+            const endCol = Math.ceil(worldMap.playerX + halfTilesW) + edgeBuffer;
+            const endRow = Math.ceil(worldMap.playerY + halfTilesH) + edgeBuffer;
             // Cached so tap-to-walk can invert a screen tap back to a tile
             // coordinate using the exact same camera transform just drawn with.
             this.lastStartCol = startCol;
@@ -10401,6 +10776,7 @@
             this.lastDropRarity = null;
             this.lastSpellElement = null;
             this.lastMaterialsFound = [];
+            this.lastRareEncounterBonus = null;
             this.runAttempts = 0;
             // Tracks which monster slot indices have already played their
             // one-time death animation, so updateMonsterDisplay() (called
@@ -10414,6 +10790,7 @@
             this.itemsUsedInBattle = false;
             this.magicOnlyBattle = true;
             this.lastMaterialsFound = [];
+            this.lastRareEncounterBonus = null;
             
             const existingPopup = document.getElementById('battle-results-popup');
             if (existingPopup) existingPopup.remove();
@@ -10449,6 +10826,9 @@
             if (location === 'cave_elite') {
                 this.log('⚡ ELITE ENCOUNTER! Stronger enemies appear! ⚡');
                 this.log('They drop better rewards!');
+            } else if (location === 'world_rare') {
+                this.log('🌑 A menacing presence blocks your path!');
+                this.log('This foe is far tougher than usual...');
             } else {
                 this.log(`Encounter started! ${this.monsters.length} enemies appear!`);
             }
@@ -10460,6 +10840,7 @@
         generateMonsters(location, partyLevel) {
             const isBoss = location === 'castle';
             const isElite = location === 'cave_elite';
+            const isRareWorldEncounter = location === 'world_rare';
             const isSpecialLocation = location === 'cave' || location === 'ruins';
             const count = isBoss ? 1 : (isSpecialLocation ? Math.floor(Math.random() * 3) + 2 : Math.floor(Math.random() * 2) + 1);
 
@@ -10469,6 +10850,31 @@
                 const castleName = window.game.nearLocation ? window.game.nearLocation.name : 'Ashveil Spire';
                 const boss = CASTLE_BOSSES[castleName] || CASTLE_BOSSES['Ashveil Spire'];
                 const monster = new Monster(boss, true);
+                this.monsters.push(monster);
+                return;
+            }
+
+            // Rare "mini-boss" world encounter: a single foe, pulled from
+            // the current region's elite pool (falling back to a regular
+            // monster if a region has none defined) and pushed noticeably
+            // harder than even a normal elite - it's meant to feel like a
+            // real, uncommon threat rather than a reskinned regular fight.
+            if (isRareWorldEncounter) {
+                const quadrantData = QUADRANTS[quadrant];
+                const eliteCandidates = quadrantData.monsters.filter(m => m.isElite);
+                const template = (eliteCandidates.length > 0 ? eliteCandidates : quadrantData.monsters)[
+                    Math.floor(Math.random() * (eliteCandidates.length > 0 ? eliteCandidates.length : quadrantData.monsters.length))
+                ];
+                const monster = new Monster(template, false);
+                monster.name = `Menacing ${monster.name.replace(/^Elite /, '')}`;
+                monster.maxHp = Math.floor(monster.maxHp * 2.4);
+                monster.currentHp = monster.maxHp;
+                monster.attack = Math.floor(monster.attack * 1.8);
+                monster.defense = Math.floor(monster.defense * 1.6);
+                monster.expReward = Math.floor(monster.expReward * 4);
+                monster.goldReward = Math.floor(monster.goldReward * 4.5);
+                monster.isElite = true;
+                monster.isRareEncounter = true;
                 this.monsters.push(monster);
                 return;
             }
@@ -10524,9 +10930,18 @@
             if (!partyArea) return;
             const heroes = partyArea.querySelectorAll('.battle-hero');
             heroes.forEach(heroDiv => {
+                heroDiv.classList.remove('targetable');
+                heroDiv.onclick = null;
+                heroDiv.onmouseover = null;
+                heroDiv.onmouseout = null;
+                // Defensive cleanup: clears any leftover inline styles from
+                // the old onmouseover/onmouseout-driven highlight (the
+                // actual source of the stuck-green-box bug), in case a
+                // battle is resumed from a state that set them before this
+                // fix shipped.
                 heroDiv.style.border = '';
                 heroDiv.style.cursor = '';
-                heroDiv.onclick = null;
+                heroDiv.style.backgroundColor = '';
             });
         }
 
@@ -10588,24 +11003,34 @@
 
         updatePartyDisplay() {
             const area = document.getElementById('party-battle-area');
-            const hudBar = document.getElementById('battle-hud-party');
-            if (!area || !hudBar) return;
+            if (!area) return;
 
-            // Remove sprites/cards for heroes no longer in the party (party
+            // Remove slots for heroes no longer in the party (party
             // composition doesn't normally change mid-battle, but this is a
-            // cheap safety net).
-            area.querySelectorAll('.battle-hero').forEach(el => {
-                if (Number(el.dataset.heroIndex) >= this.party.heroes.length) el.remove();
-            });
-            hudBar.querySelectorAll('.hud-hero-card').forEach(el => {
+            // cheap safety net). Removing the whole .hero-slot wrapper takes
+            // its sprite + card with it.
+            area.querySelectorAll('.hero-slot').forEach(el => {
                 if (Number(el.dataset.heroIndex) >= this.party.heroes.length) el.remove();
             });
 
             this.party.heroes.forEach((hero, index) => {
                 const stats = hero.getEffectiveStats();
                 const heroHpPercent = hero.currentHp / stats.maxHp;
-                const isLowHp = heroHpPercent <= 0.25 && !hero.isDead;
+                const isLowHp = heroHpPercent <= 0.20 && !hero.isDead;
                 const isSelected = index === this.selectedHeroIndex;
+
+                // --- Stable per-hero slot: holds the animated sprite
+                //     wrapper (.battle-hero, which gets translateX'd on
+                //     attack lunge) and its info card as separate siblings,
+                //     so the card sits anchored next to the character
+                //     without being dragged along by the lunge animation. ---
+                let slot = area.querySelector(`.hero-slot[data-hero-index="${index}"]`);
+                if (!slot) {
+                    slot = document.createElement('div');
+                    slot.className = 'hero-slot';
+                    slot.dataset.heroIndex = index;
+                    area.appendChild(slot);
+                }
 
                 // --- Bare pixel sprite on the stage (no panel chrome). Reuses
                 //     the same persistent DOM node every update (instead of
@@ -10613,7 +11038,7 @@
                 //     animation class (attack lunge, weapon swing, recoil)
                 //     survives a mid-animation refresh instead of getting
                 //     wiped before the browser ever paints it. ---
-                let spriteDiv = area.querySelector(`.battle-hero[data-hero-index="${index}"]`);
+                let spriteDiv = slot.querySelector(`.battle-hero[data-hero-index="${index}"]`);
                 let avatarEl;
                 if (!spriteDiv) {
                     spriteDiv = document.createElement('div');
@@ -10622,7 +11047,7 @@
                     avatarEl = document.createElement('div');
                     avatarEl.dataset.heroAvatarIndex = index;
                     spriteDiv.appendChild(avatarEl);
-                    area.appendChild(spriteDiv);
+                    slot.appendChild(spriteDiv);
                 } else {
                     avatarEl = spriteDiv.querySelector('.hero-avatar');
                 }
@@ -10662,15 +11087,16 @@
                     });
                 }
 
-                // --- HUD card: name above stacked HP/MP/Limit/EXP bars, all
-                //     in one card so the party fits horizontally instead of
-                //     needing extra vertical room per hero. Reused in place
-                //     for the same reason as the sprite above. ---
-                let card = hudBar.querySelector(`.hud-hero-card[data-hero-index="${index}"]`);
+                // --- Info card: anchored beside its hero's own sprite
+                //     inside the shared .hero-slot (instead of a separate
+                //     bottom strip), so HP/MP/Limit/EXP stay visually
+                //     associated with the character they belong to. Reused
+                //     in place for the same reason as the sprite above. ---
+                let card = slot.querySelector(`.hud-hero-card[data-hero-index="${index}"]`);
                 if (!card) {
                     card = document.createElement('div');
                     card.dataset.heroIndex = index;
-                    hudBar.appendChild(card);
+                    slot.appendChild(card);
                 }
                 card.className = `hud-hero-card ${isSelected ? 'hud-card-selected' : ''} ${hero.isDead ? 'hud-card-dead' : ''}`;
                 card.innerHTML = `
@@ -10698,7 +11124,7 @@
             });
             const battleScreenEl = document.getElementById('battle-window');
             if (battleScreenEl) {
-                const anyLowHp = this.party.heroes.some(h => !h.isDead && (h.currentHp / h.getEffectiveStats().maxHp) <= 0.25);
+                const anyLowHp = this.party.heroes.some(h => !h.isDead && (h.currentHp / h.getEffectiveStats().maxHp) <= 0.20);
                 battleScreenEl.classList.toggle('low-hp-vignette', anyLowHp);
             }
         }
@@ -10769,22 +11195,20 @@
         renderMainCommands() {
             const commandArea = document.getElementById('battle-commands');
             if (!commandArea) return;
-            const autoText = this.autoBattle ? "⏸️ Stop Auto" : "⚡ Auto Battle";
-            const autoColor = this.autoBattle ? '#ffaa00' : '#4a4a6a';
             const hero = this.party.heroes[this.selectedHeroIndex];
             const limitReady = hero && !hero.isDead && hero.isLimitBreakReady();
+            // Attack/Magic/Item/Run are icon-only (self-explanatory), but
+            // Limit Break keeps its text label since that's genuinely
+            // useful to read in the moment, per request.
             const attackBtnHTML = limitReady
-                ? `<button class="cmd-btn limit-break-btn" onclick="window.game.battle.selectCommand('limitbreak')">💥 LIMIT BREAK</button>`
-                : `<button class="cmd-btn" onclick="window.game.battle.selectCommand('attack')">⚔️ Attack</button>`;
+                ? `<button class="cmd-btn limit-break-btn" title="Limit Break" onclick="window.game.battle.selectCommand('limitbreak')">💥 LIMIT BREAK</button>`
+                : `<button class="cmd-btn" title="Attack" onclick="window.game.battle.selectCommand('attack')">⚔️</button>`;
             commandArea.innerHTML = `
                 ${attackBtnHTML}
-                <button class="cmd-btn" onclick="window.game.battle.selectCommand('magic')">🔮 Magic</button>
-                <button class="cmd-btn" onclick="window.game.battle.selectCommand('item')">🎒 Item</button>
-                <button class="cmd-btn" onclick="window.game.battle.selectCommand('run')">🏃 Run</button>
-                <button class="cmd-btn" id="auto-battle-btn" 
-                        onclick="window.game.battle.toggleAutoBattle()" 
-                        style="grid-column: span 2; background: ${autoColor};" 
-                        class="${this.autoBattle ? 'active' : ''}">${autoText}</button>
+                <button class="cmd-btn" title="Magic" onclick="window.game.battle.selectCommand('magic')">🔮</button>
+                <button class="cmd-btn" title="Item" onclick="window.game.battle.selectCommand('item')">🎒</button>
+                <button class="cmd-btn" title="Run" onclick="window.game.battle.selectCommand('run')">🏃</button>
+                <button class="cmd-btn ${this.autoBattle ? 'auto-active' : ''}" id="auto-battle-btn" title="${this.autoBattle ? 'Stop Auto Battle' : 'Auto Battle'}" onclick="window.game.battle.toggleAutoBattle()">${this.autoBattle ? '⏸️' : '⚡'}</button>
             `;
         }
 
@@ -11029,18 +11453,24 @@
                 this.log(`${hero.name} has no spells!`);
                 return;
             }
-            const commandArea = document.getElementById('battle-commands');
-            commandArea.innerHTML = '';
+            const overlay = document.getElementById('battle-action-overlay');
+            const title = document.getElementById('battle-action-title');
+            const list = document.getElementById('battle-action-list');
+            if (!overlay || !list) return;
+            title.textContent = '🔮 Magic';
+            list.innerHTML = '';
             hero.spells.forEach((spell) => {
-                const btn = document.createElement('button');
-                btn.className = 'cmd-btn';
                 const effCost = hero.getSpellCost(spell);
-                btn.innerHTML = `${spell.name}<br><small>${effCost} MP</small>`;
+                const affordable = hero.currentMp >= effCost;
+                const btn = document.createElement('button');
+                btn.className = 'battle-action-option' + (affordable ? '' : ' disabled');
+                btn.innerHTML = `<span class="battle-action-name">${spell.name}</span><span class="battle-action-cost">${effCost} MP</span>`;
                 btn.onclick = () => {
-                    if (hero.currentMp < hero.getSpellCost(spell)) {
+                    if (!affordable) {
                         this.log(`Not enough MP for ${spell.name}!`);
                         return;
                     }
+                    overlay.classList.remove('active');
                     // Convergence limit break: redirect a single-target damage spell
                     // into an all-enemies cast at reduced power, no target needed.
                     if (hero.pendingConvergence && spell.type === 'damage') {
@@ -11068,17 +11498,9 @@
                         this.log(`${hero.name} prepares ${spell.name}. Select an enemy.`);
                     }
                 };
-                if (hero.currentMp < effCost) btn.style.opacity = '0.5';
-                commandArea.appendChild(btn);
+                list.appendChild(btn);
             });
-            const backBtn = document.createElement('button');
-            backBtn.className = 'cmd-btn';
-            backBtn.textContent = '⬅️ BACK';
-            backBtn.onclick = () => {
-                this.resetCommandState();
-                this.renderMainCommands();
-            };
-            commandArea.appendChild(backBtn);
+            overlay.classList.add('active');
         }
 
         showBattleItemMenu(hero) {
@@ -11093,13 +11515,18 @@
                 setTimeout(() => this.renderMainCommands(), 1500);
                 return;
             }
-            const commandArea = document.getElementById('battle-commands');
-            commandArea.innerHTML = '';
+            const overlay = document.getElementById('battle-action-overlay');
+            const title = document.getElementById('battle-action-title');
+            const list = document.getElementById('battle-action-list');
+            if (!overlay || !list) return;
+            title.textContent = '🎒 Item';
+            list.innerHTML = '';
             usableItems.forEach((item) => {
                 const btn = document.createElement('button');
-                btn.className = 'cmd-btn';
-                btn.innerHTML = `${item.name}<br><small>x${item.quantity}</small>`;
+                btn.className = 'battle-action-option';
+                btn.innerHTML = `<span class="battle-action-name">${item.name}</span><span class="battle-action-cost">x${item.quantity}</span>`;
                 btn.onclick = () => {
+                    overlay.classList.remove('active');
                     this.selectedCommand = 'item';
                     this.selectedItem = item;
                     this.waitingForTarget = true;
@@ -11111,17 +11538,11 @@
                         this.log(`${hero.name} prepares to use ${item.name}. Select an enemy.`);
                     }
                 };
-                commandArea.appendChild(btn);
+                list.appendChild(btn);
             });
-            const backBtn = document.createElement('button');
-            backBtn.className = 'cmd-btn';
-            backBtn.textContent = '⬅️ BACK';
-            backBtn.onclick = () => {
-                this.resetCommandState();
-                this.renderMainCommands();
-            };
-            commandArea.appendChild(backBtn);
+            overlay.classList.add('active');
         }
+
 
         selectTarget(index) {
             if (!this.waitingForTarget || !this.active) return;
@@ -11239,24 +11660,15 @@
             heroes.forEach((heroDiv, index) => {
                 const hero = this.party.heroes[index];
                 if (hero && !hero.isDead) {
-                    heroDiv.style.border = '2px solid #00ff00';
-                    heroDiv.style.cursor = 'pointer';
-                    heroDiv.onclick = null;
+                    heroDiv.classList.add('targetable');
                     heroDiv.onclick = (e) => {
                         e.stopPropagation();
                         this.selectPartyTarget(index);
                     };
-                    heroDiv.onmouseover = () => {
-                        if (!hero.isDead) {
-                            heroDiv.style.backgroundColor = 'rgba(0, 255, 0, 0.2)';
-                        }
-                    };
-                    heroDiv.onmouseout = () => {
-                        heroDiv.style.backgroundColor = '';
-                    };
                 }
             });
         }
+
 
         executeAttack(hero, target) {
             this.magicOnlyBattle = false;
@@ -12353,6 +12765,37 @@
                 this.lastDropRarity = null;
             }
             this.lastMaterialsFound = materialsFound;
+
+            // Rare world "mini-boss" encounter bonus: guaranteed on top of
+            // the normal roll above (not instead of it) - a chunk of extra
+            // gold plus either a rare-tier item or a fully-formed gem
+            // (skipping the usual fragment-collecting grind), 50/50. This
+            // is what makes hunting these encounters down feel worthwhile
+            // beyond the already-boosted per-monster gold/exp.
+            this.lastRareEncounterBonus = null;
+            if (this.monsters.some(m => m.isRareEncounter)) {
+                const bonusGold = 150 + Math.floor(Math.random() * 150);
+                this.party.gold += bonusGold;
+                window.game.updateGoldDisplays();
+                if (Math.random() < 0.5) {
+                    const bonusPool = (lootTable.rare && lootTable.rare.length > 0) ? lootTable.rare : (lootTable.uncommon || []);
+                    if (bonusPool.length > 0) {
+                        const bonusItem = JSON.parse(JSON.stringify(bonusPool[Math.floor(Math.random() * bonusPool.length)]));
+                        this.party.addItem(bonusItem);
+                        this.lastRareEncounterBonus = { type: 'item', name: bonusItem.name, gold: bonusGold };
+                        this.log(`🎁 The presence leaves behind: ${bonusItem.name}!`);
+                    }
+                } else {
+                    const colors = Object.keys(SOCKET_GEM_TIERS);
+                    const color = colors[Math.floor(Math.random() * colors.length)];
+                    const tierDef = SOCKET_GEM_TIERS[color][0];
+                    const gem = { name: tierDef.name, element: tierDef.element || null, bonus: { ...tierDef.bonus }, desc: tierDef.desc, fragmentCost: { [color]: tierDef.cost } };
+                    this.party.addGem(gem);
+                    this.lastRareEncounterBonus = { type: 'gem', name: gem.name, gold: bonusGold };
+                    this.log(`💎 The presence leaves behind: a ${gem.name}!`);
+                }
+                this.log(`🌑 Bonus gold from the encounter: +${bonusGold} G!`);
+            }
         }
 
         showBattleResults() {
@@ -12365,6 +12808,8 @@
             const droppedItem = this.lastDroppedItem;
             const rarity = this.lastDropRarity || 'common';
             const materialsFound = this.lastMaterialsFound || [];
+            const rareBonus = this.lastRareEncounterBonus;
+            if (rareBonus) totalGold += rareBonus.gold;
             const existingPopup = document.getElementById('battle-results-popup');
             if (existingPopup) existingPopup.remove();
             const popup = document.createElement('div');
@@ -12402,19 +12847,28 @@
                 });
                 materialsHTML += '</div>';
             }
+            let rareBonusHTML = '';
+            if (rareBonus) {
+                const bonusIcon = rareBonus.type === 'gem' ? '💎' : '🎁';
+                rareBonusHTML = `
+                    <div style="margin: 15px 0; padding: 12px; background: rgba(255,20,50,0.1); border-radius: 6px; border-left: 4px solid #ff3355;">
+                        <div style="color: #ff8899; font-weight: bold;">${bonusIcon} Rare Encounter Bonus</div>
+                        <div style="color: #ffb3c0; margin-top: 4px;">${rareBonus.name}</div>
+                    </div>
+                `;
+            }
             popup.innerHTML = `
                 <div style="font-size: 48px; margin-bottom: 10px; animation: chestOpen 0.5s;">📦</div>
-                <h2 class="victory-title-glow" style="color: var(--highlight); margin-bottom: 20px;">🏆 VICTORY!</h2>
+                <h2 class="victory-title-glow" style="color: ${rareBonus ? '#ff3355' : 'var(--highlight)'}; margin-bottom: 14px;">${rareBonus ? '🌑 MENACING FOE DEFEATED!' : '🏆 VICTORY!'}</h2>
+                <button class="menu-button" onclick="window.game.battle.exitBattleResults()"
+                        style="margin: 0 auto 20px; display: block; padding: 10px 28px; font-size: 15px;">Continue</button>
                 <div style="margin-bottom: 20px; text-align: left;">
                     <p style="margin: 10px 0;">💰 Gold gained: ${totalGold}</p>
                     <p style="margin: 10px 0;">✨ Experience gained: ${totalExp}</p>
+                    ${rareBonusHTML}
                     ${materialsHTML}
                     ${itemHTML}
-                    <hr style="border-color: var(--border-color); margin: 15px 0;">
-                    <p style="color: #888; font-style: italic;">Click Continue to return</p>
                 </div>
-                <button class="menu-button" onclick="window.game.battle.exitBattleResults()" 
-                        style="margin: 10px auto; display: block;">Continue</button>
             `;
             document.getElementById('battle-window').appendChild(popup);
             this.animateChestOpening();
@@ -12469,16 +12923,16 @@
             const fightDungeonType = window.game.dungeonMap ? window.game.dungeonMap.type : null;
             const autoBtn = document.getElementById('auto-battle-btn');
             if (autoBtn) {
-                autoBtn.style.background = '#4a4a6a';
-                autoBtn.textContent = '⚡ Auto Battle';
-                autoBtn.classList.remove('active');
+                autoBtn.style.background = '';
+                autoBtn.textContent = '⚡';
+                autoBtn.classList.remove('auto-active');
             }
             this.resetCommandState();
             this.resetAllStatusEffects();
             if (!defeat && this.monsters.length > 0) {
                 this.monsters.forEach(monster => {
                     window.game.updateQuestProgress('monster_kill', 1, monster.name);
-                    window.game.trackMonsterKill(monster.name, monster.isBoss);
+                    window.game.trackMonsterKill(monster.name, monster.isBoss, monster.isElite, monster.isRareEncounter);
                     // Shadow Stalkers are part of the whole Brighthollow region's
                     // monster pool, not exclusive to the Shadow Grove dungeon - they
                     // (and Elite Shadow Stalkers) can spawn in any Brighthollow
@@ -14500,7 +14954,46 @@
         { id: 'true_elementalist', name: 'True Elementalist', icon: '🔥', desc: 'Reach level 20 as an Elementalist.',
             check: (game) => !!(game.party && game.party.heroes.some(h => h.archetype === 'elementalist' && h.level >= 20)) },
         { id: 'true_holy_paladin', name: 'True Holy Paladin', icon: '✨', desc: 'Reach level 20 as a Holy Paladin.',
-            check: (game) => !!(game.party && game.party.heroes.some(h => h.archetype === 'holy_paladin' && h.level >= 20)) }
+            check: (game) => !!(game.party && game.party.heroes.some(h => h.archetype === 'holy_paladin' && h.level >= 20)) },
+        // ---------------------------------------------------------------
+        // Added to rebalance completion % against story progress - the
+        // original 35 skewed too easy/early, so these lean on mid-to-late
+        // game systems (elite/rare encounters, gem crafting, legendary
+        // weapon forging, the final boss) instead of things a new save
+        // stumbles into within the first couple hours.
+        // ---------------------------------------------------------------
+        { id: 'elite_hunter', name: 'Elite Hunter', icon: '🎯', desc: 'Defeat 15 elite monsters.',
+            check: (game, s) => s.eliteKills >= 15 },
+        { id: 'veil_crosser', name: 'Veil Crosser', icon: '🌑', desc: 'Defeat a rare "Menacing" encounter out in the world.',
+            check: (game, s) => s.rareEncountersWon >= 1 },
+        { id: 'presence_hunter', name: 'Presence Hunter', icon: '👁️', desc: 'Defeat 5 rare "Menacing" encounters.',
+            check: (game, s) => s.rareEncountersWon >= 5 },
+        { id: 'gem_collector', name: 'Gem Collector', icon: '💠', desc: 'Own 5 crafted gems at once.',
+            check: (game) => !!(game.party && game.party.gems && game.party.gems.length >= 5) },
+        { id: 'master_jeweler', name: 'Master Jeweler', icon: '💎', desc: 'Craft a Flawless-tier gem.',
+            check: (game) => !!(game.party && game.party.gems && game.party.gems.some(g => g.name && g.name.startsWith('Flawless'))) },
+        { id: 'fragment_hoarder', name: 'Fragment Hoarder', icon: '🔶', desc: 'Hold 100 total gem fragments at once.',
+            check: (game) => !!(game.party && game.party.fragments && Object.values(game.party.fragments).reduce((a, b) => a + b, 0) >= 100) },
+        { id: 'legendary_smith', name: 'Legendary Smith', icon: '🔨', desc: 'Forge your first legendary weapon.',
+            check: (game) => !!(game.completedQuestIds && Object.values(LEGENDARY_WEAPONS).some(w => game.completedQuestIds.has(w.part3QuestId))) },
+        { id: 'legendary_master', name: 'Legendary Master', icon: '⚔️', desc: 'Forge all three legendary weapons.',
+            check: (game) => !!(game.completedQuestIds && Object.values(LEGENDARY_WEAPONS).every(w => game.completedQuestIds.has(w.part3QuestId))) },
+        { id: 'world_ender', name: 'World Ender', icon: '🔱', desc: 'Defeat Voraxis and save the realm.',
+            check: (game, s) => s.bossKills.has('Voraxis') },
+        { id: 'deep_pockets', name: 'Deep Pockets', icon: '👝', desc: 'Accumulate 20,000 gold at once.',
+            check: (game) => !!(game.party && game.party.gold >= 20000) },
+        { id: 'region_liberator', name: 'Region Liberator', icon: '🌍', desc: 'Complete at least 5 quests in every region.',
+            check: (game) => {
+                if (!game.completedQuestIds) return false;
+                const prefixes = ['brighthollow_', 'duskmere_', 'sylvaris_', 'chaos_'];
+                return prefixes.every(p => {
+                    let count = 0;
+                    game.completedQuestIds.forEach(id => { if (id.startsWith(p)) count++; });
+                    return count >= 5;
+                });
+            } },
+        { id: 'archetype_ascendant', name: 'Archetype Ascendant', icon: '🌟', desc: 'Reach level 30 with a specialized archetype.',
+            check: (game) => !!(game.party && game.party.heroes.some(h => h.archetype && h.level >= 30)) }
     ];
 
     // =====================================================================
@@ -14533,7 +15026,9 @@
                 fishRareCaught: 0,
                 fishMaterialCaught: 0,
                 archetypesChosen: new Set(),
-                trinityForged: false
+                trinityForged: false,
+                eliteKills: 0,
+                rareEncountersWon: 0
             };
         }
 
@@ -14546,6 +15041,8 @@
                 case 'monster_kill':
                     s.kills++;
                     if (data.isBoss && data.name) s.bossKills.add(data.name);
+                    if (data.isElite) s.eliteKills++;
+                    if (data.isRareEncounter) s.rareEncountersWon++;
                     break;
                 case 'elemental_kill':
                     if (data.element) { s.elementsUsed.add(data.element); s.elementalKillCount++; }
@@ -15029,10 +15526,20 @@
                 console.log('Creating new WorldMapRenderer');
                 this.worldMapRenderer = new WorldMapRenderer();
             }
-            this.worldMapRenderer.setWorldMap(this.world);
-            this.worldMapRenderer.resetView();
-            this.worldMapRenderer.render();
+            this.worldMapRenderer.worldMap = this.world;
+            // Switch screens FIRST - worldmap-canvas's container is
+            // display:none until switchScreen() activates it, so resizing
+            // the canvas beforehand reads a zero-size box (this is what
+            // caused it to render tiny/stuck at a fallback size). Resize
+            // and center the view only once the screen is actually laid
+            // out, then again on the next frame + a short delay to catch
+            // any late layout settling (same pattern fitLocationCanvas()
+            // uses elsewhere for this exact reason).
             this.state.switchScreen('worldmap');
+            const wmr = this.worldMapRenderer;
+            wmr.setWorldMap(this.world);
+            requestAnimationFrame(() => wmr.resetView());
+            setTimeout(() => wmr.resetView(), 150);
         }
 
         closeWorldMap() {
@@ -15784,10 +16291,10 @@
             }
         }
 
-        trackMonsterKill(monsterName, isBoss = false) {
+        trackMonsterKill(monsterName, isBoss = false, isElite = false, isRareEncounter = false) {
             this.monsterKills[monsterName] = (this.monsterKills[monsterName] || 0) + 1;
             this.updateQuestProgress('monster_kill', 1, monsterName);
-            if (this.achievements) this.achievements.report('monster_kill', { name: monsterName, isBoss: isBoss });
+            if (this.achievements) this.achievements.report('monster_kill', { name: monsterName, isBoss: isBoss, isElite: isElite, isRareEncounter: isRareEncounter });
         }
 
         trackElementalKill(element) {
@@ -16134,6 +16641,21 @@
             const terrain = this.world.getTerrainAt(this.world.playerX, this.world.playerY);
             const isOnRoad = this.world.roads.some(road => road.x === this.world.playerX && road.y === this.world.playerY);
             if (isOnRoad) return;
+            // Rare "mini-boss" encounter: a low, flat per-step chance,
+            // independent of terrain/road modifiers and the normal
+            // encounter roll below - deliberately uncommon enough to feel
+            // like a real event rather than just a reskinned regular fight.
+            // A short in-world warning plays first, then the fight starts
+            // once it's finished (see showRareEncounterWarning()).
+            if (!this.rareEncounterCooldown && Math.random() < CONFIG.RARE_ENCOUNTER_RATE) {
+                this.rareEncounterCooldown = CONFIG.RARE_ENCOUNTER_COOLDOWN_STEPS;
+                showRareEncounterWarning(() => {
+                    this.audio.playMusic('battle', getBattleEnvironment('world').scene);
+                    this.battle.startEncounter(this.party, 'world_rare');
+                });
+                return;
+            }
+            if (this.rareEncounterCooldown > 0) this.rareEncounterCooldown--;
             let encounterRate = CONFIG.ENCOUNTER_RATE;
             if (terrain === CONFIG.TERRAIN.FOREST) encounterRate *= 1.5;
             if (terrain === CONFIG.TERRAIN.DESERT) encounterRate *= 1.5;
@@ -16157,13 +16679,13 @@
             const indicator = document.getElementById('location-indicator');
             if (location) {
                 indicator.style.display = 'block';
-                indicator.textContent = `${location.name} - Press ENTER to enter`;
+                indicator.textContent = `${location.name} - Press ✋ to enter`;
                 this.nearLocation = location;
                 this.nearNPC = null;
             } else if (isOnNPC) {
                 const npc = this.world.getNPCAtPlayer();
                 indicator.style.display = 'block';
-                indicator.textContent = `Talk to ${npc.name} - Press ENTER to talk`;
+                indicator.textContent = `Talk to ${npc.name} - Press ✋ to talk`;
                 this.nearLocation = null;
                 this.nearNPC = npc;
             } else {
@@ -16216,7 +16738,7 @@
             return x >= 0 && x < this.townMap.width && y >= 0 && y < this.townMap.height;
         }
 
-        /** Updates the "Press ENTER" indicator when standing on a building/NPC tile in town. */
+        /** Updates the touch "press to interact" indicator when standing on a building/NPC tile in town. */
         checkTownProximity() {
             if (!this.townMap) return;
             const indicator = document.getElementById('town-location-indicator');
@@ -16230,9 +16752,9 @@
                 // town feel lived-in) have nothing to enter, so they get a plain
                 // label instead of a "Press ENTER" prompt that would do nothing.
                 indicator.textContent = building.action === 'exit'
-                    ? 'Press ENTER to leave town'
+                    ? 'Press ✋ to leave town'
                     : building.action
-                        ? `${building.label} - Press ENTER to enter`
+                        ? `${building.label} - Press ✋ to enter`
                         : building.label;
                 this.nearBuilding = building;
                 this.nearTownNPC = null;
@@ -16240,13 +16762,13 @@
             } else if (npcSpot) {
                 const npcData = (TOWNSFOLK_DATA[this.townMap.key] || TOWNSFOLK_DATA.brighthollow)[npcSpot.npcIndex];
                 indicator.style.display = 'block';
-                indicator.textContent = npcData ? `Talk to ${npcData.name} - Press ENTER` : 'Press ENTER to talk';
+                indicator.textContent = npcData ? `Talk to ${npcData.name} - Press ✋` : 'Press ✋ to talk';
                 this.nearBuilding = null;
                 this.nearTownNPC = npcSpot.npcIndex;
                 this.nearFishingSpot = null;
             } else if (fishingSpot) {
                 indicator.style.display = 'block';
-                indicator.textContent = '🎣 Press ENTER to fish';
+                indicator.textContent = '🎣 Press ✋ to fish';
                 this.nearBuilding = null;
                 this.nearTownNPC = null;
                 this.nearFishingSpot = fishingSpot;
@@ -16323,7 +16845,7 @@
             return !this.dungeonMap.isWall(x, y);
         }
 
-        /** Updates the "Press ENTER" indicator for chests/stairs/boss doors/vaults in a dungeon. */
+        /** Updates the touch "press to interact" indicator for chests/stairs/boss doors/vaults in a dungeon. */
         checkDungeonProximity() {
             if (!this.dungeonMap) return;
             const indicator = document.getElementById(`${this.dungeonMap.type}-location-indicator`);
@@ -16332,7 +16854,7 @@
             const chest = this.dungeonMap.getChestAt(x, y);
             if (chest) {
                 indicator.style.display = 'block';
-                indicator.textContent = 'Press ENTER to open chest';
+                indicator.textContent = 'Press ✋ to open chest';
                 this.nearDungeonFeature = { type: 'chest', ref: chest };
             } else if (this.dungeonMap.isOnExitTile()) {
                 const f = this.dungeonMap.floor;
@@ -16342,20 +16864,20 @@
                     || (f.exitType === 'shrine' && this.isArchetypeTrialComplete());
                 if (resolved) {
                     indicator.style.display = 'block';
-                    indicator.textContent = f.exitType === 'shrine' ? 'Press ENTER to leave the shrine' : 'Press ENTER to leave the dungeon';
+                    indicator.textContent = f.exitType === 'shrine' ? 'Press ✋ to leave the shrine' : 'Press ✋ to leave the dungeon';
                     this.nearDungeonFeature = { type: 'leave', ref: null };
                 } else {
-                    const label = f.exitType === 'stairs' ? 'Press ENTER to descend'
-                        : f.exitType === 'boss' ? 'Press ENTER to face what awaits...'
-                        : f.exitType === 'shrine' ? 'Press ENTER to approach the altar'
-                        : 'Press ENTER to open the vault';
+                    const label = f.exitType === 'stairs' ? 'Press ✋ to descend'
+                        : f.exitType === 'boss' ? 'Press ✋ to face what awaits...'
+                        : f.exitType === 'shrine' ? 'Press ✋ to approach the altar'
+                        : 'Press ✋ to open the vault';
                     indicator.style.display = 'block';
                     indicator.textContent = label;
                     this.nearDungeonFeature = { type: f.exitType, ref: f };
                 }
             } else if (x === this.dungeonMap.floor.entrance.x && y === this.dungeonMap.floor.entrance.y) {
                 indicator.style.display = 'block';
-                indicator.textContent = 'Press ENTER to leave';
+                indicator.textContent = 'Press ✋ to leave';
                 this.nearDungeonFeature = { type: 'leave', ref: null };
             } else {
                 indicator.style.display = 'none';
@@ -16758,7 +17280,7 @@
                 ${progressMessage}
                 <p><strong>Progress:</strong> ${progress}/${quest.goal}</p>
                 <p><strong>Reward:</strong> ${quest.reward.gold} G, ${quest.reward.item}</p>
-                <p style="color: #888; margin-top: 15px;">${quest.dialogue.start}</p>
+                ${quest.dialogue && quest.dialogue.start ? `<p style="color: #888; margin-top: 15px;">${quest.dialogue.start}</p>` : ''}
                 ${!isComplete ? `
                     <p style="color: #ffaa00; margin-top: 10px;">Quest in progress - keep going!</p>
                 ` : `
@@ -16892,7 +17414,7 @@
             }
             const townsfolk = TOWNSFOLK_DATA;
             const npcs = townsfolk[townName] || townsfolk.brighthollow;
-            let npcListHTML = '<div style="max-height: 400px; overflow-y: auto; margin-bottom: 15px;">';
+            let npcListHTML = '';
             npcs.forEach((npc, index) => {
                 npcListHTML += `
                     <div style="background: rgba(0,0,0,0.3); margin: 10px 0; padding: 10px; border-radius: 5px; border-left: 4px solid var(--highlight); cursor: pointer;" 
@@ -16907,7 +17429,6 @@
                     </div>
                 `;
             });
-            npcListHTML += '</div>';
             npcListHTML += '<p style="color: #888; font-style: italic; text-align: center; margin-top: 10px;">Click on any townsfolk above to speak with them</p>';
             this.ui.showPopup(`Townsfolk of ${townName.charAt(0).toUpperCase() + townName.slice(1)}`, npcListHTML, true);
         }
@@ -17033,8 +17554,7 @@
         }
 
         showSpellRecipes() {
-            let menuHTML = '<div style="max-height: 400px; overflow-y: auto;">';
-            menuHTML += '<h3 style="color: var(--highlight);">Available Combinations</h3>';
+            let menuHTML = '<h3 style="color: var(--highlight);">Available Combinations</h3>';
             SPELL_COMBINATIONS.forEach(combo => {
                 const result = combo.result;
                 let elementIcon = '✨';
@@ -17065,7 +17585,6 @@
                     </div>
                 `;
             });
-            menuHTML += '</div>';
             menuHTML += '<p style="color: #888; margin-top: 15px;">Visit the Wizard to combine spells!</p>';
             this.ui.showPopup('Spell Combination Guide', menuHTML, true);
         }
@@ -17083,8 +17602,13 @@
             }
             this.spellcraftSpells = availableSpells;
             this.selectedSpellIndex = null;
-            let menuHTML = '<p>Select your first spell:</p>';
-            menuHTML += '<div style="max-height: 250px; overflow-y: auto;">';
+            let menuHTML = `
+                <div style="text-align: center; margin-bottom: 15px;">
+                    <button class="menu-button" onclick="window.game.showSpellRecipes()" 
+                            style="padding: 10px; font-size: 14px;">📚 View Spell Combinations</button>
+                </div>
+            `;
+            menuHTML += '<p>Select your first spell:</p>';
             availableSpells.forEach((spell, idx) => {
                 menuHTML += `
                     <div class="shop-item" onclick="window.game.selectFirstSpell(${idx})">
@@ -17093,13 +17617,6 @@
                     </div>
                 `;
             });
-            menuHTML += '</div>';
-            menuHTML += `
-                <div style="margin-top: 20px; text-align: center;">
-                    <button class="menu-button" onclick="window.game.showSpellRecipes()" 
-                            style="padding: 10px; font-size: 14px;">📚 View Spell Combinations</button>
-                </div>
-            `;
             this.ui.showPopup('Wizard\'s Study - Select Spell', menuHTML, true);
         }
 
@@ -17108,7 +17625,6 @@
             const firstSpell = this.spellcraftSpells[index];
             const availableSpells = this.spellcraftSpells.filter((_, i) => i !== index);
             let menuHTML = `<p>Select second spell to combine with ${firstSpell.name}:</p>`;
-            menuHTML += '<div style="max-height: 250px; overflow-y: auto;">';
             availableSpells.forEach((spell) => {
                 const originalIndex = this.spellcraftSpells.findIndex(s => s.name === spell.name && s.heroName === spell.heroName);
                 menuHTML += `
@@ -17118,7 +17634,6 @@
                     </div>
                 `;
             });
-            menuHTML += '</div>';
             this.ui.showPopup('Wizard\'s Study - Select Second Spell', menuHTML, true);
         }
 
@@ -17165,8 +17680,7 @@
                 }
                 return true;
             });
-            let menuHTML = '<div style="max-height: 300px; overflow-y: auto;">';
-            menuHTML += `<p style="color: #888; margin-bottom: 10px;">Secrets in ${currentRegion} region:</p>`;
+            let menuHTML = `<p style="color: #888; margin-bottom: 10px;">Secrets in ${currentRegion} region:</p>`;
             if (regionSecrets.length === 0) {
                 menuHTML += '<p style="color: #888; text-align: center; padding: 20px;">No hidden locations in this region yet.</p>';
             } else {
@@ -17181,7 +17695,6 @@
                     `;
                 });
             }
-            menuHTML += '</div>';
             menuHTML += '<p style="color: #888; margin-top: 15px;">Pay 200G to reveal a hidden location permanently.</p>';
             this.ui.showPopup('Explorer\'s Maps', menuHTML, true);
         }
@@ -17219,18 +17732,14 @@
         }
 
         showCraftingTab() {
-            let menuHTML = '<div style="max-height: 420px; overflow-y: auto;">';
-            menuHTML += this.gemCrafterTabBar('craft');
+            let menuHTML = this.gemCrafterTabBar('craft');
             menuHTML += this.getCraftingTabHTML();
-            menuHTML += '</div>';
             this.ui.showPopup('Gem Crafter', menuHTML, true);
         }
 
         showApplyGemTab() {
-            let menuHTML = '<div style="max-height: 420px; overflow-y: auto;">';
-            menuHTML += this.gemCrafterTabBar('apply');
+            let menuHTML = this.gemCrafterTabBar('apply');
             menuHTML += this.getApplyGemTabHTML();
-            menuHTML += '</div>';
             this.ui.showPopup('Gem Crafter', menuHTML, true);
         }
 
@@ -17244,6 +17753,11 @@
             let parts = Object.entries(gem.bonus || {}).map(([k, v]) => `+${v} ${labels[k] || k}`);
             if (gem.element) parts.push(`${gem.element.toUpperCase()} dmg`);
             return parts.join(', ');
+        }
+
+        selectGemColorTab(color) {
+            this.selectedGemColorTab = color;
+            this.showCraftingTab();
         }
 
         getCraftingTabHTML() {
@@ -17262,9 +17776,44 @@
                 html += '<p style="color: #888;">No fragments yet - monsters have a chance to drop them in battle!</p>';
             }
 
-            html += '<h3 style="color: var(--highlight);">Socket Gems (single color):</h3>';
+            // Color sub-tabs (per request - the flat combined list of 5
+            // colors x 4 tiers + hybrids was too long to scan) - only one
+            // color's (or Hybrid's) recipes render below at a time instead
+            // of the whole thing at once.
+            const activeColor = this.selectedGemColorTab || colors[0];
+            html += '<h3 style="color: var(--highlight); margin-top: 20px;">Socket Gems:</h3>';
+            html += '<div style="display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap;">';
             colors.forEach(color => {
-                html += `<div style="margin-bottom: 10px; border-left: 3px solid ${FRAGMENT_COLOR_HEX[color]}; padding-left: 8px;">`;
+                const isActive = activeColor === color;
+                html += `<button class="menu-button" onclick="window.game.selectGemColorTab('${color}')"
+                    style="padding: 5px 12px; font-size: 12px; border-left: 3px solid ${FRAGMENT_COLOR_HEX[color]};
+                    ${isActive ? `background: ${FRAGMENT_COLOR_HEX[color]}; color: #000;` : ''}">${GEM_FRAGMENT_INFO[color].icon} ${color}</button>`;
+            });
+            html += `<button class="menu-button" onclick="window.game.selectGemColorTab('Hybrid')"
+                style="padding: 5px 12px; font-size: 12px; ${activeColor === 'Hybrid' ? 'background: var(--highlight); color: #000;' : ''}">🔀 Hybrid</button>`;
+            html += '</div>';
+
+            if (activeColor === 'Hybrid') {
+                html += '<h4 style="color: #888; margin-bottom: 10px;">Hybrid Gems (two colors):</h4>';
+                HYBRID_GEM_RECIPES.forEach((recipe, index) => {
+                    const canCraft = Object.entries(recipe.cost).every(([c, q]) => (frags[c] || 0) >= q);
+                    html += `
+                        <div class="shop-item" onclick="window.game.craftHybridGem(${index})"
+                             style="${canCraft ? '' : 'opacity: 0.5; cursor: not-allowed;'}">
+                            <div>
+                                <span style="color: var(--highlight);">💠 ${recipe.name}</span>
+                                <div style="font-size: 11px; color: #888;">${recipe.desc}</div>
+                                <div style="font-size: 11px; color: #6cf;">${this.formatGemBonus(recipe)}</div>
+                            </div>
+                            <div style="text-align: right; color: ${canCraft ? '#fff' : '#f88'};">
+                                ${Object.entries(recipe.cost).map(([c, q]) => `${q} ${c}`).join(' + ')}
+                            </div>
+                        </div>
+                    `;
+                });
+            } else {
+                const color = activeColor;
+                html += `<h4 style="color: #888; margin-bottom: 10px;">${GEM_FRAGMENT_INFO[color].icon} ${color} Gems (single color):</h4>`;
                 SOCKET_GEM_TIERS[color].forEach(tierDef => {
                     const have = frags[color] || 0;
                     const canCraft = have >= tierDef.cost;
@@ -17280,26 +17829,7 @@
                         </div>
                     `;
                 });
-                html += '</div>';
-            });
-
-            html += '<h3 style="color: var(--highlight);">Hybrid Gems (two colors):</h3>';
-            HYBRID_GEM_RECIPES.forEach((recipe, index) => {
-                const canCraft = Object.entries(recipe.cost).every(([c, q]) => (frags[c] || 0) >= q);
-                html += `
-                    <div class="shop-item" onclick="window.game.craftHybridGem(${index})"
-                         style="${canCraft ? '' : 'opacity: 0.5; cursor: not-allowed;'}">
-                        <div>
-                            <span style="color: var(--highlight);">💠 ${recipe.name}</span>
-                            <div style="font-size: 11px; color: #888;">${recipe.desc}</div>
-                            <div style="font-size: 11px; color: #6cf;">${this.formatGemBonus(recipe)}</div>
-                        </div>
-                        <div style="text-align: right; color: ${canCraft ? '#fff' : '#f88'};">
-                            ${Object.entries(recipe.cost).map(([c, q]) => `${q} ${c}`).join(' + ')}
-                        </div>
-                    </div>
-                `;
-            });
+            }
             return html;
         }
 
@@ -17467,7 +17997,17 @@
 
         showApothecaryMenu() {
             const materials = this.party.materials || {};
-            let html = '<div style="max-height: 420px; overflow-y: auto;">';
+            // Single scroll region now: this used to wrap everything in its
+            // own max-height:420px;overflow-y:auto div NESTED inside
+            // .popup-box's own max-height:80%;overflow-y:auto - two
+            // independently-scrolling boxes stacked on top of each other,
+            // which is what caused the framing glitch (the inner 420px
+            // frame doesn't fit inside the outer ~324px visible area on a
+            // real phone screen, so its content gets clipped by the outer
+            // box's edge mid-row instead of scrolling cleanly). Letting the
+            // content flow naturally and rely on .popup-box's own scroll
+            // fixes it.
+            let html = '';
             html += '<h3 style="color: var(--highlight);">Your Materials:</h3>';
             html += '<div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px;">';
             const materialEntries = Object.entries(materials);
@@ -17513,7 +18053,6 @@
                     </div>
                 `;
             });
-            html += '</div>';
             this.ui.showPopup('Apothecary', html, true);
         }
 
@@ -17557,7 +18096,7 @@
          *  already in party.materials - see getLegendaryStage(). */
         showShrineMenu() {
             const mats = this.party.materials || {};
-            let html = '<div style="max-height: 440px; overflow-y: auto;">';
+            let html = '';
             const classOrder = ['warrior', 'mage', 'paladin'];
             classOrder.forEach(heroClass => {
                 const def = LEGENDARY_WEAPONS[heroClass];
@@ -17600,7 +18139,6 @@
                 }
                 html += `</div>`;
             });
-            html += '</div>';
             this.ui.showPopup('Shrine of Forging', html, true);
         }
 
@@ -17681,7 +18219,7 @@
 
         showQuestCompassMenu() {
             const active = this.quests.filter(q => q.progress < q.goal);
-            let html = '<div style="max-height: 420px; overflow-y: auto;">';
+            let html = '';
             if (this.trackedQuestId) {
                 html += `<div class="shop-item" onclick="window.game.trackQuest(null)" style="margin-bottom: 10px; border-color: #888;">
                     <span>🚫 Stop Tracking</span><span style="color: #888;">Clear compass</span>
@@ -17699,7 +18237,6 @@
                     </div>`;
                 });
             }
-            html += '</div>';
             this.ui.showPopup('Track a Quest', html, true);
         }
 
@@ -17900,7 +18437,7 @@
                 this.ui.showPopup('Merchant', "You don't have any items I can upgrade. Bring me rare or legendary gear!");
                 return;
             }
-            let menuHTML = '<div style="max-height: 300px; overflow-y: auto;">';
+            let menuHTML = '';
             upgradableItems.forEach((item, idx) => {
                 const currentUpgrade = item.upgradeLevel || 0;
                 const upgradeStats = UPGRADE_BENEFITS[item.category === 'weapons' ? 'weapon' : 'armor'];
@@ -17917,7 +18454,6 @@
                     </div>
                 `;
             });
-            menuHTML += '</div>';
             menuHTML += '<p style="color: #888; margin-top: 15px;">Upgraded items gain +2 ATK/DEF and +1 MAG per level!</p>';
             this.currentUpgradableItems = upgradableItems;
             this.ui.showPopup('Merchant - Item Upgrades', menuHTML, true);
@@ -17960,8 +18496,7 @@
         }
 
         showBountyBoard() {
-            let menuHTML = '<div style="max-height: 400px; overflow-y: auto;">';
-            menuHTML += `
+            let menuHTML = `
                 <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid var(--border-color); padding-bottom: 10px;">
                     <button class="menu-button" onclick="window.game.showMonsterBounties()" style="padding: 5px 15px; font-size: 14px; background: var(--highlight); color: #000;">👾 Monster Bounties</button>
                     <button class="menu-button" onclick="window.game.showTreasureBounties()" style="padding: 5px 15px; font-size: 14px;">👑 Treasure Bounties</button>
@@ -19467,6 +20002,15 @@
             }
         }
 
+        /** Maps a hero's base class to a small icon for the compact save-slot
+         *  preview cards - reuses the same iconography as the battle command
+         *  bar (⚔️ melee, 🔮 magic, 🛡️ tank) rather than loading actual
+         *  sprite art, so these tiny previews stay fast and simple. */
+        heroClassChipIcon(heroClass) {
+            const icons = { warrior: '⚔️', mage: '🔮', paladin: '🛡️' };
+            return icons[heroClass] || '✨';
+        }
+
         updateSlotInfo() {
             for (let slot = 1; slot <= 3; slot++) {
                 const saveKey = `legendOfEternal_save_${slot}`;
@@ -19477,30 +20021,29 @@
                     if (saveData) {
                         try {
                             const data = JSON.parse(saveData);
-                            let info = '';
-                            if (data.timestamp) {
-                                const date = new Date(data.timestamp);
-                                info = `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
-                            } else {
-                                info = 'Save exists';
-                            }
-                            if (data.party?.gold !== undefined) {
-                                info += `\n💰 ${data.party.gold} G`;
-                            }
-                            infoElement.innerHTML = info.replace(/\n/g, '<br>');
-                            infoElement.style.color = '#88ff88';
+                            const heroesHTML = (data.party?.heroes || []).map(h => `
+                                <div class="hero-chip" title="${h.name} - Lv${h.level}">
+                                    <span>${this.heroClassChipIcon(h.heroClass)}</span>
+                                    <span class="lvl">Lv${h.level}</span>
+                                </div>
+                            `).join('');
+                            const gold = data.party?.gold !== undefined ? `💰 ${data.party.gold.toLocaleString()}` : '';
+                            const dateStr = data.timestamp ? new Date(data.timestamp).toLocaleDateString() : '';
+                            infoElement.innerHTML = `
+                                <div class="slot-heroes">${heroesHTML}</div>
+                                <div class="slot-meta">${[gold, dateStr].filter(Boolean).join(' · ')}</div>
+                            `;
                             if (container) container.classList.add('has-save');
                         } catch (e) {
-                            infoElement.textContent = 'Corrupted save';
-                            infoElement.style.color = '#ff4444';
+                            infoElement.innerHTML = `<div class="slot-empty" style="color:#ff4444;">Corrupted save</div>`;
                             if (container) container.classList.remove('has-save');
                         }
                     } else {
-                        infoElement.textContent = 'Empty';
-                        infoElement.style.color = '#888';
+                        infoElement.innerHTML = `<div class="slot-empty">✨ Begin a new journey</div>`;
                         if (container) container.classList.remove('has-save');
                     }
                 }
+                if (container) container.classList.toggle('slot-selected', this.currentSlot === slot);
             }
         }
 
@@ -22748,6 +23291,25 @@ const QUEST_DATA = [
      *  Dungeon locations get a fixed scene; open-world encounters pick a
      *  scene based on which region's monster table is currently in play, so
      *  the backdrop always matches what the party is actually fighting. */
+    /** Shows the "strange evil presence" warning before a rare world
+     *  encounter, then calls onDone() once it's finished so the actual
+     *  fight starts right after - appended to <body> as position:fixed
+     *  rather than into #game-container (see .rare-encounter-toast's own
+     *  comment for why that matters). */
+    function showRareEncounterWarning(onDone) {
+        const toast = document.createElement('div');
+        toast.className = 'rare-encounter-toast';
+        toast.innerHTML = `🌑 You feel a strange evil presence nearby...`;
+        document.body.appendChild(toast);
+        requestAnimationFrame(() => toast.classList.add('show'));
+        if (window.game && window.game.audio) window.game.audio.play('levelup');
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 500);
+            if (onDone) onDone();
+        }, 1800);
+    }
+
     function getBattleEnvironment(location) {
         if (location === 'castle') return { scene: 'castle', particle: 'dust' };
         if (location === 'cave' || location === 'cave_elite') return { scene: 'cave', particle: 'mist' };
@@ -23362,6 +23924,29 @@ const QUEST_DATA = [
         if (spring) injectParallaxLayer(spring, 'stars');
     }
 
+    /** Spawns a handful of small leaves into #start-screen-leaves that drift
+     *  down + sway across the title screen key art on a loop (per request).
+     *  Randomizes each leaf's horizontal spot, fall speed, sway speed, and
+     *  start delay so they don't all move in visible lockstep. */
+    function spawnStartScreenLeaves() {
+        const host = document.getElementById('start-screen-leaves');
+        if (!host || host.childElementCount) return;
+        const glyphs = ['🍃', '🍂', '🌿'];
+        const count = 7;
+        for (let i = 0; i < count; i++) {
+            const leaf = document.createElement('div');
+            leaf.className = 'leaf';
+            leaf.textContent = glyphs[i % glyphs.length];
+            leaf.style.left = `${Math.random() * 96}%`;
+            const fallDuration = 9 + Math.random() * 7;
+            const swayDuration = 2.5 + Math.random() * 2;
+            leaf.style.animationDuration = `${fallDuration}s, ${swayDuration}s`;
+            leaf.style.animationDelay = `${-Math.random() * fallDuration}s, ${-Math.random() * swayDuration}s`;
+            leaf.style.fontSize = `${14 + Math.random() * 10}px`;
+            host.appendChild(leaf);
+        }
+    }
+
     // =====================================================================
     //                        GAME INITIALIZATION
     // =====================================================================
@@ -23369,10 +23954,30 @@ const QUEST_DATA = [
     console.log('Creating Game instance...');
     window.game = new Game();
     injectAmbientLayers();
+    spawnStartScreenLeaves();
     setupMobileDpad();
+    // Auto-close the hamburger dropdown after any action inside it fires -
+    // its buttons are one-shot (save, open a journal, nudge zoom, etc.), so
+    // leaving the panel open after tapping one just blocks the view.
+    (function setupWorldMenuAutoClose() {
+        const panel = document.getElementById('hud-menu-panel');
+        if (panel) panel.addEventListener('click', (e) => {
+            if (e.target.closest('button')) setTimeout(closeWorldMenuPanel, 50);
+        });
+    })();
     preventMobileZoomGestures();
     fitGameContainer();
     window.addEventListener('resize', fitGameContainer);
+    // worldmap-canvas needs its own resize on top of fitGameContainer()
+    // since it's a real full-viewport screen with a canvas sized off its
+    // own container's box (see WorldMapRenderer.resizeCanvas()), not the
+    // 1024x768 design-space #game-container handles for other screens.
+    window.addEventListener('resize', () => {
+        if (window.game && window.game.worldMapRenderer && window.game.state && window.game.state.currentScreen === 'worldmap') {
+            window.game.worldMapRenderer.resizeCanvas();
+            window.game.worldMapRenderer.render();
+        }
+    });
     window.addEventListener('orientationchange', fitGameContainer);
     // Register the offline service worker so the game can be "installed"
     // and played with no connection - only works when served over http(s)
