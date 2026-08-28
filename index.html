@@ -1708,6 +1708,18 @@
             opacity: 0.4;
         }
 
+        /* Same green "tappable ally" feedback as .battle-hero.targetable -
+           see highlightPartyTargets(), which now wires up the card the same
+           way it wires up the sprite. */
+        .hud-hero-card.targetable {
+            border-color: #00ff00;
+            cursor: pointer;
+            box-shadow: 0 0 8px rgba(0,255,0,0.35);
+        }
+        .hud-hero-card.targetable:active {
+            background: rgba(0, 255, 0, 0.15);
+        }
+
         .hud-hero-name {
             font-weight: bold;
             color: var(--highlight);
@@ -11111,6 +11123,13 @@
                 heroDiv.style.cursor = '';
                 heroDiv.style.backgroundColor = '';
             });
+            // Mirror the same cleanup on .hud-hero-card - see highlightPartyTargets()
+            // for why the card is now wired up the same way the sprite is.
+            const cards = partyArea.querySelectorAll('.hud-hero-card');
+            cards.forEach(cardDiv => {
+                cardDiv.classList.remove('targetable');
+                cardDiv.onclick = null;
+            });
         }
 
         setupBattleUI() {
@@ -11906,6 +11925,49 @@
                         // heroIndex - belt-and-suspenders against anything that
                         // could theoretically mutate the attribute between
                         // setup and tap.
+                        const liveIndex = parseInt(e.currentTarget.dataset.heroIndex, 10);
+                        // DIAGNOSTIC: log the raw tap coordinates against every
+                        // targetable sprite's actual on-screen rect at the
+                        // instant of the click. This separates two very
+                        // different possible bugs: (a) the tap coordinate
+                        // itself lands inside a DIFFERENT hero's rect than the
+                        // one that appears highlighted - a real hit-testing/
+                        // rendering bug - versus (b) the tap coordinate is
+                        // genuinely inside the intended hero's rect and this
+                        // handler still resolves the wrong index - a JS logic
+                        // bug still hiding somewhere downstream of here.
+                        try {
+                            const tapX = e.clientX, tapY = e.clientY;
+                            const allTargetable = partyArea.querySelectorAll('.battle-hero.targetable');
+                            const rectReport = Array.from(allTargetable).map(d => {
+                                const r = d.getBoundingClientRect();
+                                const inside = tapX >= r.left && tapX <= r.right && tapY >= r.top && tapY <= r.bottom;
+                                return `#${d.dataset.heroIndex}[${Math.round(r.left)},${Math.round(r.top)}-${Math.round(r.right)},${Math.round(r.bottom)}]${inside ? '<-TAP' : ''}`;
+                            }).join(' ');
+                            this.log(`[DEBUG2] tap@(${Math.round(tapX)},${Math.round(tapY)}) currentTarget=#${liveIndex} | rects: ${rectReport}`);
+                        } catch (diagErr) {
+                            this.log(`[DEBUG2] diagnostic error: ${diagErr.message}`);
+                        }
+                        this.selectPartyTarget(Number.isNaN(liveIndex) ? heroIndex : liveIndex);
+                    };
+                }
+            });
+            // The .hud-hero-card (name/HP/MP box) is a separate sibling element
+            // from .battle-hero (the small sprite) - see updatePartyDisplay,
+            // which builds them independently inside the same .hero-slot. Only
+            // the sprite was ever made clickable here, so tapping the card -
+            // arguably the more natural target on a small screen, since it's
+            // larger and has the hero's name right on it, unlike the sprite -
+            // did nothing at all: no highlight, no response, waitingForTarget
+            // just stayed true with no feedback. Wire it up identically.
+            const cards = partyArea.querySelectorAll('.hud-hero-card');
+            cards.forEach((cardDiv) => {
+                const heroIndex = parseInt(cardDiv.dataset.heroIndex, 10);
+                const hero = this.party.heroes[heroIndex];
+                if (hero && !hero.isDead) {
+                    cardDiv.classList.add('targetable');
+                    cardDiv.onclick = (e) => {
+                        e.stopPropagation();
                         const liveIndex = parseInt(e.currentTarget.dataset.heroIndex, 10);
                         this.selectPartyTarget(Number.isNaN(liveIndex) ? heroIndex : liveIndex);
                     };
