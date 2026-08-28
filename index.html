@@ -11219,7 +11219,27 @@
                 } else {
                     avatarEl = spriteDiv.querySelector('.hero-avatar');
                 }
-                spriteDiv.className = `battle-hero ${isSelected ? 'selected' : ''} ${hero.isDead ? 'dead' : ''} ${isLowHp ? 'low-hp-warning' : ''}`;
+                // This full class-list reassignment was wiping any transient
+                // effect class - aura-purple/aura-orange (buff casts), rage-aura/
+                // fortify-aura (buff items), item-flash, targetable - the instant
+                // the next updatePartyDisplay() ran, which happens almost
+                // immediately after a buff lands (executeMagic/executeBattleItem
+                // call updatePartyDisplay() directly, then nextHero() calls it
+                // again as part of advancing the turn). A buff's aura was only
+                // ever on screen for ~100-150ms instead of its real multi-second
+                // duration - easy to misread as "the effect never really landed"
+                // or "landed somewhere else" if it briefly caught a neighboring
+                // sprite's residual glow instead. Preserve any of these that are
+                // already present, the same way avatarEl's transient classes are
+                // preserved just below.
+                const baseSpriteClasses = ['battle-hero'];
+                if (isSelected) baseSpriteClasses.push('selected');
+                if (hero.isDead) baseSpriteClasses.push('dead');
+                if (isLowHp) baseSpriteClasses.push('low-hp-warning');
+                ['aura-purple', 'aura-orange', 'rage-aura', 'fortify-aura', 'item-flash', 'targetable'].forEach(c => {
+                    if (spriteDiv.classList.contains(c)) baseSpriteClasses.push(c);
+                });
+                spriteDiv.className = baseSpriteClasses.join(' ');
                 // Rebuild only the avatar's base class list (rarity + class),
                 // preserving any transient animation class (svg-attacking,
                 // svg-recoil, etc.) that may currently be mid-flight.
@@ -11829,6 +11849,15 @@
             if (!this.waitingForTarget || !this.active) return;
             const hero = this.party.heroes[this.selectedHeroIndex];
             const target = this.party.heroes[index];
+            // TEMPORARY DIAGNOSTIC - safe to remove once the Pike/Mina targeting
+            // issue is confirmed fixed or root-caused. Prints exactly what index
+            // this tap resolved to and who it maps to, directly into the
+            // on-screen battle log (no devtools needed) so a future repro of
+            // "cast landed on the wrong ally" comes with hard data instead of
+            // another guess: is `index` itself wrong (a click-resolution bug,
+            // upstream of this function), or is `index` correct but something
+            // downstream (executeMagic/executeBattleItem) still redirects it?
+            this.log(`[DEBUG] tap resolved to index=${index} (${target ? target.name : 'none'}) | caster index=${this.selectedHeroIndex} (${hero ? hero.name : 'none'})`);
             if (!target || target.isDead) {
                 this.log('Invalid ally target!');
                 return;
@@ -11857,13 +11886,28 @@
             if (!partyArea) return;
             this.clearPartyHighlights();
             const heroes = partyArea.querySelectorAll('.battle-hero');
-            heroes.forEach((heroDiv, index) => {
-                const hero = this.party.heroes[index];
+            // Was keying off the NodeList's iteration position (heroes.forEach's
+            // own `index`), which only resolves to the right hero if DOM order
+            // exactly matches party.heroes order. Every div already carries its
+            // real identity in data-hero-index (set once, at creation, in
+            // updatePartyDisplay - see getBattleElement's use of the same
+            // attribute) - reading that directly instead of trusting iteration
+            // order removes any possibility of a DOM-order mismatch here,
+            // regardless of what might cause one.
+            heroes.forEach((heroDiv) => {
+                const heroIndex = parseInt(heroDiv.dataset.heroIndex, 10);
+                const hero = this.party.heroes[heroIndex];
                 if (hero && !hero.isDead) {
                     heroDiv.classList.add('targetable');
                     heroDiv.onclick = (e) => {
                         e.stopPropagation();
-                        this.selectPartyTarget(index);
+                        // Re-read from the element itself at the moment of the
+                        // click rather than trusting the closure's captured
+                        // heroIndex - belt-and-suspenders against anything that
+                        // could theoretically mutate the attribute between
+                        // setup and tap.
+                        const liveIndex = parseInt(e.currentTarget.dataset.heroIndex, 10);
+                        this.selectPartyTarget(Number.isNaN(liveIndex) ? heroIndex : liveIndex);
                     };
                 }
             });
@@ -12084,41 +12128,42 @@
                     this.log(`${target.name} is not poisoned!`);
                 }
             } else if (item.effect === 'buff') {
-                if (item.stat === 'crit') {
-                    const existingBuff = target.statusEffects.find(e => e.name === 'Rage');
-                    if (existingBuff) {
-                        existingBuff.duration = item.duration || 4;
-                        this.log(`${target.name}'s Rage was refreshed!`);
+                // Was a hardcoded item.stat === 'crit'/'defense' check - the exact
+                // same pattern as the spell-buff bug (see executeMagic's buff
+                // handler above): any future buff item with a different stat
+                // (e.g. 'attack' or 'magic') would silently consume the item and
+                // do nothing. No such item exists yet, but generalizing this now
+                // preempts the same class of bug reappearing on the item side.
+                const buffNameByStat = { crit: 'Rage', defense: 'Fortitude', attack: 'Might', magic: 'Focus' };
+                const auraClassByStat = { crit: 'rage-aura', defense: 'fortify-aura', attack: 'rage-aura', magic: 'fortify-aura' };
+                const effectVisualByStat = { crit: 'axe' };
+                const buffName = buffNameByStat[item.stat] || (item.stat ? item.stat.charAt(0).toUpperCase() + item.stat.slice(1) + ' Boost' : 'Boost');
+                const auraClass = auraClassByStat[item.stat] || 'fortify-aura';
+                const existingBuff = target.statusEffects.find(e => e.name === buffName);
+                if (existingBuff) {
+                    existingBuff.duration = item.duration || 4;
+                    this.log(`${target.name}'s ${buffName} was refreshed!`);
+                } else {
+                    const newEffect = { name: buffName, duration: item.duration || 4 };
+                    if (item.stat === 'crit') {
+                        newEffect.critBonus = item.power || 0.25;
                     } else {
-                        target.statusEffects.push({ name: 'Rage', duration: item.duration || 4, critBonus: item.power || 0.25 });
-                        this.log(`${user.name} uses ${item.name} on ${target.name} - critical hit chance increased!`);
+                        // No separate magic-damage path (see Hero.takeDamage) - 'magic_defense'
+                        // folds into 'defense' the same way the spell handler does above.
+                        const statKey = (item.stat === 'magic_defense') ? 'defense' : (item.stat || 'defense');
+                        newEffect.statModifiers = { [statKey]: item.power || 8 };
                     }
-                    const targetDiv = getBattleElement(target);
-                    if (targetDiv) {
-                        targetDiv.classList.add('rage-aura');
-                        targetDiv.classList.add('item-flash');
-                        setTimeout(() => targetDiv.classList.remove('item-flash'), 300);
-                        setTimeout(() => targetDiv.classList.remove('rage-aura'), (item.duration || 4) * 1000);
-                    }
-                    this.createBuffEffect(target, 'axe');
-                } else if (item.stat === 'defense') {
-                    const existingBuff = target.statusEffects.find(e => e.name === 'Fortitude');
-                    if (existingBuff) {
-                        existingBuff.duration = item.duration || 4;
-                        this.log(`${target.name}'s Fortitude was refreshed!`);
-                    } else {
-                        target.statusEffects.push({ name: 'Fortitude', duration: item.duration || 4, statModifiers: { defense: item.power || 8 } });
-                        this.log(`${user.name} uses ${item.name} on ${target.name} - defense increased!`);
-                    }
-                    const targetDiv = getBattleElement(target);
-                    if (targetDiv) {
-                        targetDiv.classList.add('fortify-aura');
-                        targetDiv.classList.add('item-flash');
-                        setTimeout(() => targetDiv.classList.remove('item-flash'), 300);
-                        setTimeout(() => targetDiv.classList.remove('fortify-aura'), (item.duration || 4) * 1000);
-                    }
-                    this.createBuffEffect(target, 'shield');
+                    target.statusEffects.push(newEffect);
+                    this.log(`${user.name} uses ${item.name} on ${target.name} - ${item.stat === 'crit' ? 'critical hit chance' : (item.stat || 'defense')} increased!`);
                 }
+                const targetDiv = getBattleElement(target);
+                if (targetDiv) {
+                    targetDiv.classList.add(auraClass);
+                    targetDiv.classList.add('item-flash');
+                    setTimeout(() => targetDiv.classList.remove('item-flash'), 300);
+                    setTimeout(() => targetDiv.classList.remove(auraClass), (item.duration || 4) * 1000);
+                }
+                this.createBuffEffect(target, effectVisualByStat[item.stat] || 'shield');
                 window.game.audio.play('magic');
             }
             this.updatePartyDisplay();
@@ -13452,12 +13497,14 @@
         }
 
         createBuffEffect(target, effectType) {
-            const targetIndex = this.party.heroes.indexOf(target);
+            // Was its own indexOf + partyArea.querySelectorAll('.battle-hero')[i]
+            // lookup - functionally equivalent to getBattleElement() as long as DOM
+            // order and party.heroes order never drift, which held in every test I
+            // ran, but converting it removes the last spot in the buff-visual path
+            // that wasn't using the one canonical, order-independent lookup.
+            const heroDiv = getBattleElement(target);
+            if (!heroDiv) return;
             const battleScreen = document.getElementById('battle-window');
-            const partyArea = document.getElementById('party-battle-area');
-            const heroDivs = partyArea.querySelectorAll('.battle-hero');
-            if (heroDivs.length <= targetIndex) return;
-            const heroDiv = heroDivs[targetIndex];
             const r = getBattleLocalRect(heroDiv);
             if (!battleScreen || !r) return;
             const centerX = r.left + r.width / 2;
@@ -13510,9 +13557,15 @@
                     e.name.includes('Haste')
                 )?.duration || 3;
                 setTimeout(() => {
-                    const currentHeroDivs = partyArea.querySelectorAll('.battle-hero');
-                    if (currentHeroDivs.length > targetIndex) {
-                        currentHeroDivs[targetIndex].classList.remove('aura-purple', 'aura-orange');
+                    // Re-resolve via getBattleElement rather than reusing the
+                    // heroDiv closure directly - updatePartyDisplay() can run
+                    // during this window, and while it currently reuses the same
+                    // persistent node, re-resolving by identity is the same
+                    // "don't trust a stale index/reference" principle as the rest
+                    // of this fix.
+                    const currentHeroDiv = getBattleElement(target);
+                    if (currentHeroDiv) {
+                        currentHeroDiv.classList.remove('aura-purple', 'aura-orange');
                     }
                 }, buffDuration * 1000);
             }
