@@ -3969,7 +3969,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v55</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v58</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -7014,26 +7014,39 @@
         getEffectiveStats() {
             let stats = { ...this.baseStats };
 
-            if (this.equipment.weapon) {
-                stats.attack += this.equipment.weapon.attack || 0;
-                stats.magic += this.equipment.weapon.magic || 0;
-                stats.speed += this.equipment.weapon.speed || 0;
+            // Every slot used to only read a hand-picked subset of stat
+            // fields (weapon: attack/magic/speed only, armor/shield:
+            // defense/magic/speed only, etc.), silently discarding anything
+            // outside that subset. That wasted real, paid-for stats on
+            // plenty of existing items that were never "wrong" data, just
+            // never read: Knight Sword's +3 defense, Berserker Hide's +3
+            // attack, Spiked Shield's +3 attack, and even legendary weapons
+            // like Emberwoven Staff's +10 defense or Glacial Aegis Blade's
+            // +14 defense all silently did nothing. Reading all four stats
+            // uniformly from every slot means an item's stat block always
+            // means what it says, regardless of which slot it happens to sit
+            // in - no separate subset to keep in sync as new items are added.
+            const applyGearStats = (item) => {
+                if (!item) return;
+                stats.attack += item.attack || 0;
+                stats.defense += item.defense || 0;
+                stats.magic += item.magic || 0;
+                stats.speed += item.speed || 0;
+            };
+            applyGearStats(this.equipment.weapon);
+            applyGearStats(this.equipment.armor);
+            if (this.equipment.shield && (this.heroClass === 'warrior' || this.heroClass === 'paladin' || (this.heroClass === 'mage' && this.equipment.shield.healerShield))) {
+                applyGearStats(this.equipment.shield);
             }
-            if (this.equipment.armor) {
-                stats.defense += this.equipment.armor.defense || 0;
-                stats.magic += this.equipment.armor.magic || 0;
-                stats.speed += this.equipment.armor.speed || 0;
-            }
-            if (this.equipment.shield && (this.heroClass === 'warrior' || this.heroClass === 'paladin')) {
-                stats.defense += this.equipment.shield.defense || 0;
-                stats.magic += this.equipment.shield.magic || 0;
-                stats.speed += this.equipment.shield.speed || 0;
-            }
-            if (this.equipment.jewelry && this.heroClass === 'mage') {
-                stats.magic += this.equipment.jewelry.magic || 0;
-                stats.defense += this.equipment.jewelry.defense || 0;
-                stats.speed += this.equipment.jewelry.speed || 0;
-            }
+            // canEquip() already enforces mageOnly/warriorOnly/paladinOnly at
+            // equip time - by the time any jewelry is sitting in this slot,
+            // its class restriction (if any) is already guaranteed satisfied.
+            // This used to re-check heroClass === 'mage' here anyway, which
+            // meant EVERY piece of jewelry - including warrior/paladin-only
+            // items up to 2400g like Warlords Crown or Titans Band - gave a
+            // warrior or paladin wearing it exactly zero stat benefit. Only
+            // mages were ever getting anything out of the entire jewelry slot.
+            applyGearStats(this.equipment.jewelry);
 
             this.buffs.forEach(buff => {
                 if (buff.stat === 'defense') stats.defense = Math.floor(stats.defense * buff.power);
@@ -7302,6 +7315,23 @@
             let power = stats.attack * (isCrit ? 1.5 : 1.0);
             return Math.floor(power * (0.9 + Math.random() * 0.2));
         }
+
+        /** Chance to evade an incoming attack entirely, before defense
+         *  mitigation is even applied. Previously nothing in the game granted
+         *  evasion at all - the Wraithweave Robe's own description ("Partially
+         *  intangible, evades attacks") promised a mechanic that didn't exist;
+         *  buying it got a mage +8 defense/+18 magic and nothing else. Sums
+         *  evadeChance off any equipped item that defines one (only
+         *  Wraithweave Robe does today), so future gear can opt into the same
+         *  mechanic just by adding the property - no dispatch table to update. */
+        getEvadeChance() {
+            let chance = 0;
+            ['weapon', 'armor', 'shield', 'jewelry'].forEach(slot => {
+                const item = this.equipment[slot];
+                if (item && item.evadeChance) chance += item.evadeChance;
+            });
+            return Math.min(0.35, chance);
+        }
     }
 
     // =====================================================================
@@ -7337,6 +7367,18 @@
         }
 
         isAlive() { return this.currentHp > 0; }
+
+        /** This mirrors Hero.getEvadeChance()/getSpeedCritBonus() - `speed`
+         *  was defined on every single monster template (used to compute it
+         *  in the constructor above) but never actually read anywhere else in
+         *  the file. A speed-8 Wolf and a speed-8 Elite anything behaved
+         *  identically in a fight; the stat was pure flavor. 1.5% evasion per
+         *  point, capped at 25%, gives fast monsters (typically speed 8-12) a
+         *  real, noticeable chance to dodge a hit outright instead of just
+         *  mitigating it through defense like everything else already does. */
+        getEvadeChance() {
+            return Math.min(0.25, (this.speed || 0) * 0.015);
+        }
     }
 
     // =====================================================================
@@ -11875,15 +11917,6 @@
             if (!this.waitingForTarget || !this.active) return;
             const hero = this.party.heroes[this.selectedHeroIndex];
             const target = this.party.heroes[index];
-            // TEMPORARY DIAGNOSTIC - safe to remove once the Pike/Mina targeting
-            // issue is confirmed fixed or root-caused. Prints exactly what index
-            // this tap resolved to and who it maps to, directly into the
-            // on-screen battle log (no devtools needed) so a future repro of
-            // "cast landed on the wrong ally" comes with hard data instead of
-            // another guess: is `index` itself wrong (a click-resolution bug,
-            // upstream of this function), or is `index` correct but something
-            // downstream (executeMagic/executeBattleItem) still redirects it?
-            this.log(`[DEBUG] tap resolved to index=${index} (${target ? target.name : 'none'}) | caster index=${this.selectedHeroIndex} (${hero ? hero.name : 'none'})`);
             if (!target || target.isDead) {
                 this.log('Invalid ally target!');
                 return;
@@ -11950,16 +11983,13 @@
                 const x = e.clientX, y = e.clientY;
                 const candidates = partyArea.querySelectorAll('.battle-hero.targetable, .hud-hero-card.targetable');
                 let resolvedIndex = null;
-                let resolvedDetail = null;
                 candidates.forEach((el) => {
                     const r = el.getBoundingClientRect();
                     const inside = x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
                     if (inside) {
                         resolvedIndex = parseInt(el.dataset.heroIndex, 10);
-                        resolvedDetail = `${el.className.split(' ')[0]}#${el.dataset.heroIndex}`;
                     }
                 });
-                this.log(`[DEBUG3] tap@(${Math.round(x)},${Math.round(y)}) resolved by geometry to ${resolvedDetail || 'nothing'}`);
                 if (resolvedIndex === null || Number.isNaN(resolvedIndex)) return;
                 this.selectPartyTarget(resolvedIndex);
             };
@@ -12009,6 +12039,19 @@
             // resolve at the moment of impact so they're in sync with the
             // animation instead of firing instantly before it's even visible.
             triggerHeroApproach(hero, () => {
+                // Roll the target's evasion before anything else resolves -
+                // see Monster.getEvadeChance(). An evaded hit still plays the
+                // approach/swing (already committed to by the time this
+                // callback runs) but deals no damage and skips the hit-flash/
+                // shake/impact effects below.
+                if (target.getEvadeChance && Math.random() < target.getEvadeChance()) {
+                    window.game.audio.play('sword');
+                    this.log(`${target.name} evades ${hero.name}'s attack!`);
+                    this.showDamage(target, 'MISS', false);
+                    this.updateMonsterDisplay();
+                    this.updatePartyDisplay();
+                    return;
+                }
                 const actualDamage = target.takeDamage(totalDamage);
                 const monsterIndex = this.monsters.indexOf(target);
                 const monsterDiv = document.getElementById(`monster-${monsterIndex}`);
@@ -12771,6 +12814,17 @@
                     if (livingHeroes.length === 0) return;
                     const target = livingHeroes[Math.floor(Math.random() * livingHeroes.length)];
                     const targetIndex = this.party.heroes.indexOf(target);
+                    // Roll evasion before computing/applying damage at all -
+                    // see Hero.getEvadeChance(). Only Wraithweave Robe grants
+                    // any today, but this is the general mechanism any future
+                    // evasion-granting gear plugs into.
+                    if (target.getEvadeChance && Math.random() < target.getEvadeChance()) {
+                        window.game.audio.play('enemy_hit');
+                        this.log(`${target.name} evades ${monster.name}'s attack!`);
+                        this.showDamage(target, 'MISS');
+                        this.updatePartyDisplay();
+                        return;
+                    }
                     let damage = Math.floor(monster.attack * (0.9 + Math.random() * 0.2));
                     if (this.party.elementalWardBattles > 0) {
                         damage = Math.floor(damage * 0.7);
@@ -12778,9 +12832,13 @@
                     const actualDamage = target.takeDamage(damage);
                     window.game.audio.play('enemy_hit');
                     heroesHitThisPhase.push(target);
-                    const heroDivs = document.querySelectorAll('.battle-hero');
-                    if (heroDivs[targetIndex]) {
-                        const heroDiv = heroDivs[targetIndex];
+                    // Same fragile-positional-lookup class as the other 8 already
+                    // fixed elsewhere in this file - missed this one in that pass
+                    // since it builds the NodeList and indexes it on separate
+                    // lines rather than inline. getBattleElement(target) resolves
+                    // by identity instead.
+                    const heroDiv = getBattleElement(target);
+                    if (heroDiv) {
                         heroDiv.classList.add('hero-hit');
                         this.createHeroHitEffect(heroDiv);
                         hitFlash(heroDiv, true);
@@ -12992,12 +13050,12 @@
                     const levels = hero.gainExperience(expPerHero);
                     if (levels > 0) {
                         this.log(`${hero.name} leveled up to ${hero.level}!`);
-                        const heroDivs = document.querySelectorAll('.battle-hero');
-                        if (heroDivs[index]) {
-                            heroDivs[index].style.transition = 'box-shadow 0.3s';
-                            heroDivs[index].style.boxShadow = '0 0 20px #ffd700';
+                        const heroDiv = getBattleElement(hero);
+                        if (heroDiv) {
+                            heroDiv.style.transition = 'box-shadow 0.3s';
+                            heroDiv.style.boxShadow = '0 0 20px #ffd700';
                             setTimeout(() => {
-                                heroDivs[index].style.boxShadow = '';
+                                heroDiv.style.boxShadow = '';
                             }, 1000);
                         }
                         showLevelUpFanfare(hero);
@@ -13965,7 +14023,7 @@
                 { name: 'Soulreaper Staff', type: 'weapon', attack: 8, magic: 24, price: 680, mageOnly: true, desc: 'Drains life essence from enemies' },
                 { name: 'Gravekeepers Maul', type: 'weapon', attack: 16, magic: 12, price: 660, paladinOnly: true, desc: 'Sends undead to final rest' },
                 { name: 'Boneplate Armor', type: 'armor', defense: 22, attack: 4, price: 600, warriorOnly: true, desc: 'Forged from monster bones' },
-                { name: 'Wraithweave Robe', type: 'armor', defense: 8, magic: 18, price: 620, mageOnly: true, desc: 'Partially intangible, evades attacks' },
+                { name: 'Wraithweave Robe', type: 'armor', defense: 8, magic: 18, evadeChance: 0.15, price: 620, mageOnly: true, desc: 'Partially intangible, evades 15% of attacks' },
                 { name: 'Cryptwarden Shield', type: 'armor', defense: 18, magic: 6, price: 610, paladinOnly: true, desc: 'Wards against necromantic energy' }
             ],
             legendary: [
@@ -15703,7 +15761,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v55]');
+            console.log('Game starting... [build v58]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
