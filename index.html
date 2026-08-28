@@ -3969,7 +3969,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v58</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v59</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -13322,10 +13322,18 @@
             // a dungeon boss as defeated so its tile doesn't just re-trigger the fight again.
             const wasBossFight = !defeat && this.monsters.some(m => m.isBoss);
             // Captured here too, before this.monsters is cleared, to drive the
-            // cave_encounters quest hook below (dungeon type + whether any monster
-            // in the fight was elite).
+            // cave_encounters quest hook below (dungeon type/name + whether any
+            // monster in the fight was elite).
             const wasEliteFight = !defeat && this.monsters.some(m => m.isElite);
             const fightDungeonType = window.game.dungeonMap ? window.game.dungeonMap.type : null;
+            // DungeonState already tracks the SPECIFIC place (e.g. "Mystic Cave",
+            // not just the generic "cave" type) as .locationName - it just never
+            // got passed through here. Without it, every cave_encounters quest
+            // that targets a specific late-game location (Crystal Caverns, Fire
+            // Grotto, Sunken Temple, Abyssal Depths, Dragon's Lair) had nothing
+            // to match against and so counted an elite kill in ANY dungeon,
+            // anywhere, toward ALL of them simultaneously - see updateQuestProgress.
+            const fightDungeonName = window.game.dungeonMap ? window.game.dungeonMap.locationName : null;
             const autoBtn = document.getElementById('auto-battle-btn');
             if (autoBtn) {
                 autoBtn.style.background = '';
@@ -13368,7 +13376,7 @@
                 // itself filters by dungeon type / elite / region as each quest requires.
                 const questQuadrant = { CORNELIA: 'brighthollow', PRAVOCA: 'duskmere', ELFHEIM: 'sylvaris', CHAOS: 'chaos' }[getCurrentWorldQuadrant()];
                 window.game.updateQuestProgress('cave_encounters', 1, null, {
-                    location: fightDungeonType, isElite: wasEliteFight, quadrant: questQuadrant
+                    location: fightDungeonType, locationName: fightDungeonName, isElite: wasEliteFight, quadrant: questQuadrant
                 });
                 const allFullHealth = this.party.heroes.every(h => h.currentHp === h.baseStats.maxHp);
                 if (allFullHealth) {
@@ -15761,7 +15769,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v58]');
+            console.log('Game starting... [build v59]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
@@ -16293,11 +16301,22 @@
                         // which was never checked before) and a special case for
                         // 'mountain_pass', which isn't a real dungeon location - it's
                         // treated as "any battle won while in the Brighthollow region".
+                        //
+                        // targetLocation is matched against the SPECIFIC dungeon
+                        // (extraData.locationName, e.g. "Mystic Cave") now, not the
+                        // generic dungeon TYPE it used to compare against (which was
+                        // only ever "cave"/"castle"/"ruins"). Five of these six quests
+                        // (Crystal Cave Exploration, Fire Grotto Purge, Sunken Temple,
+                        // Abyssal Depths, Dragon's Lair) had no targetLocation at all
+                        // and so matched unconditionally - an elite kill in literally
+                        // any dungeon in any region counted toward all five of these
+                        // very different, differently-quadranted quests at once. They
+                        // now each target their own real location by name.
                         let locationMatches = true;
                         if (quest.targetLocation === 'mountain_pass') {
                             locationMatches = extraData && extraData.quadrant === 'brighthollow';
                         } else if (quest.targetLocation) {
-                            locationMatches = extraData && extraData.location === quest.targetLocation;
+                            locationMatches = extraData && extraData.locationName === quest.targetLocation;
                         }
                         const eliteMatches = !quest.targetElite || (extraData && extraData.isElite);
                         if (locationMatches && eliteMatches) {
@@ -21329,7 +21348,7 @@ const QUEST_DATA = [
         name: 'Clear Mystic Cave',
         description: 'The Mystic Cave in the eastern hills has become a den of monsters. Clear 5 monster encounters in Mystic Cave to make the roads safe.',
         type: 'cave_encounters',
-        targetLocation: 'cave',
+        targetLocation: 'Mystic Cave',
         quadrant: 'brighthollow',
         goal: 5,
         progress: 0,
@@ -21772,6 +21791,7 @@ const QUEST_DATA = [
         name: 'Crystal Cave Exploration',
         description: 'Explore the Crystal Caverns in the Duskmere region and defeat 4 elite monsters.',
         type: 'cave_encounters',
+        targetLocation: 'Crystal Caverns',
         targetElite: true,
         quadrant: 'duskmere',
         goal: 4,
@@ -22003,6 +22023,7 @@ const QUEST_DATA = [
         name: 'Fire Grotto Purge',
         description: 'The Fire Grotto is overrun with fire elementals. Defeat 4 elite fire monsters in the Sylvaris region.',
         type: 'cave_encounters',
+        targetLocation: 'Fire Grotto',
         targetElite: true,
         quadrant: 'sylvaris',
         goal: 4,
@@ -22021,6 +22042,7 @@ const QUEST_DATA = [
         name: 'Sunken Temple',
         description: 'The Sunken Temple holds ancient secrets. Defeat 3 elite monsters within.',
         type: 'cave_encounters',
+        targetLocation: 'Sunken Temple',
         targetElite: true,
         quadrant: 'sylvaris',
         goal: 3,
@@ -22259,6 +22281,7 @@ const QUEST_DATA = [
         name: 'Abyssal Depths',
         description: 'Explore the deepest caves in the Ashen Wastes and defeat 4 elite abyssal monsters.',
         type: 'cave_encounters',
+        targetLocation: 'Abyssal Depths',
         targetElite: true,
         quadrant: 'chaos',
         goal: 4,
@@ -22277,6 +22300,7 @@ const QUEST_DATA = [
         name: 'Dragon\'s Lair',
         description: 'Clear the Dragon\'s Lair of its elite guardians. Defeat 3 elite dragons.',
         type: 'cave_encounters',
+        targetLocation: 'Dragon\'s Lair',
         targetElite: true,
         quadrant: 'chaos',
         goal: 3,
