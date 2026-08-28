@@ -1714,11 +1714,69 @@
         .hud-hero-status {
             font-size: 9px;
             color: #8888bb;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            min-height: 11px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2px;
+            min-height: 15px;
             margin-bottom: 2px;
+        }
+
+        /* Compact tappable icon badge per active buff/debuff, replacing the
+           old single-line "icon name ●●●" text row - with 2+ effects active
+           that text just got truncated by the ellipsis below the first one,
+           so anything past the first buff was invisible. Wrapping icons
+           instead means every active effect always has room to show; tap
+           one for the full name + turns remaining (see showBuffDetail). */
+        .buff-badge {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+            background: rgba(20, 15, 40, 0.85);
+            border: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            line-height: 1;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .buff-badge .buff-badge-turns {
+            position: absolute;
+            bottom: -3px;
+            right: -3px;
+            background: #1a1030;
+            border: 1px solid var(--border-color);
+            border-radius: 50%;
+            min-width: 10px;
+            height: 10px;
+            font-size: 7px;
+            font-weight: bold;
+            color: #ffd700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 1px;
+        }
+
+        .buff-detail-tooltip {
+            position: fixed;
+            background: rgba(10, 5, 20, 0.96);
+            border: 1px solid var(--border-color);
+            color: #fff;
+            padding: 5px 9px;
+            border-radius: 5px;
+            font-size: 11px;
+            white-space: nowrap;
+            z-index: 500;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.15s;
+        }
+
+        .buff-detail-tooltip.visible {
+            opacity: 1;
         }
 
         /* HP then MP stacked vertically, each a short bar (not full width) */
@@ -4682,8 +4740,22 @@
         // no longer needs a reserved horizontal band up top - reclaiming
         // that height lets the world view render noticeably larger. Every
         // other screen keeps the original reserved TOPBAR_H unchanged.
+        // Battle is included here too even though it's not "world": battle
+        // renders as a popup over whatever screen was active, and when that
+        // screen is world, world (still the visible backdrop) is the one
+        // screen that actually lives inside this scaled #game-container -
+        // town/cave/etc already render outside it entirely via
+        // .walkable-viewport. If battle used TOPBAR_H while world used 0,
+        // the container's transform would jump to a different size/position
+        // the instant switchScreen('battle') set currentScreen, visibly
+        // resizing the world backdrop for a frame right as the battle
+        // entrance animation starts - that jump was the "screen flicker"
+        // entering battle from world (battle-screen's own layout is CSS
+        // full-viewport regardless, so this reserve never affected it
+        // directly - only the world backdrop riding along in the same
+        // transformed container).
         const screenName = window.game && window.game.state ? window.game.state.currentScreen : null;
-        const topbarReserve = screenName === 'world' ? 0 : TOPBAR_H;
+        const topbarReserve = (screenName === 'world' || screenName === 'battle') ? 0 : TOPBAR_H;
 
         const availH = Math.max(200, vh - topbarReserve);
         const scale = Math.min(vw / DESIGN_W, availH / DESIGN_H);
@@ -4947,10 +5019,27 @@
         // below which just visually stretches whatever was already drawn -
         // that's why CSS zoom-out never revealed more surrounding map, it
         // was capped at "no scaling" as the outer limit and wouldn't have
-        // helped even if it went lower. Only the world screen gets this
-        // treatment; town/dungeon keep the CSS-transform approach as-is.
-        const isWorldZoom = context === 'world' && typeof renderer.zoom === 'number';
+        // helped even if it went lower. Town now has the same kind of
+        // redraw-based zoom (see TownWalkRenderer), so it gets the same
+        // treatment here - detected generically via a numeric .zoom
+        // property rather than hardcoding which contexts qualify, so any
+        // future renderer that adds real zoom support picks this up for
+        // free. Dungeon renderers don't have one yet, so they still fall
+        // through to the plain CSS-transform path below.
+        const isWorldZoom = typeof renderer.zoom === 'number' && typeof renderer.minZoom === 'number';
         let pinchStartRendererZoom = 1;
+
+        // Dispatches to whichever redraw method this context's renderer
+        // actually has, so the redraw-based zoom path above works for any
+        // screen with a numeric .zoom (currently world and town) without
+        // hardcoding a single renderWorld() call that only world has.
+        const redrawZoomedView = () => {
+            if (context === 'world' && window.game && window.game.world) {
+                renderer.renderWorld(window.game.world);
+            } else if (context === 'town' && window.game && window.game.townMap) {
+                renderer.renderTownMap(window.game.townMap, renderer._lastDisplayName);
+            }
+        };
 
         const zoomState = { scale: 1, tx: 0, ty: 0, minScale: 1, maxScale: 2.5 };
         canvas.style.transformOrigin = 'center center';
@@ -4972,7 +5061,7 @@
         canvas._nudgeZoom = (factor) => {
             if (isWorldZoom) {
                 renderer.zoom = Math.max(renderer.minZoom, Math.min(renderer.maxZoom, renderer.zoom * factor));
-                if (window.game && window.game.world) renderer.renderWorld(window.game.world);
+                redrawZoomedView();
                 return;
             }
             zoomState.scale = Math.max(zoomState.minScale, Math.min(zoomState.maxScale, zoomState.scale * factor));
@@ -5018,7 +5107,7 @@
                     let newZoom = pinchStartRendererZoom * (newDist / pinchStartDist);
                     newZoom = Math.max(renderer.minZoom, Math.min(renderer.maxZoom, newZoom));
                     renderer.zoom = newZoom;
-                    if (window.game && window.game.world) renderer.renderWorld(window.game.world);
+                    redrawZoomedView();
                     return;
                 }
                 let newScale = pinchStartScale * (newDist / pinchStartDist);
@@ -5230,6 +5319,38 @@
     // wanderers) so they read as small drawn people instead of a floating
     // emoji glyph. A held item (if any) is drawn small and offset to a hand
     // rather than replacing the whole figure with an icon.
+    /** Shows a small tap-triggered tooltip near a buff badge (see
+     *  .buff-badge in the CSS and updatePartyDisplay's statusBadges) with
+     *  that effect's full name and turns remaining, since the badge itself
+     *  only has room for an icon + a tiny duration number. Auto-hides after
+     *  a couple seconds or on the next tap anywhere else. */
+    function showBuffDetail(event, text) {
+        event.stopPropagation();
+        let tip = document.getElementById('buff-detail-tooltip');
+        if (!tip) {
+            tip = document.createElement('div');
+            tip.id = 'buff-detail-tooltip';
+            tip.className = 'buff-detail-tooltip';
+            document.body.appendChild(tip);
+        }
+        tip.textContent = text;
+        const rect = event.currentTarget.getBoundingClientRect();
+        tip.classList.add('visible');
+        // Measure after making it visible (so offsetWidth is real), then
+        // clamp horizontally so it can't run off either edge of the screen.
+        const tipWidth = tip.offsetWidth || 120;
+        let left = rect.left + rect.width / 2 - tipWidth / 2;
+        left = Math.max(6, Math.min(window.innerWidth - tipWidth - 6, left));
+        tip.style.left = left + 'px';
+        tip.style.top = Math.max(6, rect.top - 32) + 'px';
+        clearTimeout(tip._hideTimer);
+        tip._hideTimer = setTimeout(() => tip.classList.remove('visible'), 2200);
+    }
+    document.addEventListener('click', () => {
+        const tip = document.getElementById('buff-detail-tooltip');
+        if (tip) tip.classList.remove('visible');
+    });
+
     function drawPixelPerson(ctx, x, y, size, opts = {}) {
         const {
             bodyColor = '#4a3a6a', trimColor = '#2a1a4a', headColor = '#e0c39e',
@@ -7456,6 +7577,7 @@
             this.worldPositions = [];
             this.pathHistory = [];
             this.positions = [];
+            this.memberFacing = ['down', 'down', 'down'];
             this.encounterModifier = 1.0;
             this.encounterStepsRemaining = 0;
             this.materials = {};
@@ -7490,11 +7612,18 @@
                 { x: startX, y: startY },
                 { x: startX, y: startY }
             ];
+            this.memberFacing = ['down', 'down', 'down'];
         }
 
         updatePositions(newX, newY) {
             if (this.worldPositions.length < 3) return;
-            
+
+            // Snapshot before overwriting so each trailing member's facing can
+            // be derived from how far it actually moved this step - previously
+            // followers were just hardcoded to always face down, so the whole
+            // party looked frozen facing the camera no matter which way you walked.
+            const prevPositions = this.worldPositions.map(p => ({ ...p }));
+
             this.pathHistory.unshift({ x: newX, y: newY });
             if (this.pathHistory.length > 10) {
                 this.pathHistory.pop();
@@ -7508,6 +7637,17 @@
                 this.worldPositions[2] = this.pathHistory[2];
             }
             this.positions = this.worldPositions;
+
+            if (!this.memberFacing) this.memberFacing = ['down', 'down', 'down'];
+            this.worldPositions.forEach((pos, i) => {
+                const prev = prevPositions[i];
+                if (!prev) return;
+                const dx = pos.x - prev.x, dy = pos.y - prev.y;
+                if (dy < 0) this.memberFacing[i] = 'up';
+                else if (dy > 0) this.memberFacing[i] = 'down';
+                else if (dx < 0) this.memberFacing[i] = 'left';
+                else if (dx > 0) this.memberFacing[i] = 'right';
+            });
         }
 
         getHeroPosition(index) {
@@ -9042,7 +9182,20 @@
             this.lastTs = 32;
             this.lastOffsetX = 0;
             this.lastOffsetY = 0;
+            // Redraw-based zoom (mirrors WorldMapRenderer) so pinch actually
+            // reveals more/less of the town instead of just visually
+            // stretching a fixed-size render - a plain CSS scale can't zoom
+            // below 1x usefully since shrinking the already-rendered pixels
+            // just pads the edges with blank canvas rather than showing more
+            // map, which is why zoom-out silently did nothing before.
+            this.zoom = 1;
+            this.minZoom = 0.6;
+            this.maxZoom = 1.8;
             setupCanvasTouch(this.canvas, this, 'town');
+        }
+
+        resetZoom() {
+            this.zoom = 1;
         }
 
         /** Converts a client-space (mouse/touch) point into a town-grid tile
@@ -9060,6 +9213,7 @@
 
         renderTownMap(townMap, displayName) {
             if (!this.ctx || !townMap) return;
+            this._lastDisplayName = displayName;
             const ctx = this.ctx;
             const width = this.canvas.width;
             const height = this.canvas.height;
@@ -9089,8 +9243,11 @@
             // a clamped, player-following camera (same idea as WorldMapRenderer's
             // camera, but pinned to the map edges instead of free-panning) so a
             // large town scrolls as you walk, at the same visual scale as the
-            // overworld, rather than shrinking to fit.
-            const ts = CONFIG.TILE_SIZE;
+            // overworld, rather than shrinking to fit. Multiplied by this.zoom
+            // (pinch-adjustable, see setupCanvasTouch) so zooming actually
+            // redraws with more/fewer tiles in view instead of just visually
+            // stretching a fixed render.
+            const ts = CONFIG.TILE_SIZE * (this.zoom || 1);
             const viewTilesW = Math.ceil(width / ts) + 1;
             const viewTilesH = Math.ceil(height / ts) + 1;
             let startCol = 0, startRow = 0, offsetX, offsetY;
@@ -10642,13 +10799,15 @@
             // Draw party members
             const party = window.game.party;
             if (party && party.heroes && party.worldPositions && party.worldPositions.length >= 3) {
+                const membersMoving = (Date.now() - (worldMap.lastMoveTime || 0)) < 220;
                 party.heroes.forEach((hero, index) => {
                     const pos = party.worldPositions[index];
                     const memberX = (pos.x - startCol) * ts;
                     const memberY = (pos.y - startRow) * ts;
                     if (memberX >= -ts && memberX < this.canvas.width + ts && 
                         memberY >= -ts && memberY < this.canvas.height + ts) {
-                        this.renderPartyMember(ctx, memberX, memberY, ts, hero.heroClass, index);
+                        const facing = (party.memberFacing && party.memberFacing[index]) || 'down';
+                        this.renderPartyMember(ctx, memberX, memberY, ts, hero.heroClass, index, facing, membersMoving);
                     }
                 });
             } else {
@@ -10674,11 +10833,14 @@
             drawHeroSprite(ctx, x, y, size, heroClass, { facing, moving, time, seed: 0 });
         }
 
-        renderPartyMember(ctx, x, y, size, heroClass, index) {
+        renderPartyMember(ctx, x, y, size, heroClass, index, facing = 'down', moving = false) {
             const time = Date.now() / 1000;
             // Small idle bob so trailing party members don't feel frozen next
-            // to the animated leader - offset by index so they don't sync up.
-            drawHeroSprite(ctx, x, y, size, heroClass, { facing: 'down', moving: false, time, seed: index * 1.3 });
+            // to the animated leader when standing still - offset by index so
+            // they don't sync up. Facing/moving now come from that member's
+            // own actual trail movement (see Party.updatePositions) instead
+            // of always being pinned to face the camera.
+            drawHeroSprite(ctx, x, y, size, heroClass, { facing, moving, time, seed: index * 1.3 });
         }
 
         renderMinimap(worldMap) {
@@ -11062,30 +11224,43 @@
                 const iconHTML = this.getHeroIcon(hero.heroClass);
                 if (avatarEl.innerHTML !== iconHTML) avatarEl.innerHTML = iconHTML;
 
-                // --- Status line (buffs/debuffs/poison), condensed for the HUD card ---
-                const statusBits = [];
-                if (hero.isPoisoned()) statusBits.push('💚 Poisoned');
+                // --- Status row (buffs/debuffs/poison) as small tappable
+                //     icon badges instead of a single line of text - see the
+                //     .buff-badge/.hud-hero-status CSS comment for why.
+                //     Icon choice now reads the effect's actual data
+                //     (critBonus / statModifiers key) instead of guessing
+                //     from the spell's name, so it stays correct for any
+                //     future buff without needing another name check added
+                //     here too. ---
+                const statusBadges = [];
+                if (hero.isPoisoned()) {
+                    statusBadges.push({ icon: '💚', label: 'Poisoned', detail: 'Poisoned — taking damage each turn until cured' });
+                }
                 if (hero.statusEffects) {
                     hero.statusEffects.forEach(e => {
                         if (!e.name || e.name === 'Poison') return;
                         let icon = '✨';
                         if (e.type === 'debuff') icon = '💔';
-                        else if (e.name.includes('Protect') || e.stat === 'defense' || e.name.includes('Bolster') || e.name.includes('Fortitude')) icon = '🛡️';
-                        else if (e.name.includes('Critical') || e.stat === 'crit' || e.name.includes('Rage')) icon = '⚔️';
-                        else if (e.name.includes('Cure') || e.type === 'heal') icon = '💚';
-                        else if (e.name.includes('Fortify')) icon = '🔮';
-                        else if (e.name.includes('Haste')) icon = '⚡';
-                        let durationText = '';
-                        if (e.duration > 0) {
-                            const safeDuration = Math.max(0, e.duration);
-                            const displayDots = Math.min(3, safeDuration);
-                            const greenDots = '●'.repeat(displayDots);
-                            const grayDots = '○'.repeat(3 - displayDots);
-                            durationText = ` <span style="color: ${e.duration > 1 ? '#00ff00' : '#ffaa00'};">${greenDots}${grayDots}</span>`;
-                        }
-                        statusBits.push(`${icon} ${e.name}${durationText}`);
+                        else if (e.critBonus !== undefined) icon = '⚔️';
+                        else if (e.statModifiers && e.statModifiers.attack !== undefined) icon = '💪';
+                        else if (e.statModifiers && e.statModifiers.defense !== undefined) icon = '🛡️';
+                        else if (e.statModifiers && e.statModifiers.speed !== undefined) icon = '⚡';
+                        else if (e.type === 'heal') icon = '💚';
+                        const duration = Math.max(0, e.duration || 0);
+                        statusBadges.push({
+                            icon,
+                            label: e.name,
+                            duration,
+                            detail: `${e.name} — ${duration} turn${duration === 1 ? '' : 's'} left`
+                        });
                     });
                 }
+                const statusBadgesHTML = statusBadges.map(b => {
+                    const turnsHTML = (typeof b.duration === 'number' && b.duration > 0)
+                        ? `<span class="buff-badge-turns">${b.duration}</span>` : '';
+                    const detailAttr = b.detail.replace(/'/g, '&#39;');
+                    return `<div class="buff-badge" onclick="showBuffDetail(event, '${detailAttr}')">${b.icon}${turnsHTML}</div>`;
+                }).join('');
 
                 // --- Info card: anchored beside its hero's own sprite
                 //     inside the shared .hero-slot (instead of a separate
@@ -11101,7 +11276,7 @@
                 card.className = `hud-hero-card ${isSelected ? 'hud-card-selected' : ''} ${hero.isDead ? 'hud-card-dead' : ''}`;
                 card.innerHTML = `
                     <div class="hud-hero-name">${hero.name} ${hero.isDead ? '(KO)' : ''}</div>
-                    <div class="hud-hero-status">${statusBits.join(' · ')}</div>
+                    <div class="hud-hero-status">${statusBadgesHTML}</div>
                     <div class="hud-hpmp-row">
                         <div class="stat-bar">
                             HP ${hero.currentHp}/${stats.maxHp}
@@ -11932,31 +12107,47 @@
             this.lastSpellElement = spell.element;
             this.clearPartyHighlights();
             if (spell.type === 'buff') {
-                if (spell.stat === 'defense' || spell.name === 'Bolster' || spell.name === 'Protect' || spell.name === 'Bolster 2' || spell.name === 'Fortify') {
-                    const existingBuff = target.statusEffects.find(e => e.name === spell.name);
-                    if (existingBuff) {
-                        existingBuff.duration = spell.duration || 3;
-                        this.log(`${target.name}'s ${spell.name} was refreshed! (${existingBuff.duration} turns)`);
+                // Generic, spell.stat-driven buff application - this used to
+                // be a hardcoded name/stat check that only recognized
+                // 'defense' and 'crit' (plus a few specific spell names for
+                // each). Anything else - Might, Berserk, War Focus, Haste,
+                // and Shell's 'magic_defense' - matched neither branch and
+                // silently did nothing at all: MP was still spent, the turn
+                // still advanced, but no statusEffect was ever created, so
+                // the buff could never land or show up on the target's card.
+                // Spells that DID match by name (Bolster, Protect, Fortify)
+                // also had the wrong stat hardcoded into the object literal
+                // (always 'defense', even for Bolster's attack buff).
+                const existingBuff = target.statusEffects.find(e => e.name === spell.name);
+                if (existingBuff) {
+                    existingBuff.duration = spell.duration || 3;
+                    this.log(`${target.name}'s ${spell.name} was refreshed! (${existingBuff.duration} turns)`);
+                } else {
+                    const newEffect = { name: spell.name, duration: spell.duration || 3 };
+                    if (spell.stat === 'crit') {
+                        const critByTier = { 1: 0.15, 2: 0.25, 3: 0.35 };
+                        newEffect.critBonus = critByTier[spell.tier] || 0.15;
                     } else {
-                        target.statusEffects.push({ name: spell.name, duration: spell.duration || 3, statModifiers: { defense: spell.tier === 2 ? 8 : 5 } });
-                        this.log(`${caster.name} casts ${spell.name} on ${target.name}!`);
-                        this.log(`${target.name}'s defense increased!`);
+                        // This game has no separate magic-damage path (see
+                        // Hero.takeDamage) - every incoming hit, spell or
+                        // not, mitigates off the same 'defense' stat - so
+                        // Shell's 'magic_defense' folds into 'defense' too
+                        // rather than modifying a stat nothing ever reads.
+                        const statKey = (spell.stat === 'magic_defense') ? 'defense' : (spell.stat || 'defense');
+                        const amountByTier = { 1: 5, 2: 8, 3: 12 };
+                        newEffect.statModifiers = { [statKey]: amountByTier[spell.tier] || 5 };
                     }
-                } else if (spell.stat === 'crit' || spell.name === 'Critical' || spell.name === 'Critical 2' || spell.name === 'Haste') {
-                    const existingBuff = target.statusEffects.find(e => e.name === spell.name);
-                    if (existingBuff) {
-                        existingBuff.duration = spell.duration || 3;
-                        this.log(`${target.name}'s ${spell.name} was refreshed! (${existingBuff.duration} turns)`);
-                    } else {
-                        target.statusEffects.push({ name: spell.name, duration: spell.duration || 3, critBonus: spell.tier === 2 ? 0.25 : 0.15 });
-                        this.log(`${caster.name} casts ${spell.name} on ${target.name}!`);
-                        this.log(`${target.name}'s critical hit chance increased!`);
-                    }
+                    target.statusEffects.push(newEffect);
+                    this.log(`${caster.name} casts ${spell.name} on ${target.name}!`);
+                    const statLabel = spell.stat === 'crit' ? 'critical hit chance'
+                        : spell.stat === 'magic_defense' ? 'magic defense'
+                        : (spell.stat || 'defense');
+                    this.log(`${target.name}'s ${statLabel} increased!`);
                 }
                 window.game.audio.play('magic');
                 this.updatePartyDisplay();
                 setTimeout(() => {
-                    const effectType = (spell.stat === 'defense' || spell.name.includes('Bolster') || spell.name.includes('Protect') || spell.name.includes('Fortify')) ? 'shield' : 'axe';
+                    const effectType = (spell.stat === 'crit') ? 'axe' : 'shield';
                     this.createBuffEffect(target, effectType);
                 }, 50);
                 this.renderMainCommands();
@@ -11964,13 +12155,21 @@
                 return;
             }
             if (spell.type === 'all_buff') {
+                const critByTier = { 1: 0.15, 2: 0.25, 3: 0.35 };
+                const amountByTier = { 1: 5, 2: 8, 3: 12 };
                 this.party.heroes.forEach(hero => {
                     if (!hero.isDead) {
                         const existingBuff = hero.statusEffects.find(e => e.name === spell.name);
                         if (existingBuff) {
                             existingBuff.duration = spell.duration;
+                        } else if (spell.stat === 'crit') {
+                            // War Cry (all_buff, stat:'crit') needs critBonus like
+                            // its single-target counterparts - a statModifiers.crit
+                            // entry would silently do nothing (see getCritChanceBonus).
+                            hero.statusEffects.push({ name: spell.name, duration: spell.duration, critBonus: critByTier[spell.tier] || 0.15 });
                         } else {
-                            hero.statusEffects.push({ name: spell.name, duration: spell.duration, statModifiers: { [spell.stat]: 8 } });
+                            const statKey = (spell.stat === 'magic_defense') ? 'defense' : (spell.stat || 'defense');
+                            hero.statusEffects.push({ name: spell.name, duration: spell.duration, statModifiers: { [statKey]: amountByTier[spell.tier] || 8 } });
                         }
                     }
                 });
@@ -11980,7 +12179,7 @@
                 setTimeout(() => {
                     this.party.heroes.forEach((hero, index) => {
                         if (!hero.isDead) {
-                            const effectType = spell.stat === 'defense' ? 'shield' : 'axe';
+                            const effectType = (spell.stat === 'crit') ? 'axe' : 'shield';
                             this.createBuffEffect(hero, effectType);
                         }
                     });
