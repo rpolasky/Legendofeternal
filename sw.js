@@ -100,6 +100,21 @@ self.addEventListener('activate', (event) => {
 // Network-first for the core HTML (so playing online always gets the latest
 // build and only falls back to the cached copy when offline), cache-first
 // for everything else (icons/manifest rarely change).
+//
+// The fetch() below previously had no explicit cache mode, which meant it
+// inherited the request's default caching behavior - the browser's own HTTP
+// cache (a completely separate layer from this file's Cache Storage API
+// usage) could silently satisfy it with a stale locally-cached response
+// without a real network round-trip, if index.html was served with any
+// Cache-Control/ETag headers that let the browser consider a cached copy
+// still "fresh". That made this *look* network-first in the code while
+// actually still serving stale HTML on some hosts/browsers - a real device
+// could sit on an old build indefinitely despite CACHE_VERSION bumps and
+// despite this code appearing to always hit the network. `cache: 'reload'`
+// forces the browser to bypass its HTTP cache and actually ask the network
+// for a fresh copy (still storing/validating against that cache for future
+// conditional requests), while the .catch() below still falls back to the
+// Cache Storage copy exactly as before when genuinely offline.
 self.addEventListener('fetch', (event) => {
     if (event.request.method !== 'GET') return;
 
@@ -107,7 +122,7 @@ self.addEventListener('fetch', (event) => {
 
     if (isCoreDoc) {
         event.respondWith(
-            fetch(event.request)
+            fetch(event.request, { cache: 'reload' })
                 .then((response) => {
                     const copy = response.clone();
                     caches.open(CACHE_VERSION).then((cache) => cache.put(event.request, copy));
