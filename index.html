@@ -3969,7 +3969,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v54</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v55</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -11912,73 +11912,62 @@
             if (!partyArea) return;
             this.clearPartyHighlights();
             const heroes = partyArea.querySelectorAll('.battle-hero');
-            // Was keying off the NodeList's iteration position (heroes.forEach's
-            // own `index`), which only resolves to the right hero if DOM order
-            // exactly matches party.heroes order. Every div already carries its
-            // real identity in data-hero-index (set once, at creation, in
-            // updatePartyDisplay - see getBattleElement's use of the same
-            // attribute) - reading that directly instead of trusting iteration
-            // order removes any possibility of a DOM-order mismatch here,
-            // regardless of what might cause one.
+            const cards = partyArea.querySelectorAll('.hud-hero-card');
             heroes.forEach((heroDiv) => {
                 const heroIndex = parseInt(heroDiv.dataset.heroIndex, 10);
                 const hero = this.party.heroes[heroIndex];
-                if (hero && !hero.isDead) {
-                    heroDiv.classList.add('targetable');
-                    heroDiv.onclick = (e) => {
-                        e.stopPropagation();
-                        // Re-read from the element itself at the moment of the
-                        // click rather than trusting the closure's captured
-                        // heroIndex - belt-and-suspenders against anything that
-                        // could theoretically mutate the attribute between
-                        // setup and tap.
-                        const liveIndex = parseInt(e.currentTarget.dataset.heroIndex, 10);
-                        // DIAGNOSTIC: log the raw tap coordinates against every
-                        // targetable sprite's actual on-screen rect at the
-                        // instant of the click. This separates two very
-                        // different possible bugs: (a) the tap coordinate
-                        // itself lands inside a DIFFERENT hero's rect than the
-                        // one that appears highlighted - a real hit-testing/
-                        // rendering bug - versus (b) the tap coordinate is
-                        // genuinely inside the intended hero's rect and this
-                        // handler still resolves the wrong index - a JS logic
-                        // bug still hiding somewhere downstream of here.
-                        try {
-                            const tapX = e.clientX, tapY = e.clientY;
-                            const allTargetable = partyArea.querySelectorAll('.battle-hero.targetable');
-                            const rectReport = Array.from(allTargetable).map(d => {
-                                const r = d.getBoundingClientRect();
-                                const inside = tapX >= r.left && tapX <= r.right && tapY >= r.top && tapY <= r.bottom;
-                                return `#${d.dataset.heroIndex}[${Math.round(r.left)},${Math.round(r.top)}-${Math.round(r.right)},${Math.round(r.bottom)}]${inside ? '<-TAP' : ''}`;
-                            }).join(' ');
-                            this.log(`[DEBUG2] tap@(${Math.round(tapX)},${Math.round(tapY)}) currentTarget=#${liveIndex} | rects: ${rectReport}`);
-                        } catch (diagErr) {
-                            this.log(`[DEBUG2] diagnostic error: ${diagErr.message}`);
-                        }
-                        this.selectPartyTarget(Number.isNaN(liveIndex) ? heroIndex : liveIndex);
-                    };
-                }
+                if (hero && !hero.isDead) heroDiv.classList.add('targetable');
             });
-            // The .hud-hero-card (name/HP/MP box) is a separate sibling element
-            // from .battle-hero (the small sprite) - see updatePartyDisplay,
-            // which builds them independently inside the same .hero-slot. Only
-            // the sprite was ever made clickable here, so tapping the card -
-            // arguably the more natural target on a small screen, since it's
-            // larger and has the hero's name right on it, unlike the sprite -
-            // did nothing at all: no highlight, no response, waitingForTarget
-            // just stayed true with no feedback. Wire it up identically.
-            const cards = partyArea.querySelectorAll('.hud-hero-card');
             cards.forEach((cardDiv) => {
                 const heroIndex = parseInt(cardDiv.dataset.heroIndex, 10);
                 const hero = this.party.heroes[heroIndex];
-                if (hero && !hero.isDead) {
-                    cardDiv.classList.add('targetable');
-                    cardDiv.onclick = (e) => {
-                        e.stopPropagation();
-                        const liveIndex = parseInt(e.currentTarget.dataset.heroIndex, 10);
-                        this.selectPartyTarget(Number.isNaN(liveIndex) ? heroIndex : liveIndex);
-                    };
-                }
+                if (hero && !hero.isDead) cardDiv.classList.add('targetable');
+            });
+            // Confirmed via on-device diagnostics: a tap's raw coordinates can
+            // land squarely inside the intended hero's own rect while the
+            // click event's target/currentTarget still resolves to a
+            // DIFFERENT hero entirely (specifically, the currently glowing/
+            // scaled "selected" caster) - this is real browsers' own touch
+            // hit-test disambiguation silently redirecting an event to a
+            // nearby element it judges more "prominent", which happens
+            // beneath the DOM/JS layer entirely and can't be fixed by reading
+            // a different attribute off e.currentTarget, however "live" that
+            // read is - the browser has already decided the target before our
+            // handler runs. It's also invisible to automated/synthetic click
+            // testing, which is why this never reproduced off-device.
+            //
+            // The fix: stop trusting which element the browser says was
+            // clicked at all. e.clientX/e.clientY still reflect the actual
+            // raw tap location even when the target was reassigned, so do our
+            // own authoritative hit-test - check the tap point against every
+            // targetable hero's real, freshly-measured bounding rect - and
+            // resolve the target purely from geometry. One delegated handler
+            // on the container, not per-element onclick, so there's exactly
+            // one source of truth regardless of which specific element the
+            // event nominally landed on or bubbled through.
+            const resolveAndSelect = (e) => {
+                e.stopPropagation();
+                const x = e.clientX, y = e.clientY;
+                const candidates = partyArea.querySelectorAll('.battle-hero.targetable, .hud-hero-card.targetable');
+                let resolvedIndex = null;
+                let resolvedDetail = null;
+                candidates.forEach((el) => {
+                    const r = el.getBoundingClientRect();
+                    const inside = x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+                    if (inside) {
+                        resolvedIndex = parseInt(el.dataset.heroIndex, 10);
+                        resolvedDetail = `${el.className.split(' ')[0]}#${el.dataset.heroIndex}`;
+                    }
+                });
+                this.log(`[DEBUG3] tap@(${Math.round(x)},${Math.round(y)}) resolved by geometry to ${resolvedDetail || 'nothing'}`);
+                if (resolvedIndex === null || Number.isNaN(resolvedIndex)) return;
+                this.selectPartyTarget(resolvedIndex);
+            };
+            heroes.forEach((heroDiv) => {
+                if (heroDiv.classList.contains('targetable')) heroDiv.onclick = resolveAndSelect;
+            });
+            cards.forEach((cardDiv) => {
+                if (cardDiv.classList.contains('targetable')) cardDiv.onclick = resolveAndSelect;
             });
         }
 
@@ -15714,7 +15703,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v54]');
+            console.log('Game starting... [build v55]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
