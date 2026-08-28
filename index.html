@@ -1134,15 +1134,21 @@
         /* Entrance is class-triggered (added by switchScreen when battle
            starts) instead of always-on, so it can't collide with the
            shake effect on hit — those now target different elements
-           entirely (see .battle-shake-wrapper below). */
+           entirely (see .battle-shake-wrapper below).
+           Was battleWindowSpiralIn: a scale(0.2)->1.05->1 + rotate(-30deg->4deg->0)
+           + circular clip-path wipe. That was designed for the old small,
+           centered letterboxed battle window - at full-viewport size it reads
+           as a jarring full-screen spin/flash instead of a transition, and the
+           multiple keyframe stops (opacity/scale/clip-path all moving at once)
+           can visually register as more than one flicker. Replaced with a
+           plain fade + gentle scale-up, no rotation, no clip-path. */
         .battle-window.battle-entrance {
-            animation: battleWindowSpiralIn 0.9s cubic-bezier(.25,.85,.35,1) both;
+            animation: battleWindowFadeIn 0.35s ease-out both;
         }
 
-        @keyframes battleWindowSpiralIn {
-            0% { opacity: 0; transform: scale(0.2) rotate(-30deg); clip-path: circle(0% at 50% 50%); }
-            55% { opacity: 1; transform: scale(1.05) rotate(4deg); clip-path: circle(78% at 50% 50%); }
-            100% { opacity: 1; transform: scale(1) rotate(0deg); clip-path: circle(150% at 50% 50%); }
+        @keyframes battleWindowFadeIn {
+            0% { opacity: 0; transform: scale(0.97); }
+            100% { opacity: 1; transform: scale(1); }
         }
 
         /* Wraps everything that was previously a direct child of
@@ -6723,7 +6729,7 @@
                 // Fresh fight, fresh log state - don't leave the overlay
                 // open from a previous encounter.
                 if (typeof closeBattleLog === 'function') closeBattleLog();
-                // Replay the spiral entrance every time a battle starts.
+                // Replay the fade-in entrance every time a battle starts.
                 // Remove + force a reflow before re-adding so the
                 // animation restarts even if the class was left over
                 // from a previous encounter.
@@ -11255,6 +11261,25 @@
                         });
                     });
                 }
+                // hero.buffs (Fairy Spring blessings) previously had no HUD
+                // representation at all - see the duration-tick fix in
+                // nextHero() for why that made them invisible AND immortal.
+                if (hero.buffs) {
+                    hero.buffs.forEach(b => {
+                        if (!b.name) return;
+                        let icon = '✨';
+                        if (b.stat === 'attack') icon = '💪';
+                        else if (b.stat === 'defense') icon = '🛡️';
+                        else if (b.stat === 'magic') icon = '🔮';
+                        const duration = Math.max(0, b.duration || 0);
+                        statusBadges.push({
+                            icon,
+                            label: b.name,
+                            duration,
+                            detail: `${b.name} — ${duration} turn${duration === 1 ? '' : 's'} left`
+                        });
+                    });
+                }
                 const statusBadgesHTML = statusBadges.map(b => {
                     const turnsHTML = (typeof b.duration === 'number' && b.duration > 0)
                         ? `<span class="buff-badge-turns">${b.duration}</span>` : '';
@@ -12024,7 +12049,12 @@
                 window.game.audio.play('magic');
                 this.log(`${user.name} uses ${item.name}! Escape chance increased!`);
                 this.createSmokeEffect();
-                const userDiv = document.querySelectorAll('.battle-hero')[this.selectedHeroIndex];
+                // Was indexed off this.selectedHeroIndex via an unscoped, positional
+                // document.querySelectorAll('.battle-hero')[i] lookup - fragile if DOM
+                // order and party.heroes order ever drift apart. getBattleElement()
+                // resolves by object identity via the data-hero-index attribute instead,
+                // so it's correct regardless of DOM order (see getBattleElement below).
+                const userDiv = getBattleElement(user);
                 if (userDiv) {
                     userDiv.classList.add('item-flash');
                     setTimeout(() => userDiv.classList.remove('item-flash'), 300);
@@ -12039,7 +12069,7 @@
                 window.game.audio.play('victory');
                 this.log(`${user.name} uses ${item.name}! Lucky charm active for this battle!`);
                 this.createLuckyEffect();
-                const userDiv = document.querySelectorAll('.battle-hero')[this.selectedHeroIndex];
+                const userDiv = getBattleElement(user);
                 if (userDiv) {
                     userDiv.classList.add('item-flash');
                     setTimeout(() => userDiv.classList.remove('item-flash'), 300);
@@ -12063,8 +12093,7 @@
                         target.statusEffects.push({ name: 'Rage', duration: item.duration || 4, critBonus: item.power || 0.25 });
                         this.log(`${user.name} uses ${item.name} on ${target.name} - critical hit chance increased!`);
                     }
-                    const targetIndex = this.party.heroes.indexOf(target);
-                    const targetDiv = document.querySelectorAll('.battle-hero')[targetIndex];
+                    const targetDiv = getBattleElement(target);
                     if (targetDiv) {
                         targetDiv.classList.add('rage-aura');
                         targetDiv.classList.add('item-flash');
@@ -12081,8 +12110,7 @@
                         target.statusEffects.push({ name: 'Fortitude', duration: item.duration || 4, statModifiers: { defense: item.power || 8 } });
                         this.log(`${user.name} uses ${item.name} on ${target.name} - defense increased!`);
                     }
-                    const targetIndex = this.party.heroes.indexOf(target);
-                    const targetDiv = document.querySelectorAll('.battle-hero')[targetIndex];
+                    const targetDiv = getBattleElement(target);
                     if (targetDiv) {
                         targetDiv.classList.add('fortify-aura');
                         targetDiv.classList.add('item-flash');
@@ -12213,8 +12241,7 @@
                     }
                 }
                 window.game.audio.play('heal');
-                const targetIndex = this.party.heroes.indexOf(target);
-                const targetDiv = document.querySelectorAll('.battle-hero')[targetIndex];
+                const targetDiv = getBattleElement(target);
                 if (targetDiv) {
                     targetDiv.style.transition = 'box-shadow 0.3s';
                     targetDiv.style.boxShadow = '0 0 30px #88ff88';
@@ -12278,7 +12305,11 @@
                 // of impact so they land in sync with the cast animation.
                 triggerHeroApproach(caster, () => {
                     const actualDamage = target.takeDamage(damage);
-                    const casterDiv = document.querySelectorAll('.battle-hero')[this.selectedHeroIndex];
+                    // Was indexed off this.selectedHeroIndex, read here inside an async
+                    // triggerHeroApproach callback - if the turn had already advanced by
+                    // the time this fires, that index no longer points at the caster.
+                    // getBattleElement(caster) resolves by the caster object itself instead.
+                    const casterDiv = getBattleElement(caster);
                     const monsterIndex = this.monsters.indexOf(target);
                     const monsterDiv = document.getElementById(`monster-${monsterIndex}`);
                     if (spell.element === 'lightning' && monsterDiv) {
@@ -12446,8 +12477,7 @@
                 }
                 livingHeroes.forEach((target) => {
                     target.heal(healPerTarget);
-                    const heroIndex = this.party.heroes.indexOf(target);
-                    const heroDiv = document.querySelectorAll('.battle-hero')[heroIndex];
+                    const heroDiv = getBattleElement(target);
                     if (heroDiv) {
                         const originalBorder = heroDiv.style.border;
                         const originalBoxShadow = heroDiv.style.boxShadow;
@@ -12469,8 +12499,7 @@
                 });
                 livingHeroes.forEach((target) => {
                     setTimeout(() => {
-                        const heroIndex = this.party.heroes.indexOf(target);
-                        const heroDiv = document.querySelectorAll('.battle-hero')[heroIndex];
+                        const heroDiv = getBattleElement(target);
                         if (heroDiv) {
                             this.createHealSparkles(heroDiv);
                         }
@@ -12550,6 +12579,22 @@
                     effect.duration--;
                 });
                 currentHero.statusEffects = currentHero.statusEffects.filter(e => e.duration > 0);
+                this.updatePartyDisplay();
+            }
+            // hero.buffs is a *separate* multiplicative stat-buff array, used only by
+            // the Fairy Spring's applySpringBuff() (a ~30% chance of +50% attack/
+            // defense/magic for "5 turns" when drinking). Its duration field was set
+            // on creation but never decremented or filtered anywhere in the file - the
+            // only place buffs ever got cleared was resetAllStatusEffects() at
+            // endBattle(), so a Spring buff silently lasted until the end of whatever
+            // battle happened next (however many turns that took), not the 5 turns the
+            // popup promised, and it never showed up in the HUD (which only reads
+            // statusEffects). Tick and expire it the same way statusEffects are above.
+            if (currentHero && !currentHero.isDead && currentHero.buffs && currentHero.buffs.length > 0) {
+                currentHero.buffs.forEach(buff => {
+                    buff.duration--;
+                });
+                currentHero.buffs = currentHero.buffs.filter(b => b.duration > 0);
                 this.updatePartyDisplay();
             }
             // Limit break charge builds one "tick" per turn taken (attack/magic/item),
@@ -12655,7 +12700,7 @@
                                 this.log(`💚 ${hero.name} takes ${poisonDamage} poison damage!`);
                                 this.showDamage(hero, poisonDamage);
                                 showStatusParticle(hero, '☠️', '#88ff88');
-                                const heroDiv = document.querySelectorAll('.battle-hero')[this.party.heroes.indexOf(hero)];
+                                const heroDiv = getBattleElement(hero);
                                 if (heroDiv) {
                                     heroDiv.style.backgroundColor = '#88ff88';
                                     heroDiv.style.transition = 'background-color 0.2s';
