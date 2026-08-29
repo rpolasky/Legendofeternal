@@ -4238,7 +4238,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v69</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v75</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -6286,6 +6286,69 @@
     ashlandsTileSheet.onload = () => { ashlandsTileSheet.loaded = true; };
     const WORLD_TILE_STRIDE_ASHLANDS = 16;
 
+    // Full Ashlands pack (same 16px-tile "1x" export as the small legacy crop
+    // above, so they share WORLD_TILE_STRIDE_ASHLANDS) - real ground texture
+    // variety, a proper lava fill/pool autotile, and object art (rock piles,
+    // hazard spike clusters, a big dead-tree landmark) instead of the single
+    // repeated mountain tile + ⛰️ emoji this used to be.
+    const ashlandsA2Sheet = new Image(); // ground textures
+    ashlandsA2Sheet.src = 'assets/tiles/ashlands_a2.png';
+    ashlandsA2Sheet.loaded = false;
+    ashlandsA2Sheet.onload = () => { ashlandsA2Sheet.loaded = true; };
+
+    const ashlandsA1Sheet = new Image(); // lava pool autotile
+    ashlandsA1Sheet.src = 'assets/tiles/ashlands_a1.png';
+    ashlandsA1Sheet.loaded = false;
+    ashlandsA1Sheet.onload = () => { ashlandsA1Sheet.loaded = true; };
+    // This pack's A1 format only provides 2 real shapes per pool color (an
+    // "isolated pool" tile with a rocky border baked in on all 4 sides, and a
+    // "solid fill" tile) rather than proper per-edge pieces like the beach
+    // water sheet - so lava gets a simpler treatment: deep/fully-surrounded
+    // lava uses the fill piece, anything touching land uses the bordered
+    // pool piece. Still reads correctly since lava is molten rock, not
+    // water - a bubbly, irregular edge fits better than a smooth one anyway.
+    const LAVA_AUTOTILE = { fill: [1, 6], pool: [0, 6] };
+    // Cached CanvasPattern for the molten-lava texture, built lazily on first
+    // use (needs a live 2D context to create) and reused every frame instead
+    // of rebuilding it per tile.
+    let lavaFillPatternCache = null;
+    function getLavaFillPattern(ctx) {
+        if (lavaFillPatternCache) return lavaFillPatternCache;
+        if (!ashlandsA1Sheet.loaded) return null;
+        const c = document.createElement('canvas');
+        c.width = 16; c.height = 16;
+        c.getContext('2d').drawImage(ashlandsA1Sheet, LAVA_AUTOTILE.fill[0] * 16, LAVA_AUTOTILE.fill[1] * 16, 16, 16, 0, 0, 16, 16);
+        lavaFillPatternCache = ctx.createPattern(c, 'repeat');
+        return lavaFillPatternCache;
+    }
+
+    const ashlandsBSheet = new Image(); // rocks, spikes, dead tree object
+    ashlandsBSheet.src = 'assets/tiles/ashlands_b.png';
+    ashlandsBSheet.loaded = false;
+    ashlandsBSheet.onload = () => { ashlandsBSheet.loaded = true; };
+
+    const deadTreeSheet = new Image(); // big landmark object, mountain/chaos
+    deadTreeSheet.src = 'assets/tiles/dead_tree.png';
+    deadTreeSheet.loaded = false;
+    deadTreeSheet.onload = () => { deadTreeSheet.loaded = true; };
+    const DEAD_TREE_W = 48, DEAD_TREE_H = 94;
+
+    // Beach pack's rock/palm objects, downsampled 2x to match the 16px grid
+    // everything else on the world map uses (the pack only ships 32px/48px
+    // natively). Desert gets real rock-spike scatter instead of relying
+    // solely on the 🌵 emoji, and a rare palm-tree landmark right at the
+    // Oasis Spring - the one spot in Sylvaris where a palm actually belongs.
+    const desertRockSpikeSheet = new Image();
+    desertRockSpikeSheet.src = 'assets/tiles/desert_rockspike.png';
+    desertRockSpikeSheet.loaded = false;
+    desertRockSpikeSheet.onload = () => { desertRockSpikeSheet.loaded = true; };
+
+    const desertPalmSheet = new Image();
+    desertPalmSheet.src = 'assets/tiles/desert_palm.png';
+    desertPalmSheet.loaded = false;
+    desertPalmSheet.onload = () => { desertPalmSheet.loaded = true; };
+    const DESERT_PALM_W = 42, DESERT_PALM_H = 66;
+
     // SNES-style desert sand (finalbossblues' free "Beach Tileset", same
     // Time Fantasy line - repurposed as desert ground per the pack's own
     // author-approved use). Just sand + a rock for now.
@@ -6373,6 +6436,23 @@
     // thicket") instead of every tile rolling completely independently.
     function clusterHash(col, row, cellSize, salt) {
         return tileHash(Math.floor(col / cellSize), Math.floor(row / cellSize), salt);
+    }
+
+    // Whether a given world tile *would* roll as open-grass bush clutter, using
+    // the exact same deterministic formula as the grass decoration pass below -
+    // exposed as a standalone function so a tile can check its neighbors before
+    // committing to draw a bush, guaranteeing every bush has at least one
+    // neighboring bush instead of occasionally appearing as a true isolate (a
+    // small/thin patch zone could otherwise produce just one qualifying tile).
+    function isGrassBushTile(col, row) {
+        return clusterHash(col, row, 4, 61) < 15 && tileHash(col, row, 41) < 60;
+    }
+    // Same idea for the sparser "ground bush" that appears at the tapering edge
+    // of a forest (as opposed to a full big tree or rock/flower clutter there).
+    function isForestGroundBushTile(col, row) {
+        const speciesBias = clusterHash(col, row, 4, 83);
+        const pick = (tileHash(col, row, 23) + speciesBias) % 100;
+        return pick >= 65 && pick < 80;
     }
 
     // Real building-facade pieces (Time Fantasy-style pack) for the walkable
@@ -8341,14 +8421,92 @@
             this.createRoadNetwork();
             this.createNPCs();
             this.clearLocationAreas();
+            this.createOasisLake();
+            this.createFireGrottoIsland();
+        }
+
+        // A real oasis: a ring of water around Oasis Spring with one deliberate
+        // gap (a sandy isthmus) serving as the walk-in entrance, instead of the
+        // spring just sitting on plain sand/grass like every other desert tile.
+        // Runs last so it isn't overwritten by clearLocationAreas()'s grass fill.
+        createOasisLake() {
+            const cx = 141, cy = 141; // Oasis Spring is at (140,140), width/height 2
+            const entryAngle = Math.PI * 0.25; // gap faces SE, toward the road approach
+            const entryWidth = Math.PI * 0.3;
+            for (let y = cy - 7; y <= cy + 7; y++) {
+                for (let x = cx - 7; x <= cx + 7; x++) {
+                    if (x < 0 || x >= this.width || y < 0 || y >= this.height) continue;
+                    const dx = x - cx, dy = y - cy;
+                    let angle = Math.atan2(dy, dx);
+                    if (angle < 0) angle += Math.PI * 2;
+                    // Smooth low-frequency wobble keyed on angle (a few sine harmonics)
+                    // instead of independent per-tile noise - neighboring tiles now
+                    // share a gently curving edge instead of each rolling its own
+                    // jagged offset, which was producing stray single-tile spikes.
+                    const wobble = Math.sin(angle * 3 + 0.7) * 0.5 + Math.sin(angle * 2 - 1.4) * 0.3;
+                    const dist = Math.sqrt(dx * dx + dy * dy) - wobble;
+                    if (dist < 3.4 || dist > 6.0) continue; // only the ring band
+                    let diff = Math.abs(angle - entryAngle);
+                    if (diff > Math.PI) diff = Math.PI * 2 - diff;
+                    if (diff < entryWidth) continue; // leave the isthmus as land
+                    this.tiles[y][x] = CONFIG.TERRAIN.WATER;
+                }
+            }
+        }
+
+        // Fire Grotto as a volcanic island: a safe sand landing pad right at the
+        // entrance, ringed by a real lava field (impassable, same as water/
+        // mountains), reachable only via one narrow, gently winding causeway cut
+        // through the ring. Replaces the old small lava splash + grass surroundings
+        // - that grassy setting never made sense for a dungeon literally named
+        // Fire Grotto. Runs last, after clearLocationAreas(), so it overrides that
+        // step's forced-grass footprint instead of getting overwritten by it.
+        createFireGrottoIsland() {
+            const cx = 81, cy = 81; // Fire Grotto is at (80,80), width/height 2
+            const innerR = 2.6;   // safe landing pad radius
+            const outerR = 8.5;   // outer edge of the lava ring - bigger crater, more
+                                   // room for the spiral causeway below to actually wind
+            const spiralTurns = 0.85; // how many full turns the causeway sweeps through
+                                       // as it winds from the outer rim down to the pad -
+                                       // this is what makes the walk genuinely long instead
+                                       // of a short direct line straight to the door.
+            const entryAngle = -0.35 * Math.PI; // where the causeway meets the open desert
+            const corridorHalfWidth = 1.05;
+            for (let y = cy - 11; y <= cy + 11; y++) {
+                for (let x = cx - 11; x <= cx + 11; x++) {
+                    if (x < 0 || x >= this.width || y < 0 || y >= this.height) continue;
+                    const dx = x - cx, dy = y - cy;
+                    const angle = Math.atan2(dy, dx);
+                    const ringWobble = Math.sin(angle * 3 + 1.1) * 0.5 + Math.sin(angle * 5) * 0.25;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const effOuter = outerR + ringWobble;
+                    const effInner = innerR + ringWobble * 0.3;
+                    if (dist > effOuter + 1.5) continue;
+                    // The causeway's required angle changes as you get closer to the
+                    // center (a real spiral, not a straight radial line) - t=1 at the
+                    // outer rim, t=0 at the landing pad, sweeping spiralTurns full turns
+                    // between them. Width is held constant in real distance (divide the
+                    // tolerance by dist rather than multiplying the angle by it) so the
+                    // path doesn't flare out wide near the rim or pinch shut near the pad.
+                    const t = Math.max(0, Math.min(1, (dist - innerR) / (outerR - innerR)));
+                    const expectedAngle = entryAngle + t * spiralTurns * Math.PI * 2;
+                    let angleDiff = angle - expectedAngle;
+                    angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
+                    const onCauseway = dist > 0.3 && Math.abs(angleDiff) < corridorHalfWidth / dist;
+                    if (dist < effInner || onCauseway) {
+                        this.tiles[y][x] = CONFIG.TERRAIN.DESERT;
+                    } else if (dist < effOuter) {
+                        this.tiles[y][x] = CONFIG.TERRAIN.LAVA;
+                    }
+                }
+            }
         }
 
         addSpecialTerrainFeatures() {
-            // Fire Grotto sits in Sylvaris (the desert zone) - this is a tight lava
-            // pocket right at the dungeon mouth, not a sprawling volcanic field.
-            // Sylvaris' dominant terrain stays desert; this is a hazard flourish
-            // for one dungeon, not competing with Chaos as "the lava zone."
-            this.addLavaArea(80, 80, 9, 0.75, { x: 85, y: 85 });
+            // Fire Grotto's surroundings are now fully handled by
+            // createFireGrottoIsland() (a real lava ring + causeway, run last so
+            // it isn't touched by anything upstream) - no need for a separate
+            // scattered lava pocket here.
             // Dark Fortress sits in Duskmere (the forest zone) - same idea: a
             // scorched ring right around the fortress gate, not a lava sea eating
             // into the forest.
@@ -9111,7 +9269,11 @@
 
             if (newX >= 0 && newX < this.width && newY >= 0 && newY < this.height) {
                 const terrain = this.tiles[newY][newX];
-                if (terrain !== CONFIG.TERRAIN.WATER && terrain !== CONFIG.TERRAIN.MOUNTAIN) {
+                // Lava wasn't actually in this blocklist before - only water and
+                // mountain were. That meant every lava field on the map (including
+                // the new Fire Grotto ring) was walkable in practice, which defeats
+                // the point of a causeway players have to actually follow.
+                if (terrain !== CONFIG.TERRAIN.WATER && terrain !== CONFIG.TERRAIN.MOUNTAIN && terrain !== CONFIG.TERRAIN.LAVA) {
                     this.playerX = newX;
                     this.playerY = newY;
                     return true;
@@ -11051,6 +11213,14 @@
             // each tree's canopy naturally overlaps the tile below it (painter's algorithm)
             // instead of getting overwritten by that row's own terrain fill.
             const bigTreeQueue = [];
+            // Same idea, for mountain/chaos dead-tree landmarks and the desert oasis
+            // palm - sparse, so a plain array without the tree queue's per-tile
+            // density logic is enough; still sorted by row for correct overlap.
+            const bigObjectQueue = [];
+            // Lava tiles - painted as smooth overlapping circles in the second pass
+            // (see below) instead of tile-by-tile, so contiguous lava reads as one
+            // lake with a soft rocky edge and solid molten center.
+            const lavaQueue = [];
             // Draw terrain with enhanced colors
             for (let row = startRow; row < endRow; row++) {
                 for (let col = startCol; col < endCol; col++) {
@@ -11089,10 +11259,14 @@
                                 const patchKind = clusterHash(col, row, 4, 61);
                                 const clutter = tileHash(col, row, 41);
                                 let deco = null;
-                                if (patchKind < 15) {
-                                    // bush patch - tightened so stray trees don't dot the
-                                    // open field; real tree cover belongs in forest patches.
-                                    if (clutter < 12) deco = (tileHash(col, row, 62) < 50) ? WORLD_TILES.tree : WORLD_TILES.treeAlt;
+                                if (patchKind < 15 && clutter < 60) {
+                                    // Bush patch - only actually draws if at least one
+                                    // neighbor also qualifies (see isGrassBushTile above),
+                                    // so every bush that appears is part of a real clump of
+                                    // at least 2, never a lone icon standing by itself.
+                                    const hasNeighbor = isGrassBushTile(col - 1, row) || isGrassBushTile(col + 1, row) ||
+                                        isGrassBushTile(col, row - 1) || isGrassBushTile(col, row + 1);
+                                    if (hasNeighbor) deco = (tileHash(col, row, 62) < 50) ? WORLD_TILES.tree : WORLD_TILES.treeAlt;
                                 } else if (patchKind < 40) {
                                     // flower/rock patch
                                     if (clutter < 5) deco = WORLD_TILES.flowers1;
@@ -11113,50 +11287,52 @@
                         ctx.textBaseline = 'middle';
                         switch(terrain) {
                             case CONFIG.TERRAIN.MOUNTAIN: {
-                                // Rocky ground from the same Ashlands pack used for lava, plus
-                                // an occasional boulder cluster so mountain tiles aren't a flat
-                                // repeat; the ⛰️ overlay stays on top for a clear silhouette.
-                                if (ashlandsTileSheet.loaded) {
+                                // Real ground texture variety (cracked dirt / gravel, 4
+                                // variants) from the full Ashlands A2 sheet instead of one
+                                // repeated rock tile, plus rock-pile decoration pulled from
+                                // the object sheet for more variety than the old 2-boulder
+                                // set. The ⛰️ emoji is retired now that the actual art
+                                // carries the silhouette.
+                                if (ashlandsA2Sheet.loaded) {
+                                    const groundPick = tileHash(col, row, 91) % 4;
+                                    ctx.drawImage(ashlandsA2Sheet, groundPick * 16, 1 * 16, 16, 16, screenX, screenY, ts, ts);
+                                } else if (ashlandsTileSheet.loaded) {
                                     ctx.drawImage(ashlandsTileSheet, WORLD_TILES.mountainRock[0] * WORLD_TILE_STRIDE_ASHLANDS, WORLD_TILES.mountainRock[1] * WORLD_TILE_STRIDE_ASHLANDS, 16, 16, screenX, screenY, ts, ts);
-                                    const boulderRoll = tileHash(col, row, 91);
-                                    if (boulderRoll < 30) {
-                                        const b = (boulderRoll < 15) ? WORLD_TILES.boulder : WORLD_TILES.boulderAlt;
-                                        ctx.drawImage(ashlandsTileSheet, b[0] * WORLD_TILE_STRIDE_ASHLANDS, b[1] * WORLD_TILE_STRIDE_ASHLANDS, 16, 16, screenX, screenY, ts, ts);
-                                    }
                                 } else if (worldTileSheet.loaded) {
                                     ctx.drawImage(worldTileSheet, 0 * WORLD_TILE_STRIDE, 4 * WORLD_TILE_STRIDE, 16, 16, screenX, screenY, ts, ts);
                                 }
-                                ctx.fillStyle = '#FFFFFF';
-                                ctx.fillText('⛰️', screenX + ts/2, screenY + ts/2);
+                                const boulderRoll = tileHash(col, row, 92);
+                                if (ashlandsBSheet.loaded && boulderRoll < 25) {
+                                    const rockCol = boulderRoll % 5; // 5 small rock-pile variants
+                                    ctx.drawImage(ashlandsBSheet, rockCol * 16, 2 * 16, 16, 16, screenX, screenY, ts, ts);
+                                }
+                                // Rare dead-tree landmark - sparse (~3%) and cluster-gated so
+                                // they read as an occasional gnarled feature, not scattered
+                                // debris on every slope.
+                                if (clusterHash(col, row, 6, 94) < 20 && tileHash(col, row, 95) < 15) {
+                                    bigObjectQueue.push({ kind: 'deadTree', row, screenX, screenY });
+                                }
                                 break;
                             }
-                            case CONFIG.TERRAIN.LAVA:
-                                if (ashlandsTileSheet.loaded) {
-                                    ctx.drawImage(ashlandsTileSheet, WORLD_TILES.lava[0] * WORLD_TILE_STRIDE_ASHLANDS, WORLD_TILES.lava[1] * WORLD_TILE_STRIDE_ASHLANDS, 16, 16, screenX, screenY, ts, ts);
+                            case CONFIG.TERRAIN.LAVA: {
+                                // Rocky ground goes down first as the base (same texture as
+                                // mountain), then the actual lava is queued and painted as one
+                                // smooth overlapping-circle "pool" in the second pass below -
+                                // real per-tile mosaic tiles (even bordered ones) can't avoid
+                                // looking like a grid of splotches once you have more than one
+                                // adjacent lava tile, since each tile insists on its own full
+                                // border. Circles from neighboring lava tiles merge into a
+                                // single soft-edged lake with a solid molten center instead.
+                                if (ashlandsA2Sheet.loaded) {
+                                    const groundPick = tileHash(col, row, 91) % 4;
+                                    ctx.drawImage(ashlandsA2Sheet, groundPick * 16, 1 * 16, 16, 16, screenX, screenY, ts, ts);
                                 } else {
-                                    ctx.fillStyle = '#ff6600';
+                                    ctx.fillStyle = '#5a4a3a';
                                     ctx.fillRect(screenX, screenY, ts, ts);
                                 }
-                                const bubbleSeed = (col * 7 + row * 11) % 6;
-                                if (bubbleSeed < 2) {
-                                    ctx.fillStyle = '#ffaa00';
-                                    ctx.beginPath();
-                                    ctx.arc(screenX + ts/2, screenY + ts/2, 4, 0, Math.PI * 2);
-                                    ctx.fill();
-                                    ctx.fillStyle = '#ffff00';
-                                    ctx.beginPath();
-                                    ctx.arc(screenX + ts/2 - 1, screenY + ts/2 - 1, 2, 0, Math.PI * 2);
-                                    ctx.fill();
-                                } else if (bubbleSeed < 4) {
-                                    ctx.fillStyle = '#ffaa00';
-                                    ctx.beginPath();
-                                    ctx.arc(screenX + ts/3, screenY + ts/3, 2, 0, Math.PI * 2);
-                                    ctx.fill();
-                                    ctx.beginPath();
-                                    ctx.arc(screenX + ts*2/3, screenY + ts*2/3, 2, 0, Math.PI * 2);
-                                    ctx.fill();
-                                }
+                                lavaQueue.push({ screenX, screenY, col, row });
                                 break;
+                            }
                             case CONFIG.TERRAIN.FOREST:
                                 let nearMountain = false;
                                 let mountainDist = 999;
@@ -11201,33 +11377,37 @@
                                     : Math.max(0.08, Math.min(0.97, forestDensity + densityBias * 0.6));
                                 if (present < effectiveDensity * 100) {
                                     if (natureTileSheet.loaded) {
-                                        // Inside a canopy-block core, this is almost always a big
-                                        // tree - no rocks/flowers mixed into the tree mass, and the
-                                        // rare miss still falls back to the small tree icon (never
-                                        // treeAlt/rock/flower), so the core reads as unbroken forest.
+                                        // Inside a canopy-block core, this is ALWAYS a full big
+                                        // tree - never the small round icon standing in as a fake
+                                        // "tree". If the sprite is somehow still loading, fall
+                                        // back to open ground rather than a half-looking stand-in.
                                         if (canopyBlock) {
                                             const bigTreeRoll = tileHash(col, row, 53);
-                                            if (bigTreeRoll < 90) {
-                                                bigTreeQueue.push({ row, screenX, screenY, variant: bigTreeRoll % 2 });
-                                                break;
-                                            }
-                                            ctx.drawImage(natureTileSheet, WORLD_TILES.tree[0] * WORLD_TILE_STRIDE_NATURE, WORLD_TILES.tree[1] * WORLD_TILE_STRIDE_NATURE, 16, 16, screenX, screenY, ts, ts);
+                                            bigTreeQueue.push({ row, screenX, screenY, variant: bigTreeRoll % 2 });
                                             break;
                                         }
                                         const speciesBias = clusterHash(col, row, 4, 83);
                                         const pick = (tileHash(col, row, 23) + speciesBias) % 100;
-                                        let variant;
-                                        // At the sparser edge, some "tree" tiles still become big
-                                        // overlapping canopy objects instead of the small flat icon,
-                                        // so the transition from core to clearing isn't an abrupt
-                                        // cutoff from big trees to tiny ones.
+                                        // At the sparser edge, most "tree" tiles are still full big
+                                        // trees. Anything that isn't a big tree is explicitly ground
+                                        // bush/rock/flower clutter - never a small icon pretending to
+                                        // be a tree - so every actual "tree" you see anywhere is a
+                                        // full multi-part sprite.
                                         const bigTreeRoll = tileHash(col, row, 53);
-                                        if (pick < 45 && bigTreeRoll < 55) {
+                                        if (pick < 65) {
                                             bigTreeQueue.push({ row, screenX, screenY, variant: bigTreeRoll % 2 });
                                             break;
                                         }
-                                        if (pick < 45) variant = WORLD_TILES.tree;
-                                        else if (pick < 80) variant = WORLD_TILES.treeAlt;
+                                        let variant;
+                                        if (pick < 80) {
+                                            // Ground bush - same neighbor guarantee as the open-grass
+                                            // bush patches: only draws as a bush if a neighboring tile
+                                            // also would, otherwise falls through to rock/flower so it
+                                            // never appears as one lone bush icon by itself.
+                                            const hasNeighbor = isForestGroundBushTile(col - 1, row) || isForestGroundBushTile(col + 1, row) ||
+                                                isForestGroundBushTile(col, row - 1) || isForestGroundBushTile(col, row + 1);
+                                            variant = hasNeighbor ? ((bigTreeRoll < 50) ? WORLD_TILES.tree : WORLD_TILES.treeAlt) : WORLD_TILES.rock;
+                                        }
                                         else if (pick < 92) variant = WORLD_TILES.rock;
                                         else variant = WORLD_TILES.flowers1;
                                         ctx.drawImage(natureTileSheet, variant[0] * WORLD_TILE_STRIDE_NATURE, variant[1] * WORLD_TILE_STRIDE_NATURE, 16, 16, screenX, screenY, ts, ts);
@@ -11260,7 +11440,8 @@
                                     const landS = !isWater(col, row + 1);
                                     const landE = !isWater(col + 1, row);
                                     const landW = !isWater(col - 1, row);
-                                    let piece = WATER_AUTOTILE.fill, flipX = false, flipY = false;
+                                    let piece = WATER_AUTOTILE.fill, flipX = false, flipY = false, bandDraws = null;
+                                    const landCount = (landN?1:0) + (landS?1:0) + (landE?1:0) + (landW?1:0);
                                     if (landN && landW && !landS && !landE) { piece = WATER_AUTOTILE.corner; }
                                     else if (landN && landE && !landS && !landW) { piece = WATER_AUTOTILE.corner; flipX = true; }
                                     else if (landS && landW && !landN && !landE) { piece = WATER_AUTOTILE.corner; flipY = true; }
@@ -11269,11 +11450,40 @@
                                     else if (landS && !landN && !landE && !landW) { piece = WATER_AUTOTILE.edgeH; flipY = true; }
                                     else if (landW && !landN && !landS && !landE) { piece = WATER_AUTOTILE.edgeV; }
                                     else if (landE && !landN && !landS && !landW) { piece = WATER_AUTOTILE.edgeV; flipX = true; }
-                                    ctx.save();
-                                    ctx.translate(screenX + ts / 2, screenY + ts / 2);
-                                    ctx.scale(flipX ? -1 : 1, flipY ? -1 : 1);
-                                    ctx.drawImage(beachA1Sheet, piece[0] * BEACH_TILE, piece[1] * BEACH_TILE, BEACH_TILE, BEACH_TILE, -ts / 2, -ts / 2, ts, ts);
-                                    ctx.restore();
+                                    else if (landCount >= 2) {
+                                        // Everything else - opposite-side channels, 3-land
+                                        // corners, and fully-isolated single water tiles (land
+                                        // on all 4 sides) - generalized instead of one-off
+                                        // cases: blend in a half-clipped edge for every land
+                                        // side actually present, any combination. A single edge
+                                        // piece only textures one bank, which is exactly what
+                                        // was leaving these harder cases as a plain hard-edged
+                                        // fill tile before.
+                                        bandDraws = [];
+                                        if (landN) bandDraws.push({ piece: WATER_AUTOTILE.edgeH, flipY: false, clip: [0, 0, ts, ts / 2] });
+                                        if (landS) bandDraws.push({ piece: WATER_AUTOTILE.edgeH, flipY: true, clip: [0, ts / 2, ts, ts / 2] });
+                                        if (landW) bandDraws.push({ piece: WATER_AUTOTILE.edgeV, flipX: false, clip: [0, 0, ts / 2, ts] });
+                                        if (landE) bandDraws.push({ piece: WATER_AUTOTILE.edgeV, flipX: true, clip: [ts / 2, 0, ts / 2, ts] });
+                                    }
+                                    if (bandDraws) {
+                                        ctx.drawImage(beachA1Sheet, WATER_AUTOTILE.fill[0] * BEACH_TILE, WATER_AUTOTILE.fill[1] * BEACH_TILE, BEACH_TILE, BEACH_TILE, screenX, screenY, ts, ts);
+                                        bandDraws.forEach(b => {
+                                            ctx.save();
+                                            ctx.beginPath();
+                                            ctx.rect(screenX + b.clip[0], screenY + b.clip[1], b.clip[2], b.clip[3]);
+                                            ctx.clip();
+                                            ctx.translate(screenX + ts / 2, screenY + ts / 2);
+                                            ctx.scale(b.flipX ? -1 : 1, b.flipY ? -1 : 1);
+                                            ctx.drawImage(beachA1Sheet, b.piece[0] * BEACH_TILE, b.piece[1] * BEACH_TILE, BEACH_TILE, BEACH_TILE, -ts / 2, -ts / 2, ts, ts);
+                                            ctx.restore();
+                                        });
+                                    } else {
+                                        ctx.save();
+                                        ctx.translate(screenX + ts / 2, screenY + ts / 2);
+                                        ctx.scale(flipX ? -1 : 1, flipY ? -1 : 1);
+                                        ctx.drawImage(beachA1Sheet, piece[0] * BEACH_TILE, piece[1] * BEACH_TILE, BEACH_TILE, BEACH_TILE, -ts / 2, -ts / 2, ts, ts);
+                                        ctx.restore();
+                                    }
                                 } else {
                                     ctx.fillStyle = '#4a90a4';
                                     ctx.fillRect(screenX, screenY, ts, ts);
@@ -11283,12 +11493,36 @@
                                 ctx.fillRect(screenX, screenY, ts, ts);
                                 break;
                             }
-                            case CONFIG.TERRAIN.DESERT:
-                                if ((col * 11 + row * 13) % 10 < 2) {
+                            case CONFIG.TERRAIN.DESERT: {
+                                // Clean single rock objects (same set used for mountain
+                                // boulders - already verified as complete, non-broken sprites)
+                                // instead of the multi-object beach crop that was slicing
+                                // through two separate rock shapes and showing fragments.
+                                const rockRoll2 = tileHash(col, row, 96);
+                                if (ashlandsBSheet.loaded && rockRoll2 < 10) {
+                                    const rockCol = rockRoll2 % 5;
+                                    ctx.drawImage(ashlandsBSheet, rockCol * 16, 2 * 16, 16, 16, screenX, screenY, ts, ts);
+                                } else if (rockRoll2 < 22) {
                                     ctx.fillStyle = '#8B7355';
                                     ctx.fillText('🌵', screenX + ts/2, screenY + ts/2);
                                 }
+                                // Palm trees near any water: dense right around Oasis Spring
+                                // (a real oasis should feel lush, not have one lone palm), plus
+                                // a lighter scatter along any desert tile that borders the
+                                // central lake's Sylvaris-facing shore - anywhere sand actually
+                                // meets water gets a little life instead of staying bare.
+                                const oasisDist = Math.sqrt(Math.pow(col - 140, 2) + Math.pow(row - 140, 2));
+                                const nearWater = worldMap.tiles[row - 1]?.[col] === CONFIG.TERRAIN.WATER ||
+                                    worldMap.tiles[row + 1]?.[col] === CONFIG.TERRAIN.WATER ||
+                                    worldMap.tiles[row]?.[col - 1] === CONFIG.TERRAIN.WATER ||
+                                    worldMap.tiles[row]?.[col + 1] === CONFIG.TERRAIN.WATER;
+                                if (oasisDist < 6 && tileHash(col, row, 97) < 45) {
+                                    bigObjectQueue.push({ kind: 'palm', row, screenX, screenY });
+                                } else if (nearWater && tileHash(col, row, 98) < 35) {
+                                    bigObjectQueue.push({ kind: 'palm', row, screenX, screenY });
+                                }
                                 break;
+                            }
                         }
                     } else {
                         ctx.fillStyle = '#0a0a1a';
@@ -11310,6 +11544,64 @@
                     const dx = t.screenX + ts / 2 - drawW / 2;
                     const dy = t.screenY + ts - drawH;
                     ctx.drawImage(forestTreeSheet, sx, 0, FOREST_TREE_W, FOREST_TREE_H, dx, dy, drawW, drawH);
+                });
+            }
+
+            // Lava: overlapping-circle "metaball" pass. A dark rocky crust circle per
+            // tile first (their overlaps form one continuous smooth-edged silhouette),
+            // then a smaller bright molten circle on top per tile (same merging effect,
+            // solid color in the interior since deep-inside circles overlap heavily and
+            // only the true boundary shows the crust ring at all) - real large lava
+            // sections with soft edges instead of a mosaic of individually-bordered tiles.
+            if (lavaQueue.length) {
+                // Solid fill texture everywhere, with a dark crust border drawn only on
+                // the specific edges/corners that actually touch non-lava ground - so the
+                // interior of a lava field is clean solid fill (no per-tile seams) and the
+                // border only appears where the section genuinely ends. Two metaball
+                // attempts (plain overlapping circles, then blur+contrast) both produced
+                // scalloped or washed-out results instead of a clean shape, so this uses
+                // straight per-edge borders instead - grid-aligned rather than rounded,
+                // but reliably clean.
+                const pattern = getLavaFillPattern(ctx);
+                const isLava = (cc, rr) => cc >= 0 && cc < worldMap.width && rr >= 0 && rr < worldMap.height && worldMap.tiles[rr][cc] === CONFIG.TERRAIN.LAVA;
+                const borderW = Math.max(2, ts * 0.14);
+                ctx.save();
+                lavaQueue.forEach(t => {
+                    ctx.fillStyle = pattern || '#c9430a';
+                    ctx.fillRect(t.screenX, t.screenY, ts, ts);
+                    const glow = (Math.sin(time * 2 + t.screenX * 0.05 + t.screenY * 0.05) + 1) / 2;
+                    ctx.fillStyle = `rgba(255,170,40,${(glow * 0.16).toFixed(2)})`;
+                    ctx.fillRect(t.screenX, t.screenY, ts, ts);
+                });
+                ctx.fillStyle = '#2a140d';
+                lavaQueue.forEach(t => {
+                    const col = t.col, row = t.row;
+                    if (!isLava(col, row - 1)) ctx.fillRect(t.screenX, t.screenY, ts, borderW);
+                    if (!isLava(col, row + 1)) ctx.fillRect(t.screenX, t.screenY + ts - borderW, ts, borderW);
+                    if (!isLava(col - 1, row)) ctx.fillRect(t.screenX, t.screenY, borderW, ts);
+                    if (!isLava(col + 1, row)) ctx.fillRect(t.screenX + ts - borderW, t.screenY, borderW, ts);
+                });
+                ctx.restore();
+            }
+
+            // Second pass: dead-tree landmarks (mountain/chaos) and the desert oasis
+            // palm, painted the same overlapping way as the forest canopy above.
+            if (bigObjectQueue.length) {
+                bigObjectQueue.sort((a, b) => a.row - b.row);
+                bigObjectQueue.forEach(o => {
+                    if (o.kind === 'deadTree' && deadTreeSheet.loaded) {
+                        const drawW = ts * 1.4;
+                        const drawH = drawW * (DEAD_TREE_H / DEAD_TREE_W);
+                        const dx = o.screenX + ts / 2 - drawW / 2;
+                        const dy = o.screenY + ts - drawH;
+                        ctx.drawImage(deadTreeSheet, 0, 0, DEAD_TREE_W, DEAD_TREE_H, dx, dy, drawW, drawH);
+                    } else if (o.kind === 'palm' && desertPalmSheet.loaded) {
+                        const drawW = ts * 1.1;
+                        const drawH = drawW * (DESERT_PALM_H / DESERT_PALM_W);
+                        const dx = o.screenX + ts / 2 - drawW / 2;
+                        const dy = o.screenY + ts - drawH;
+                        ctx.drawImage(desertPalmSheet, 0, 0, DESERT_PALM_W, DESERT_PALM_H, dx, dy, drawW, drawH);
+                    }
                 });
             }
 
@@ -13634,8 +13926,14 @@
             } else {
                 this.runAttempts++;
                 this.log(`${currentHero.name} tries to run but fails to escape!`);
-                this.currentTurn = 1;
-                setTimeout(() => this.enemyPhase(), 1000);
+                // A failed run used to skip straight to the enemy phase, silently
+                // denying every other living hero their turn this round (so with a
+                // 3-hero party, only whoever attempted Run ever got to act before
+                // the enemies retaliated). It should behave like any other resolved
+                // action: move on to the next hero - who can attack, use an item, or
+                // try Run themselves - and only go to enemyPhase() once everyone
+                // still standing has actually had a turn.
+                this.nextHero();
             }
         }
 
@@ -16655,7 +16953,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v69]');
+            console.log('Game starting... [build v75]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
@@ -17869,7 +18167,7 @@
         isWorldTileWalkable(x, y) {
             if (!this.world || x < 0 || x >= this.world.width || y < 0 || y >= this.world.height) return false;
             const terrain = this.world.tiles[y][x];
-            return terrain !== CONFIG.TERRAIN.WATER && terrain !== CONFIG.TERRAIN.MOUNTAIN;
+            return terrain !== CONFIG.TERRAIN.WATER && terrain !== CONFIG.TERRAIN.MOUNTAIN && terrain !== CONFIG.TERRAIN.LAVA;
         }
 
         /** Single shared "interact" action (mirrors whatever the Enter key
