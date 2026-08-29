@@ -3341,6 +3341,13 @@
             margin-top: 2px;
         }
 
+        /* Offsets the Monster Codex's toast slightly below the achievement
+           toast's position so the rare case of both firing on the same kill
+           stacks vertically instead of overlapping. */
+        .achievement-toast.codex-toast {
+            top: 74px;
+        }
+
         /* ====================================================================== */
         /*                      MONSTER CODEX                                     */
         /* ====================================================================== */
@@ -3496,11 +3503,22 @@
             font-size: 19px;
         }
 
+        @keyframes menuPanelFadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
         .menu-subpanel {
             flex: 1;
             min-height: 0;
             overflow-y: auto;
             padding: 14px 20px;
+            /* Restarts automatically every time an element goes from
+               display:none to display:block (which is exactly how
+               showMenuPanel()/showMenuHub()/menuGoBack() toggle panels) -
+               no JS changes needed for the fade/slide to replay on every
+               switch. Covers the hub too, since it shares this class. */
+            animation: menuPanelFadeIn 0.22s ease;
         }
 
         .menu-hero-switcher {
@@ -4220,7 +4238,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v64</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v65</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -4619,7 +4637,7 @@
 
                 <div class="menu-hero-switcher">
                     <div class="menu-hero-switcher-arrow" onclick="window.game.cycleMenuHero(-1)">◀</div>
-                    <div class="menu-hero-portrait-block" onclick="window.game.cycleMenuHero(1)" title="Tap to switch hero">
+                    <div class="menu-hero-portrait-block" id="menu-hero-portrait-block" onclick="window.game.cycleMenuHero(1)" title="Tap or swipe to switch hero">
                         <div id="menu-hub-portrait"></div>
                         <div class="menu-hero-name" id="menu-hub-name"></div>
                         <div class="menu-hero-subline" id="menu-hub-subline"></div>
@@ -8891,9 +8909,9 @@
                     hint: "The Dark Fortress is guarded by dark knights. They resist ice but are weak to fire.",
                     quest: { id: 'duskmere_trade_route', name: 'Secure the Trade Route', description: 'Clear 10 monsters from the roads around Duskmere.', type: 'monster_kill', targetMonster: 'any', goal: 10, reward: { gold: 1200, item: 'Merchant\'s Badge' } } },
                 { x: 59, y: 263, name: 'Crystal Gazer', sprite: '🔮', type: 'quest_giver',
-                    dialogue: ["I see... I see... a path through the crystals...", "The crystal golems are tough, but they shatter when hit with ice magic.", "Deep in the caverns, there's a pure crystal heart. Very valuable."],
-                    hint: "Crystal golems are weak to ice magic. Blizzaga works best!",
-                    quest: { id: 'duskmere_crystal_heart', name: 'Crystal Heart', description: 'Defeat the Crystal Golem and retrieve the Crystal Heart.', type: 'boss_defeat', targetMonster: 'Crystal Golem', goal: 1, reward: { gold: 1500, item: 'Crystal Armor' } } },
+                    dialogue: ["I see... I see... a path through the crystals...", "The wraith guarding it is tough, but it can't resist a direct assault forever.", "Deep in the caverns, there's a pure crystal heart. Very valuable."],
+                    hint: "The Dread Wraith resists most magic - your steel will serve you better than spells here.",
+                    quest: { id: 'duskmere_crystal_heart', name: 'Crystal Heart', description: 'Defeat the Dread Wraith and retrieve the Crystal Heart it guards.', type: 'boss_defeat', targetMonster: 'Dread Wraith', goal: 1, reward: { gold: 1500, item: 'Crystal Armor' } } },
                 { x: 80, y: 256, name: 'Forest Elder', sprite: '🌲', type: 'quest_giver',
                     dialogue: ["The trees tell me everything. They say you're a hero.", "The Whispering Woods are sacred ground. The spirits protect this place.", "If you listen carefully, the forest will guide you."],
                     hint: "The path north leads to Oasis Spring. It can heal your party completely.",
@@ -8923,9 +8941,9 @@
                     hint: "The Ancient Mummy Lord is vulnerable to fire. Bring Firaga or napalm!",
                     quest: { id: 'sylvaris_mummy_curse', name: 'Break the Mummy\'s Curse', description: 'Defeat the Ancient Mummy Lord and destroy 5 mummy wrappings.', type: 'boss_defeat', targetMonster: 'Ancient Mummy Lord', goal: 1, reward: { gold: 2800, item: 'Pharaoh\'s Mask' } } },
                 { x: 263, y: 163, name: 'Frozen Traveler', sprite: '❄️', type: 'quest_giver',
-                    dialogue: ["C-c-cold... so c-c-cold...", "The ice dragon sleeps in the deepest chamber. Don't wake it!", "Unless... unless you have fire magic. Lots of it."],
-                    hint: "The ice dragon is weak to fire. Bring your strongest fire spells!",
-                    quest: { id: 'chaos_ice_dragon', name: 'Ice Dragon Slayer', description: 'Defeat the Ice Dragon and collect its heart.', type: 'boss_defeat', targetMonster: 'Ice Dragon', goal: 1, reward: { gold: 3500, item: 'Dragon Scale Mail' } } },
+                    dialogue: ["C-c-cold... so c-c-cold...", "The ice demon sleeps in the deepest chamber. Don't wake it!", "Unless... unless you have fire magic. Lots of it."],
+                    hint: "The ice demon is weak to fire. Bring your strongest fire spells!",
+                    quest: { id: 'chaos_ice_dragon', name: 'Ice Demon Slayer', description: 'Defeat the Ice Demon and collect its heart.', type: 'boss_defeat', targetMonster: 'Ice Demon', goal: 1, reward: { gold: 3500, item: 'Dragon Scale Mail' } } },
                 { x: 270, y: 170, name: 'Mad Explorer', sprite: '😵', type: 'quest_giver',
                     dialogue: ["THE VOID CALLS TO ME! ...Sorry, got a bit carried away.", "Down there, the darkness has... eyes. So many eyes.", "Light magic helps. Holy spells hurt the abyssal creatures."],
                     hint: "Abyssal demons are weak to holy magic. Paladin's Holy spell works wonders.",
@@ -13898,10 +13916,21 @@
             if (!defeat && this.monsters.length > 0) {
                 this.monsters.forEach(monster => {
                     window.game.updateQuestProgress('monster_kill', 1, monster.name);
+                    // boss_defeat quests (e.g. "Break the Mummy's Curse",
+                    // "Ancient Dragon") had no working trigger anywhere in
+                    // the game - the only two updateQuestProgress('boss_defeat', ...)
+                    // call sites fired when a castle fight STARTED, not when
+                    // it was won, and neither ever passed a target monster
+                    // name, so the type==='boss_defeat' branch's `&& target`
+                    // check was always false. Every boss_defeat quest was
+                    // unwinnable. Firing it here, on every kill, alongside
+                    // monster_kill, costs nothing for non-matching quests -
+                    // updateQuestProgress already filters by exact
+                    // targetMonster name match internally.
+                    window.game.updateQuestProgress('boss_defeat', 1, monster.speciesName || monster.name);
                     window.game.trackMonsterKill(monster.name, monster.isBoss, monster.isElite, monster.isRareEncounter);
                     if (window.game.monsterCodex) {
-                        const isNewEntry = window.game.monsterCodex.discover(monster.speciesName || monster.name);
-                        if (isNewEntry) this.log(`📖 Monster Codex updated: ${monster.speciesName || monster.name}!`);
+                        window.game.monsterCodex.discover(monster.speciesName || monster.name);
                     }
                     // Shadow Stalkers are part of the whole Brighthollow region's
                     // monster pool, not exclusive to the Shadow Grove dungeon - they
@@ -15253,6 +15282,40 @@
     class UIManager {
         constructor() {
             this.setupPopupKeyboard();
+            this.setupMenuHeroSwipe();
+        }
+
+        /** Lets the hub's hero portrait be swiped left/right to cycle
+         *  heroes (swipe left = next, swipe right = previous), matching
+         *  cycleMenuHero() but as a touch-first gesture instead of only the
+         *  small arrow buttons - the whole game is built and tested for
+         *  touchscreen play. Attached once at startup since the portrait
+         *  block is static HTML that's just shown/hidden, never rebuilt. */
+        setupMenuHeroSwipe() {
+            const block = document.getElementById('menu-hero-portrait-block');
+            if (!block) return;
+            let startX = 0, startY = 0, tracking = false;
+            block.addEventListener('touchstart', (e) => {
+                if (!e.touches || e.touches.length !== 1) return;
+                startX = e.touches[0].clientX;
+                startY = e.touches[0].clientY;
+                tracking = true;
+            }, { passive: true });
+            block.addEventListener('touchend', (e) => {
+                if (!tracking) return;
+                tracking = false;
+                const touch = e.changedTouches && e.changedTouches[0];
+                if (!touch) return;
+                const dx = touch.clientX - startX;
+                const dy = touch.clientY - startY;
+                // Requires a clearly horizontal swipe past a minimum
+                // distance, so a plain tap (handled separately by the
+                // element's onclick) doesn't also fire a cycle, and an
+                // accidental vertical scroll attempt doesn't either.
+                if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+                    if (window.game) window.game.cycleMenuHero(dx < 0 ? 1 : -1);
+                }
+            }, { passive: true });
         }
 
         showPopup(title, message, useHTML = false) {
@@ -16241,7 +16304,31 @@
             if (window.game && window.game.state && window.game.state.currentScreen === 'menu') {
                 this.renderCodexPanel();
             }
+            this.showToast(speciesName);
             return true;
+        }
+
+        /** Fires a toast the instant a new species is discovered, mirroring
+         *  AchievementManager.showToast() (same CSS classes, same timing)
+         *  so a codex unlock reads as the same class of moment as an
+         *  achievement unlock instead of just a line in the battle log.
+         *  Offset slightly lower via .codex-toast so the rare case of both
+         *  firing on the same kill stacks instead of overlapping. */
+        showToast(speciesName) {
+            const container = document.getElementById('game-container');
+            if (!container) return;
+            const entry = MONSTER_CODEX_LIST.find(m => m.name === speciesName);
+            const sprite = entry ? entry.sprite : '❓';
+            const toast = document.createElement('div');
+            toast.className = 'achievement-toast codex-toast';
+            toast.innerHTML = `📖 Codex Entry Added: ${sprite} ${speciesName}<div class="achievement-toast-sub">New monster recorded in the Monster Codex</div>`;
+            container.appendChild(toast);
+            requestAnimationFrame(() => toast.classList.add('show'));
+            if (window.game && window.game.audio) window.game.audio.play('coin');
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 450);
+            }, 3000);
         }
 
         isDiscovered(speciesName) {
@@ -16456,7 +16543,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v64]');
+            console.log('Game starting... [build v65]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
@@ -17146,6 +17233,22 @@
             });
         }
 
+        /** Picks the right line of quest dialogue for wherever the quest
+         *  currently stands - the opening hook before any progress, a live
+         *  progress line (with {progress}/{goal} interpolated in) once
+         *  started, or the NPC's completion reaction once it's ready to
+         *  turn in. Every quest was written with all three lines from the
+         *  start (see QUEST_DATA); only "start" was ever actually shown
+         *  anywhere until now. */
+        getQuestDialogueLine(quest, progress, isComplete) {
+            if (!quest.dialogue) return '';
+            if (isComplete && quest.dialogue.complete) return quest.dialogue.complete;
+            if (progress > 0 && quest.dialogue.progress) {
+                return quest.dialogue.progress.replace('{progress}', progress).replace('{goal}', quest.goal);
+            }
+            return quest.dialogue.start || '';
+        }
+
         showQuestDetails(quest) {
             const details = document.getElementById('quest-details');
             if (!details) return;
@@ -17183,7 +17286,7 @@
                 ${progressMessage}
                 <p><strong>Progress:</strong> ${isAccepted ? progress : 0}/${quest.goal}</p>
                 <p><strong>Reward:</strong> ${quest.reward.gold} G, ${quest.reward.item}</p>
-                <p style="color: #888; margin-top: 15px;">${quest.dialogue?.start || 'Complete this quest for rewards!'}</p>
+                <p style="color: #888; margin-top: 15px; font-style: italic;">${(() => { const line = this.getQuestDialogueLine(quest, isAccepted ? progress : 0, isComplete); return line ? '"' + line + '"' : 'Complete this quest for rewards!'; })()}</p>
                 ${actionButton}
             `;
         }
@@ -17392,7 +17495,11 @@
             this.updateGoldDisplays();
             this.questsCompletedCount = (this.questsCompletedCount || 0) + 1;
             if (this.achievements) this.achievements.report('quest_completed', { quest: quest });
-            let rewardMessage = `Received ${quest.reward.gold} G`;
+            let rewardMessage = '';
+            if (quest.dialogue && quest.dialogue.complete) {
+                rewardMessage += `"${quest.dialogue.complete}"\n\n`;
+            }
+            rewardMessage += `Received ${quest.reward.gold} G`;
             if (quest.reward.item) {
                 const parsedReward = this.parseQuestRewardItemName(quest.reward.item);
                 const quantity = quest.reward.quantity || parsedReward.qty;
@@ -18260,7 +18367,10 @@
             }
             this.audio.playMusic('battle', 'castle');
             this.battle.startEncounter(this.party, 'castle');
-            this.updateQuestProgress('boss_defeat', 1);
+            // boss_defeat progress now fires correctly from endBattle() on
+            // an actual kill (see the comment there) - this call used to
+            // fire here, on fight START with no target, and never did
+            // anything.
         }
 
         /** Random encounters while walking dungeon corridors - elite chance scales with floor depth (30/40/50/60/70%). */
@@ -18513,12 +18623,13 @@
                 progressMessage = `<p><strong>Shadow Stalkers Defeated:</strong> ${(active && active.stalkerCount) || 0}/${quest.goals.stalkers.required}</p>
                                    <p><strong>Shadow Essence Found:</strong> ${(active && active.essenceCount) || 0}/${quest.goals.essence.required}</p>`;
             }
+            const dialogueLine = this.getQuestDialogueLine(quest, progress, isComplete);
             const html = `
                 <p style="margin-bottom: 15px;">${quest.description}</p>
                 ${progressMessage}
                 <p><strong>Progress:</strong> ${progress}/${quest.goal}</p>
                 <p><strong>Reward:</strong> ${quest.reward.gold} G, ${quest.reward.item}</p>
-                ${quest.dialogue && quest.dialogue.start ? `<p style="color: #888; margin-top: 15px;">${quest.dialogue.start}</p>` : ''}
+                ${dialogueLine ? `<p style="color: #888; margin-top: 15px; font-style: italic;">"${dialogueLine}"</p>` : ''}
                 ${!isComplete ? `
                     <p style="color: #ffaa00; margin-top: 10px;">Quest in progress - keep going!</p>
                 ` : `
@@ -19953,7 +20064,10 @@
             }
             this.audio.playMusic('battle', 'castle');
             this.battle.startEncounter(this.party, 'castle');
-            this.updateQuestProgress('boss_defeat', 1);
+            // boss_defeat progress now fires correctly from endBattle() on
+            // an actual kill (see the comment there) - this call used to
+            // fire here, on fight START with no target, and never did
+            // anything.
         }
 
         exploreRuins() {
@@ -23506,8 +23620,8 @@ const QUEST_DATA = [
     { id: 'brighthollow_pass_clear', name: 'Clear the Pass', description: 'Defeat 8 monsters in the mountain pass area.', type: 'cave_encounters', targetLocation: 'mountain_pass', goal: 8, reward: { gold: 700, item: 'Hi-Potion x3' }, quadrant: 'brighthollow', progress: 0 },
     { id: 'duskmere_forest_spirits', name: 'Forest Spirits', description: 'Collect 5 soul essences from wraiths in the Whispering Woods.', type: 'monster_kill', targetMonster: 'Wraith', goal: 5, reward: { gold: 1300, item: 'Spirit Robe' }, quadrant: 'duskmere', progress: 0 },
     { id: 'chaos_lava_beast_hunt', name: 'Lava Beast Hunt', description: 'Defeat 8 lava beasts and collect their cores.', type: 'monster_kill', targetMonster: 'Lava Beast', goal: 8, reward: { gold: 3800, item: 'Magma Shield' }, quadrant: 'chaos', progress: 0 },
-    { id: 'chaos_ice_dragon', name: 'Ice Dragon Slayer', description: 'Defeat the Ice Dragon and collect its heart.', type: 'boss_defeat', targetMonster: 'Ice Dragon', goal: 1, reward: { gold: 3500, item: 'Dragon Scale Mail' }, quadrant: 'chaos', progress: 0 },
-    { id: 'duskmere_crystal_heart', name: 'Crystal Heart', description: 'Defeat the Crystal Golem and retrieve the Crystal Heart.', type: 'boss_defeat', targetMonster: 'Crystal Golem', goal: 1, reward: { gold: 1500, item: 'Crystal Armor' }, quadrant: 'duskmere', progress: 0 },
+    { id: 'chaos_ice_dragon', name: 'Ice Demon Slayer', description: 'Defeat the Ice Demon and collect its heart.', type: 'boss_defeat', targetMonster: 'Ice Demon', goal: 1, reward: { gold: 3500, item: 'Dragon Scale Mail' }, quadrant: 'chaos', progress: 0 },
+    { id: 'duskmere_crystal_heart', name: 'Crystal Heart', description: 'Defeat the Dread Wraith and retrieve the Crystal Heart it guards.', type: 'boss_defeat', targetMonster: 'Dread Wraith', goal: 1, reward: { gold: 1500, item: 'Crystal Armor' }, quadrant: 'duskmere', progress: 0 },
     { id: 'sylvaris_ancient_wisdom', name: 'Ancient Wisdom', description: 'Collect ancient tomes from each region\'s library.', type: 'treasure_find', targets: ['Brighthollow Tome', 'Duskmere Tome', 'Sylvaris Tome'], goal: 3, reward: { gold: 3000, item: 'Sage\'s Staff' }, quadrant: 'sylvaris', progress: 0 },
     { id: 'sylvaris_fire_core', name: 'Fire Core Collection', description: 'Collect 3 fire cores from fire elementals.', type: 'treasure_find', targetLocation: 'Fire Grotto', goal: 3, reward: { gold: 2200, item: 'Ruby Fragment x40' }, quadrant: 'sylvaris', progress: 0 },
     { id: 'duskmere_dread_knight_intel', name: 'Dread Knight Intelligence', description: 'Defeat 3 dark knights and bring back their steel.', type: 'monster_kill', targetMonster: 'Dark Knight', goal: 3, reward: { gold: 1800, item: 'Darksteel Sword' }, quadrant: 'duskmere', progress: 0 },
