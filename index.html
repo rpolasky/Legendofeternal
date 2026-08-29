@@ -1259,18 +1259,18 @@
             cursor: pointer;
             transition: filter 0.3s ease, transform 0.3s ease, left 0.4s ease, top 0.4s ease;
             filter: drop-shadow(0 8px 6px rgba(0,0,0,0.5));
-            animation: monsterFloat 2.5s infinite ease-in-out;
+            /* Static now, not animated - the float/bob was a placeholder-era
+               "something's alive here" cue for the old flat-color boxes.
+               With real sprite art it just reads as unwanted jitter, so
+               monsters now hold still except for their actual hit/attack
+               reactions. */
+            transform: translate(-50%, 0) scale(var(--mscale, 1));
         }
 
         .monster-sprite:hover {
             transform: scale(1.08) translateY(-8px);
             z-index: 30;
             filter: drop-shadow(0 10px 8px rgba(0,0,0,0.5)) drop-shadow(0 0 16px var(--highlight));
-        }
-
-        @keyframes monsterFloat {
-            0%, 100% { transform: translate(-50%, 0) rotate(0deg) scale(var(--mscale, 1)); }
-            50% { transform: translate(-50%, -8px) rotate(2deg) scale(var(--mscale, 1)); }
         }
 
         /* Boss stays an explicit, generously large fixed size rather than
@@ -1281,13 +1281,7 @@
         .monster-sprite.boss {
             width: 150px;
             max-width: 150px;
-            animation: bossFloat 2s infinite ease-in-out;
             filter: drop-shadow(0 10px 8px rgba(0,0,0,0.5)) drop-shadow(0 0 24px rgba(255,68,68,0.6));
-        }
-
-        @keyframes bossFloat {
-            0%, 100% { transform: translate(-50%, 0) scale(var(--mscale, 1)); }
-            50% { transform: translate(-50%, -10px) scale(calc(var(--mscale, 1) * 1.02)); }
         }
 
         /* Level badge, top-right corner of the sprite frame. Pulled out of
@@ -1481,13 +1475,8 @@
         }
 
         .battle-hero.selected .hero-avatar {
-            animation: idleBobSelected 1.3s ease-in-out infinite;
+            transform: scaleX(-1) scale(1.1);
             filter: drop-shadow(0 0 10px var(--highlight)) drop-shadow(0 0 22px rgba(255,215,0,0.7));
-        }
-
-        @keyframes idleBobSelected {
-            0%, 100% { transform: scaleX(-1) scale(1.1) translateY(0); }
-            50% { transform: scaleX(-1) scale(1.1) translateY(-4px); }
         }
 
         .battle-hero.dead .hero-avatar {
@@ -2329,23 +2318,16 @@
            positioning set earlier in the cascade, which is why monsters were
            landing in a relative-flow jumble instead of on their floor slots.) */
 
-        /* Idle "alive" bob so sprites don't feel static between attacks */
+        /* Monsters and heroes now hold still except for their actual hit/
+           attack/dodge reactions - the idle bob was useful when battle
+           participants were flat placeholder boxes with no real art, but
+           with actual sprites it just reads as unwanted jitter. */
         .monster-sprite > div:nth-child(3) {
-            animation: idleBob 2.6s ease-in-out infinite;
-        }
-
-        @keyframes idleBob {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-5px); }
+            transform: translateY(0);
         }
 
         .battle-hero .hero-avatar {
-            animation: idleBobSmall 2.4s ease-in-out infinite;
-        }
-
-        @keyframes idleBobSmall {
-            0%, 100% { transform: scaleX(-1) translateY(0); }
-            50% { transform: scaleX(-1) translateY(-3px); }
+            transform: scaleX(-1) translateY(0);
         }
 
         /* ====================================================================== */
@@ -2779,11 +2761,27 @@
             animation: monsterRecoil 0.32s ease;
         }
 
+        /* No positional movement at all now, per request - a hit just shows
+           as the hitFlash brightness pulse plus the elemental glow, nothing
+           moving or rotating. The old version's translateX(5px) reads as a
+           small forward lunge at this scale, which isn't wanted for a
+           "monster just takes the damage" reaction. */
         @keyframes monsterRecoil {
-            0% { transform: translateX(0) rotate(0deg); }
-            30% { transform: translateX(5px) rotate(-2deg); }
-            60% { transform: translateX(-2px) rotate(1deg); }
-            100% { transform: translateX(0) rotate(0deg); }
+            0%, 100% { transform: translateX(0) rotate(0deg); }
+        }
+
+        /* Dodge: plays instead of monsterRecoil when a hero's attack misses -
+           a quick hop backward (away from the party, further into their own
+           side of the floor) reads as evasion instead of just... nothing
+           happening on a miss. */
+        .monster-sprite.monster-dodge .body {
+            animation: monsterDodge 0.36s ease-out;
+        }
+
+        @keyframes monsterDodge {
+            0% { transform: translateX(0); }
+            40% { transform: translateX(-16px); }
+            100% { transform: translateX(0); }
         }
 
         /* One-time death animations, keyed to archetype family so different
@@ -4214,7 +4212,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v85</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v86</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -9375,6 +9373,39 @@
                     hint: "The Ashveil Spire lies to the northeast.",
                     quest: { id: 'sylvaris_convergence', name: 'Gathering Storm', description: 'Travel to the Ashveil Spire and see for yourself what stirs there.', type: 'visit_locations', targets: ['Ashveil Spire'], goal: 1, reward: { gold: 1200, item: 'Ether x3' } } }
             ];
+            this.snapNpcsToWalkableGround();
+        }
+
+        /** Guards against any story NPC's hardcoded {x,y} landing on terrain
+         *  that's actually impassable (mountain/water/lava) - which is
+         *  exactly what happened to Milo (335,385), close enough to the map's
+         *  southern mountain border that he ended up unreachable. Rather than
+         *  hand-auditing every hardcoded coordinate against a procedural map
+         *  that can itself change over time, this runs once after NPCs are
+         *  placed and nudges anyone standing on blocked terrain to the
+         *  nearest walkable tile (spiral search, capped at a modest radius
+         *  so a badly-placed NPC doesn't teleport across the map instead of
+         *  just stepping off the rock they're standing on). */
+        snapNpcsToWalkableGround() {
+            const blocked = new Set([CONFIG.TERRAIN.MOUNTAIN, CONFIG.TERRAIN.WATER, CONFIG.TERRAIN.LAVA]);
+            const isWalkable = (x, y) => x >= 0 && x < this.width && y >= 0 && y < this.height &&
+                this.tiles[y] && !blocked.has(this.tiles[y][x]);
+            this.npcs.forEach(npc => {
+                if (isWalkable(npc.x, npc.y)) return;
+                for (let r = 1; r <= 20; r++) {
+                    for (let dy = -r; dy <= r; dy++) {
+                        for (let dx = -r; dx <= r; dx++) {
+                            if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+                            const nx = npc.x + dx, ny = npc.y + dy;
+                            if (isWalkable(nx, ny)) {
+                                npc.x = nx;
+                                npc.y = ny;
+                                return;
+                            }
+                        }
+                    }
+                }
+            });
         }
 
         getVisibleLocations() {
@@ -12562,6 +12593,7 @@
                 triggerHeroApproach(hero, () => {
                     this.log(`💫 ${hero.name}'s Limit Break goes wide - complete miss!`);
                     this.showDamage(target, 'MISS');
+                    playMonsterDodgeAnim(this.monsters.indexOf(target));
                     this.updatePartyDisplay();
                 }, () => {
                     this.renderMainCommands();
@@ -12999,6 +13031,7 @@
                     window.game.audio.play('sword');
                     this.log(`${target.name} evades ${hero.name}'s attack!`);
                     this.showDamage(target, 'MISS', false);
+                    playMonsterDodgeAnim(this.monsters.indexOf(target));
                     this.updateMonsterDisplay();
                     this.updatePartyDisplay();
                     return;
@@ -17034,7 +17067,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v85]');
+            console.log('Game starting... [build v86]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
@@ -21711,6 +21744,16 @@
                     this.world.secretLocations = saveData.world.secretLocations || [];
                     if (!saveData.world.npcs || saveData.world.npcs.length === 0) {
                         this.world.createNPCs();
+                    } else {
+                        // createNPCs() (which includes the walkable-ground
+                        // safety net - see snapNpcsToWalkableGround()) only
+                        // runs for brand-new NPC generation above. An
+                        // existing save's NPCs were loaded as-is, so a
+                        // previously-mislaced one (e.g. Milo ending up
+                        // standing on impassable mountain terrain) would
+                        // otherwise stay stuck that way forever even after
+                        // this fix ships. Run the same safety net here too.
+                        this.world.snapNpcsToWalkableGround();
                     }
                 } else {
                     console.log('Old save format detected - generating new world');
@@ -25146,15 +25189,21 @@ const QUEST_DATA = [
      *  position in the array. Positions are the top-anchor point (not center)
      *  since centering is handled by translateX(-50%) in the CSS animation.
      */
+    /** Clean bottom-left -> top-right diagonal staircase: monster 1 stands
+     *  closest/lowest-left, each additional one steps up and to the right by
+     *  a consistent amount instead of jumping across to a far slot (which is
+     *  what the old 2-monster case did - straight from bottom-left to "all
+     *  the way over by the heroes"). Scale steps down to match (further back
+     *  = smaller), and sizes overall are a further ~10% down from before. */
     const MONSTER_SLOTS = {
-        1: [{ x: 40, y: 46, scale: 0.98 }],
-        2: [{ x: 18, y: 52, scale: 0.82 }, { x: 60, y: 46, scale: 0.82 }],
-        3: [{ x: 10, y: 52, scale: 0.78 }, { x: 38, y: 58, scale: 0.86 }, { x: 66, y: 50, scale: 0.78 }],
-        4: [{ x: 8, y: 52, scale: 0.74 }, { x: 34, y: 58, scale: 0.82 }, { x: 60, y: 52, scale: 0.74 }, { x: 40, y: 26, scale: 0.51 }],
-        5: [{ x: 6, y: 52, scale: 0.70 }, { x: 30, y: 58, scale: 0.78 }, { x: 54, y: 52, scale: 0.70 }, { x: 20, y: 26, scale: 0.48 }, { x: 48, y: 24, scale: 0.48 }],
-        6: [{ x: 4, y: 52, scale: 0.66 }, { x: 26, y: 56, scale: 0.74 }, { x: 48, y: 56, scale: 0.74 }, { x: 70, y: 52, scale: 0.66 }, { x: 18, y: 24, scale: 0.47 }, { x: 50, y: 24, scale: 0.47 }]
+        1: [{ x: 28, y: 52, scale: 0.86 }],
+        2: [{ x: 14, y: 58, scale: 0.80 }, { x: 32, y: 47, scale: 0.72 }],
+        3: [{ x: 10, y: 60, scale: 0.78 }, { x: 26, y: 51, scale: 0.70 }, { x: 42, y: 42, scale: 0.62 }],
+        4: [{ x: 7, y: 62, scale: 0.76 }, { x: 21, y: 54, scale: 0.69 }, { x: 35, y: 46, scale: 0.62 }, { x: 49, y: 38, scale: 0.55 }],
+        5: [{ x: 5, y: 63, scale: 0.74 }, { x: 17, y: 56, scale: 0.68 }, { x: 29, y: 49, scale: 0.61 }, { x: 41, y: 42, scale: 0.55 }, { x: 53, y: 35, scale: 0.49 }],
+        6: [{ x: 4, y: 64, scale: 0.72 }, { x: 14, y: 58, scale: 0.67 }, { x: 24, y: 52, scale: 0.61 }, { x: 34, y: 46, scale: 0.56 }, { x: 44, y: 40, scale: 0.50 }, { x: 54, y: 34, scale: 0.45 }]
     };
-    const BOSS_SLOT = { x: 24, y: 42, scale: 1.05 };
+    const BOSS_SLOT = { x: 22, y: 46, scale: 0.95 };
 
     /** Hero floor standing positions, mirroring MONSTER_SLOTS but on the
      *  right side of the floor trapezoid (facing the monsters on the left) -
@@ -25661,6 +25710,18 @@ const QUEST_DATA = [
         void el.offsetWidth;
         el.classList.add('monster-recoil');
         setTimeout(() => el.classList.remove('monster-recoil'), 320);
+    }
+
+    /** Small backward hop, played instead of playMonsterRecoilAnim when a
+     *  hero's attack misses - gives a miss some visual identity (evasion)
+     *  instead of the monster just standing there like nothing happened. */
+    function playMonsterDodgeAnim(elOrIndex) {
+        const el = (typeof elOrIndex === 'number') ? document.getElementById(`monster-${elOrIndex}`) : elOrIndex;
+        if (!el) return;
+        el.classList.remove('monster-dodge');
+        void el.offsetWidth;
+        el.classList.add('monster-dodge');
+        setTimeout(() => el.classList.remove('monster-dodge'), 360);
     }
 
     /** Maps a monster to which one-time death animation family it should
