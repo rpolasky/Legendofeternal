@@ -4214,7 +4214,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v84</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v85</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -13010,8 +13010,17 @@
                     shakeBattleScreen(isCrit);
                     hitFlash(monsterDiv);
                     playMonsterRecoilAnim(monsterDiv);
-                    monsterDiv.style.transition = 'transform 0.1s, box-shadow 0.1s';
-                    monsterDiv.style.transform = 'scale(1.2)';
+                    // Used to also do a scale(1.2)->scale(1) "impact pop" here via
+                    // direct inline transform - that completely overwrote the
+                    // translate(-50%, 0) scale(var(--mscale)) positioning transform
+                    // every monster now has (see MONSTER_SLOTS), which both visibly
+                    // shifted the sprite sideways (losing the -50% centering) and
+                    // permanently left it stuck at literal scale(1) instead of its
+                    // own slot's scale afterward, since nothing ever reset it. Per
+                    // request, monsters don't get a lunge/pop reaction at all now -
+                    // hitFlash + shakeBattleScreen + the glow below are enough
+                    // feedback without moving or resizing the sprite.
+                    monsterDiv.style.transition = 'box-shadow 0.1s';
                     monsterDiv.style.boxShadow = '0 0 30px #ffaa00';
                     this.createAttackEffects(monsterDiv, isCrit);
                     if (isCrit) window.fx.burst(getBattleCenter(monsterDiv).x, getBattleCenter(monsterDiv).y, '#ffaa00', 22);
@@ -13025,10 +13034,7 @@
                         }
                     }
                     setTimeout(() => {
-                        monsterDiv.style.transform = 'scale(1)';
-                        setTimeout(() => {
-                            monsterDiv.style.boxShadow = '';
-                        }, 100);
+                        monsterDiv.style.boxShadow = '';
                     }, 150);
                 }
                 window.game.audio.play('sword');
@@ -13126,13 +13132,10 @@
                             monsterDiv.style.setProperty('border', '4px solid #4444ff', 'important');
                             monsterDiv.style.setProperty('box-shadow', '0 0 30px #4444ff', 'important');
                         }
-                        monsterDiv.style.setProperty('transform', 'scale(1.15)', 'important');
+                        monsterDiv.style.setProperty('transition', 'box-shadow 0.2s', 'important');
                         setTimeout(() => {
-                            monsterDiv.style.setProperty('transform', 'scale(1)', 'important');
-                            setTimeout(() => {
-                                monsterDiv.style.border = originalBorder;
-                                monsterDiv.style.boxShadow = originalBoxShadow;
-                            }, 200);
+                            monsterDiv.style.border = originalBorder;
+                            monsterDiv.style.boxShadow = originalBoxShadow;
                         }, 250);
                     }
                     window.game.audio.play('hit');
@@ -13424,17 +13427,12 @@
                         monsterDiv.style.setProperty('transition', 'all 0.2s', 'important');
                         monsterDiv.style.setProperty('border', '4px solid #ffff00', 'important');
                         monsterDiv.style.setProperty('box-shadow', '0 0 30px #ffff00, 0 0 60px #ffaa00', 'important');
-                        monsterDiv.style.setProperty('transform', 'scale(1.15)', 'important');
                         monsterDiv.style.setProperty('z-index', '50', 'important');
                         setTimeout(() => {
-                            monsterDiv.style.setProperty('transform', 'scale(1)', 'important');
-                            setTimeout(() => {
-                                monsterDiv.style.border = originalBorder;
-                                monsterDiv.style.boxShadow = originalBoxShadow;
-                                monsterDiv.style.transform = '';
-                                monsterDiv.style.zIndex = '';
-                            }, 200);
-                        }, 250);
+                            monsterDiv.style.border = originalBorder;
+                            monsterDiv.style.boxShadow = originalBoxShadow;
+                            monsterDiv.style.zIndex = '';
+                        }, 450);
                     }
                     if (spell.element === 'fire' && monsterDiv) {
                         const originalBorder = monsterDiv.style.border;
@@ -13442,17 +13440,12 @@
                         monsterDiv.style.setProperty('transition', 'all 0.2s', 'important');
                         monsterDiv.style.setProperty('border', '4px solid #ff0000', 'important');
                         monsterDiv.style.setProperty('box-shadow', '0 0 30px #ff0000, 0 0 60px #ff8800', 'important');
-                        monsterDiv.style.setProperty('transform', 'scale(1.15)', 'important');
                         monsterDiv.style.setProperty('z-index', '50', 'important');
                         setTimeout(() => {
-                            monsterDiv.style.setProperty('transform', 'scale(1)', 'important');
-                            setTimeout(() => {
-                                monsterDiv.style.border = originalBorder;
-                                monsterDiv.style.boxShadow = originalBoxShadow;
-                                monsterDiv.style.transform = '';
-                                monsterDiv.style.zIndex = '';
-                            }, 200);
-                        }, 250);
+                            monsterDiv.style.border = originalBorder;
+                            monsterDiv.style.boxShadow = originalBoxShadow;
+                            monsterDiv.style.zIndex = '';
+                        }, 450);
                     }
                     if (spell.element === 'ice' && monsterDiv) {
                         const originalBorder = monsterDiv.style.border;
@@ -13460,17 +13453,12 @@
                         monsterDiv.style.setProperty('transition', 'all 0.2s', 'important');
                         monsterDiv.style.setProperty('border', '4px solid #4444ff', 'important');
                         monsterDiv.style.setProperty('box-shadow', '0 0 30px #4444ff, 0 0 60px #88aaff', 'important');
-                        monsterDiv.style.setProperty('transform', 'scale(1.15)', 'important');
                         monsterDiv.style.setProperty('z-index', '50', 'important');
                         setTimeout(() => {
-                            monsterDiv.style.setProperty('transform', 'scale(1)', 'important');
-                            setTimeout(() => {
-                                monsterDiv.style.border = originalBorder;
-                                monsterDiv.style.boxShadow = originalBoxShadow;
-                                monsterDiv.style.transform = '';
-                                monsterDiv.style.zIndex = '';
-                            }, 200);
-                        }, 250);
+                            monsterDiv.style.border = originalBorder;
+                            monsterDiv.style.boxShadow = originalBoxShadow;
+                            monsterDiv.style.zIndex = '';
+                        }, 450);
                     }
                     if (casterDiv && monsterDiv && spell.element === 'lightning') {
                         this.createLightningBolt(casterDiv, monsterDiv);
@@ -13539,24 +13527,18 @@
                         const originalBorder = monsterDiv.style.border;
                         const originalBoxShadow = monsterDiv.style.boxShadow;
                         if (spell.element === 'fire') {
-                            monsterDiv.style.setProperty('transition', 'all 0.2s', 'important');
+                            monsterDiv.style.setProperty('transition', 'box-shadow 0.2s', 'important');
                             monsterDiv.style.setProperty('border', '4px solid #ff0000', 'important');
                             monsterDiv.style.setProperty('box-shadow', '0 0 30px #ff0000, 0 0 60px #ff8800', 'important');
-                            monsterDiv.style.setProperty('transform', 'scale(1.15)', 'important');
                         } else if (spell.element === 'ice') {
-                            monsterDiv.style.setProperty('transition', 'all 0.2s', 'important');
+                            monsterDiv.style.setProperty('transition', 'box-shadow 0.2s', 'important');
                             monsterDiv.style.setProperty('border', '4px solid #4444ff', 'important');
                             monsterDiv.style.setProperty('box-shadow', '0 0 30px #4444ff, 0 0 60px #88aaff', 'important');
-                            monsterDiv.style.setProperty('transform', 'scale(1.15)', 'important');
                         }
                         setTimeout(() => {
-                            monsterDiv.style.setProperty('transform', 'scale(1)', 'important');
-                            setTimeout(() => {
-                                monsterDiv.style.border = originalBorder;
-                                monsterDiv.style.boxShadow = originalBoxShadow;
-                                monsterDiv.style.transform = '';
-                            }, 200);
-                        }, 250);
+                            monsterDiv.style.border = originalBorder;
+                            monsterDiv.style.boxShadow = originalBoxShadow;
+                        }, 450);
                     }
                     window.game.audio.play('hit');
                     this.showDamage(monster, actualDamage);
@@ -17052,7 +17034,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v84]');
+            console.log('Game starting... [build v85]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
@@ -25165,14 +25147,14 @@ const QUEST_DATA = [
      *  since centering is handled by translateX(-50%) in the CSS animation.
      */
     const MONSTER_SLOTS = {
-        1: [{ x: 40, y: 46, scale: 1.25 }],
-        2: [{ x: 18, y: 52, scale: 1.05 }, { x: 60, y: 46, scale: 1.05 }],
-        3: [{ x: 10, y: 52, scale: 1.0 }, { x: 38, y: 58, scale: 1.1 }, { x: 66, y: 50, scale: 1.0 }],
-        4: [{ x: 8, y: 52, scale: 0.95 }, { x: 34, y: 58, scale: 1.05 }, { x: 60, y: 52, scale: 0.95 }, { x: 40, y: 26, scale: 0.65 }],
-        5: [{ x: 6, y: 52, scale: 0.9 }, { x: 30, y: 58, scale: 1.0 }, { x: 54, y: 52, scale: 0.9 }, { x: 20, y: 26, scale: 0.62 }, { x: 48, y: 24, scale: 0.62 }],
-        6: [{ x: 4, y: 52, scale: 0.85 }, { x: 26, y: 56, scale: 0.95 }, { x: 48, y: 56, scale: 0.95 }, { x: 70, y: 52, scale: 0.85 }, { x: 18, y: 24, scale: 0.6 }, { x: 50, y: 24, scale: 0.6 }]
+        1: [{ x: 40, y: 46, scale: 0.98 }],
+        2: [{ x: 18, y: 52, scale: 0.82 }, { x: 60, y: 46, scale: 0.82 }],
+        3: [{ x: 10, y: 52, scale: 0.78 }, { x: 38, y: 58, scale: 0.86 }, { x: 66, y: 50, scale: 0.78 }],
+        4: [{ x: 8, y: 52, scale: 0.74 }, { x: 34, y: 58, scale: 0.82 }, { x: 60, y: 52, scale: 0.74 }, { x: 40, y: 26, scale: 0.51 }],
+        5: [{ x: 6, y: 52, scale: 0.70 }, { x: 30, y: 58, scale: 0.78 }, { x: 54, y: 52, scale: 0.70 }, { x: 20, y: 26, scale: 0.48 }, { x: 48, y: 24, scale: 0.48 }],
+        6: [{ x: 4, y: 52, scale: 0.66 }, { x: 26, y: 56, scale: 0.74 }, { x: 48, y: 56, scale: 0.74 }, { x: 70, y: 52, scale: 0.66 }, { x: 18, y: 24, scale: 0.47 }, { x: 50, y: 24, scale: 0.47 }]
     };
-    const BOSS_SLOT = { x: 24, y: 42, scale: 1.35 };
+    const BOSS_SLOT = { x: 24, y: 42, scale: 1.05 };
 
     /** Hero floor standing positions, mirroring MONSTER_SLOTS but on the
      *  right side of the floor trapezoid (facing the monsters on the left) -
