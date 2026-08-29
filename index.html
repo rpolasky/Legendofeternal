@@ -6295,6 +6295,36 @@
     desertTileSheet.onload = () => { desertTileSheet.loaded = true; };
     const WORLD_TILE_STRIDE_DESERT = 16;
 
+    // Time Fantasy beach A1 water sheet - real shoreline autotile (edge/corner
+    // pieces with sand blended into the tile) instead of a flat color fill.
+    // Native RPG Maker MV layout, 48px tiles. We only need 4 static reference
+    // shapes (fill / vertical edge / horizontal edge / diagonal corner) out of
+    // the full animated sheet - see WATER_AUTOTILE below for the coordinates,
+    // and buildWaterPiece() which flips/mirrors these 4 to cover all 8
+    // orientations instead of needing 8 separate source pieces.
+    const beachA1Sheet = new Image();
+    beachA1Sheet.src = 'assets/tiles/beach_a1.png';
+    beachA1Sheet.loaded = false;
+    beachA1Sheet.onload = () => { beachA1Sheet.loaded = true; };
+    const BEACH_TILE = 48;
+    const WATER_AUTOTILE = {
+        fill:   [6, 0],
+        edgeV:  [0, 0], // land west, water east
+        edgeH:  [1, 0], // land north, water south
+        corner: [8, 1]  // land NW, water SE
+    };
+
+    // Gentle Forest big tree object (two 80x96 variants side by side) - used
+    // as an overlapping "canopy" object drawn on top of forest tiles instead
+    // of a single flat 16x16 tree icon, so forest patches read as an actual
+    // tree mass with trunk/root detail rather than a repeated tile stamp.
+    const forestTreeSheet = new Image();
+    forestTreeSheet.src = 'assets/tiles/forest_trees.png';
+    forestTreeSheet.loaded = false;
+    forestTreeSheet.onload = () => { forestTreeSheet.loaded = true; };
+    const FOREST_TREE_W = 80;
+    const FOREST_TREE_H = 96;
+
     // [col,row] coordinates into worldTileSheet (town.png), indexed 0-131 (12 cols x 11 rows),
     // except grass/road/tree/treeAlt/rock/flowers* which index into natureTileSheet instead (see above).
     const WORLD_TILES = {
@@ -8314,17 +8344,22 @@
         }
 
         addSpecialTerrainFeatures() {
-            this.addLavaArea(80, 360, 25, 0.9, { x: 85, y: 355 });
-            this.addLavaArea(80, 80, 20, 0.9, { x: 85, y: 85 });
-            for (let i = 0; i < 5; i++) {
-                const angle = (i / 5) * Math.PI * 2;
-                const offsetX = Math.floor(Math.cos(angle) * 15);
-                const offsetY = Math.floor(Math.sin(angle) * 15);
-                this.addLavaArea(80 + offsetX, 80 + offsetY, 8, 0.7);
-            }
+            // Fire Grotto sits in Sylvaris (the desert zone) - this is a tight lava
+            // pocket right at the dungeon mouth, not a sprawling volcanic field.
+            // Sylvaris' dominant terrain stays desert; this is a hazard flourish
+            // for one dungeon, not competing with Chaos as "the lava zone."
+            this.addLavaArea(80, 80, 9, 0.75, { x: 85, y: 85 });
+            // Dark Fortress sits in Duskmere (the forest zone) - same idea: a
+            // scorched ring right around the fortress gate, not a lava sea eating
+            // into the forest.
+            this.addLavaArea(80, 360, 10, 0.75, { x: 85, y: 355 });
             this.addMountainRange(202, 264, 15, 15, 0.6);
-            this.createLavaRiver(80, 80, 120, 120, 3);
-            this.createLavaRiver(80, 80, 50, 130, 3);
+            // Wall off the direct route from the central hub straight north into
+            // Chaos. Reaching the finale zone now requires the Sylvaris pass -
+            // no more beelining past the lake into the endgame area.
+            this.addMountainRange(240, 190, 20, 20, 0.65);
+            this.addMountainRange(280, 160, 20, 20, 0.65);
+            this.addMountainRange(310, 130, 18, 18, 0.65);
             for (let y = 0; y < 120; y++) {
                 for (let x = 250; x < 280; x++) {
                     const distToCave = Math.sqrt(Math.pow(x - 260, 2) + Math.pow(y - 70, 2));
@@ -8689,22 +8724,18 @@
         }
 
         createDesertWithCactus() {
-            for (let y = 20; y < 180; y++) {
-                for (let x = 20; x < 180; x++) {
-                    const distFromCenter = Math.sqrt(Math.pow(x-100, 2) + Math.pow(y-100, 2));
-                    if (distFromCenter < 60) {
+            // Sylvaris is the desert zone, kept strictly within y < 195 so it
+            // doesn't bleed across the quadrant line into Duskmere's forest.
+            // (Previously a second block reached down to y=250, putting desert
+            // sand inside what's supposed to be forest territory.)
+            for (let y = 15; y < 195; y++) {
+                for (let x = 15; x < 195; x++) {
+                    const distFromCenter = Math.sqrt(Math.pow(x-95, 2) + Math.pow(y-95, 2));
+                    if (distFromCenter < 70) {
                         this.tiles[y][x] = CONFIG.TERRAIN.DESERT;
-                    } else if (distFromCenter < 80 && Math.random() < 0.6) {
+                    } else if (distFromCenter < 90 && Math.random() < 0.6) {
                         this.tiles[y][x] = CONFIG.TERRAIN.DESERT;
-                    } else if (distFromCenter < 100 && Math.random() < 0.3) {
-                        this.tiles[y][x] = CONFIG.TERRAIN.DESERT;
-                    }
-                }
-            }
-            for (let y = 180; y < 250; y++) {
-                for (let x = 20; x < 120; x++) {
-                    const dist = Math.sqrt(Math.pow(x-60, 2) + Math.pow(y-220, 2));
-                    if (dist < 40 && Math.random() < 0.4) {
+                    } else if (distFromCenter < 110 && Math.random() < 0.3) {
                         this.tiles[y][x] = CONFIG.TERRAIN.DESERT;
                     }
                 }
@@ -8775,12 +8806,15 @@
             this.drawRoad(100, 160, 90, 120, true);
             this.drawRoad(90, 120, 70, 80, true);
             this.drawRoad(70, 80, 60, 60, true);
-            this.drawRoad(200, 270, 220, 230, true);
-            this.drawRoad(220, 230, 250, 190, true);
-            this.drawRoad(250, 190, 280, 150, true);
-            this.drawRoad(280, 150, 310, 110, true);
-            this.drawRoad(310, 110, 340, 70, true);
-            this.drawRoad(340, 70, 340, 40, true);
+            // Chaos is no longer reachable directly from the central hub - the
+            // road continues from Sylvaris instead, across the top of the map,
+            // so reaching the finale zone requires completing the Duskmere ->
+            // Sylvaris leg of the loop first.
+            this.drawRoad(60, 60, 120, 55, true);
+            this.drawRoad(120, 55, 180, 48, true);
+            this.drawRoad(180, 48, 250, 42, true);
+            this.drawRoad(250, 42, 310, 40, true);
+            this.drawRoad(310, 40, 340, 40, true);
             this.drawRoad(100, 120, 140, 130, false);
             this.drawRoad(140, 130, 180, 146, false);
             this.drawRoad(180, 146, 220, 160, false);
@@ -11012,6 +11046,11 @@
             this.lastStartRow = startRow;
             this.lastTs = ts;
 
+            // Big overlapping tree objects (Gentle Forest sprite) collected here during
+            // the terrain pass and painted in a second pass afterward, sorted by row, so
+            // each tree's canopy naturally overlaps the tile below it (painter's algorithm)
+            // instead of getting overwritten by that row's own terrain fill.
+            const bigTreeQueue = [];
             // Draw terrain with enhanced colors
             for (let row = startRow; row < endRow; row++) {
                 for (let col = startCol; col < endCol; col++) {
@@ -11051,15 +11090,16 @@
                                 const clutter = tileHash(col, row, 41);
                                 let deco = null;
                                 if (patchKind < 15) {
-                                    // bush patch
-                                    if (clutter < 35) deco = (tileHash(col, row, 62) < 50) ? WORLD_TILES.tree : WORLD_TILES.treeAlt;
+                                    // bush patch - tightened so stray trees don't dot the
+                                    // open field; real tree cover belongs in forest patches.
+                                    if (clutter < 12) deco = (tileHash(col, row, 62) < 50) ? WORLD_TILES.tree : WORLD_TILES.treeAlt;
                                 } else if (patchKind < 40) {
                                     // flower/rock patch
                                     if (clutter < 5) deco = WORLD_TILES.flowers1;
                                     else if (clutter < 9) deco = WORLD_TILES.flowers2;
                                     else if (clutter < 12) deco = WORLD_TILES.blueFlower;
                                     else if (clutter < 15) deco = WORLD_TILES.rock;
-                                } else if (clutter < 3) {
+                                } else if (clutter < 1) {
                                     // sparse background clutter everywhere else
                                     deco = WORLD_TILES.flowerSparse;
                                 }
@@ -11140,6 +11180,15 @@
                                     else if (mountainDist < 15) forestDensity = 0.8;
                                     else if (mountainDist < 22) forestDensity = 0.6;
                                 }
+                                // Coarse 5x5 "canopy block" decision, separate from the finer
+                                // density/species bias below: roughly half the forest reads as
+                                // a solid tree-mass core (near-total big-tree coverage, no small
+                                // icons mixed in) and the rest stays the lighter tapering edge -
+                                // instead of every tile independently rolling small-icon vs
+                                // big-tree, which was producing a scattered look with gaps and
+                                // stray "half tree" icons throughout the whole forest instead of
+                                // real clumped stands.
+                                const canopyBlock = clusterHash(col, row, 5, 97) < 55;
                                 // Cluster-biased density and species (see clusterHash above):
                                 // each ~4x4 neighborhood leans denser/sparser and toward one
                                 // dominant tree species, so forest reads as stands and lines
@@ -11147,12 +11196,36 @@
                                 // per-tile hash still adds local variation within that lean.
                                 const densityBias = (clusterHash(col, row, 4, 71) - 50) / 100; // -0.5..0.49
                                 const present = tileHash(col, row, 11);
-                                const effectiveDensity = Math.max(0.08, Math.min(0.97, forestDensity + densityBias * 0.6));
+                                const effectiveDensity = canopyBlock
+                                    ? Math.max(0.9, forestDensity)
+                                    : Math.max(0.08, Math.min(0.97, forestDensity + densityBias * 0.6));
                                 if (present < effectiveDensity * 100) {
                                     if (natureTileSheet.loaded) {
+                                        // Inside a canopy-block core, this is almost always a big
+                                        // tree - no rocks/flowers mixed into the tree mass, and the
+                                        // rare miss still falls back to the small tree icon (never
+                                        // treeAlt/rock/flower), so the core reads as unbroken forest.
+                                        if (canopyBlock) {
+                                            const bigTreeRoll = tileHash(col, row, 53);
+                                            if (bigTreeRoll < 90) {
+                                                bigTreeQueue.push({ row, screenX, screenY, variant: bigTreeRoll % 2 });
+                                                break;
+                                            }
+                                            ctx.drawImage(natureTileSheet, WORLD_TILES.tree[0] * WORLD_TILE_STRIDE_NATURE, WORLD_TILES.tree[1] * WORLD_TILE_STRIDE_NATURE, 16, 16, screenX, screenY, ts, ts);
+                                            break;
+                                        }
                                         const speciesBias = clusterHash(col, row, 4, 83);
                                         const pick = (tileHash(col, row, 23) + speciesBias) % 100;
                                         let variant;
+                                        // At the sparser edge, some "tree" tiles still become big
+                                        // overlapping canopy objects instead of the small flat icon,
+                                        // so the transition from core to clearing isn't an abrupt
+                                        // cutoff from big trees to tiny ones.
+                                        const bigTreeRoll = tileHash(col, row, 53);
+                                        if (pick < 45 && bigTreeRoll < 55) {
+                                            bigTreeQueue.push({ row, screenX, screenY, variant: bigTreeRoll % 2 });
+                                            break;
+                                        }
                                         if (pick < 45) variant = WORLD_TILES.tree;
                                         else if (pick < 80) variant = WORLD_TILES.treeAlt;
                                         else if (pick < 92) variant = WORLD_TILES.rock;
@@ -11176,15 +11249,38 @@
                                 }
                                 break;
                             case CONFIG.TERRAIN.WATER: {
-                                const shimmer = (Math.sin(time * 1.4 + col * 0.6 + row * 0.4) + 1) / 2;
-                                ctx.fillStyle = `rgba(200,235,255,${(shimmer * 0.22).toFixed(2)})`;
-                                ctx.fillRect(screenX, screenY, ts, ts);
-                                if ((col * 5 + row * 3) % 10 < 4) {
-                                    ctx.globalAlpha = 0.55 + shimmer * 0.45;
-                                    ctx.fillStyle = '#bfe8ff';
-                                    ctx.fillText('💧', screenX + ts/2, screenY + ts/2);
-                                    ctx.globalAlpha = 1;
+                                if (beachA1Sheet.loaded) {
+                                    // Real shoreline autotile: look at the 4 orthogonal
+                                    // neighbors to decide fill / straight edge / corner,
+                                    // then flip the single edge and single corner source
+                                    // piece to cover all 8 facings instead of needing 8
+                                    // separate sprites.
+                                    const isWater = (cc, rr) => cc >= 0 && cc < worldMap.width && rr >= 0 && rr < worldMap.height && worldMap.tiles[rr][cc] === CONFIG.TERRAIN.WATER;
+                                    const landN = !isWater(col, row - 1);
+                                    const landS = !isWater(col, row + 1);
+                                    const landE = !isWater(col + 1, row);
+                                    const landW = !isWater(col - 1, row);
+                                    let piece = WATER_AUTOTILE.fill, flipX = false, flipY = false;
+                                    if (landN && landW && !landS && !landE) { piece = WATER_AUTOTILE.corner; }
+                                    else if (landN && landE && !landS && !landW) { piece = WATER_AUTOTILE.corner; flipX = true; }
+                                    else if (landS && landW && !landN && !landE) { piece = WATER_AUTOTILE.corner; flipY = true; }
+                                    else if (landS && landE && !landN && !landW) { piece = WATER_AUTOTILE.corner; flipX = true; flipY = true; }
+                                    else if (landN && !landS && !landE && !landW) { piece = WATER_AUTOTILE.edgeH; }
+                                    else if (landS && !landN && !landE && !landW) { piece = WATER_AUTOTILE.edgeH; flipY = true; }
+                                    else if (landW && !landN && !landS && !landE) { piece = WATER_AUTOTILE.edgeV; }
+                                    else if (landE && !landN && !landS && !landW) { piece = WATER_AUTOTILE.edgeV; flipX = true; }
+                                    ctx.save();
+                                    ctx.translate(screenX + ts / 2, screenY + ts / 2);
+                                    ctx.scale(flipX ? -1 : 1, flipY ? -1 : 1);
+                                    ctx.drawImage(beachA1Sheet, piece[0] * BEACH_TILE, piece[1] * BEACH_TILE, BEACH_TILE, BEACH_TILE, -ts / 2, -ts / 2, ts, ts);
+                                    ctx.restore();
+                                } else {
+                                    ctx.fillStyle = '#4a90a4';
+                                    ctx.fillRect(screenX, screenY, ts, ts);
                                 }
+                                const shimmer = (Math.sin(time * 1.4 + col * 0.6 + row * 0.4) + 1) / 2;
+                                ctx.fillStyle = `rgba(200,235,255,${(shimmer * 0.12).toFixed(2)})`;
+                                ctx.fillRect(screenX, screenY, ts, ts);
                                 break;
                             }
                             case CONFIG.TERRAIN.DESERT:
@@ -11199,6 +11295,22 @@
                         ctx.fillRect(screenX, screenY, ts, ts);
                     }
                 }
+            }
+
+            // Second pass: big overlapping canopy trees, sorted by row so lower trees
+            // paint over the base of trees above them (painter's algorithm depth).
+            if (forestTreeSheet.loaded && bigTreeQueue.length) {
+                bigTreeQueue.sort((a, b) => a.row - b.row);
+                const drawW = ts * 2;
+                const drawH = drawW * (FOREST_TREE_H / FOREST_TREE_W);
+                bigTreeQueue.forEach(t => {
+                    const sx = t.variant === 0 ? 0 : FOREST_TREE_W;
+                    // Anchor at the tile's bottom-center so the trunk base sits on the
+                    // tile and the canopy spreads up/left/right over neighboring tiles.
+                    const dx = t.screenX + ts / 2 - drawW / 2;
+                    const dy = t.screenY + ts - drawH;
+                    ctx.drawImage(forestTreeSheet, sx, 0, FOREST_TREE_W, FOREST_TREE_H, dx, dy, drawW, drawH);
+                });
             }
 
             // Draw roads
