@@ -4214,7 +4214,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v83</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v84</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -17052,7 +17052,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v83]');
+            console.log('Game starting... [build v84]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
@@ -25281,6 +25281,18 @@ const QUEST_DATA = [
             this.canvas = canvas;
             this.ctx = canvas.getContext('2d');
             this.resize();
+            // The battle screen can still be mid-layout at the exact
+            // synchronous moment attach() runs (e.g. it just became visible
+            // this same tick), so this first resize() can measure a
+            // zero-size parent and leave the canvas's actual drawing buffer
+            // at 0x0 - which silently drops every draw call with no error,
+            // even though the canvas's CSS box looks completely normal.
+            // castSpellProjectile() already calls resize() again right
+            // before every cast, which is why this doesn't break real
+            // spellcasting in practice - but catching it here too, once
+            // layout has actually settled, closes the gap for anything that
+            // draws via other paths (e.g. burst()-only effects).
+            requestAnimationFrame(() => this.resize());
             if (!this.running) {
                 this.running = true;
                 requestAnimationFrame(() => this.loop());
