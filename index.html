@@ -1140,7 +1140,7 @@
         .battle-background {
             position: relative;
             display: flex;
-            justify-content: space-between;
+            justify-content: flex-end;
             padding: 14px 30px;
             /* Full height now - the command bar floats as a small pill
                overlay (see .battle-ui) instead of reserving a fixed strip
@@ -1159,68 +1159,82 @@
         /*    layer (mist/dust/spores/embers) swapped in via JS at battle start. */
         /* ====================================================================== */
         .battle-background.env-grass {
-            background:
-                linear-gradient(180deg, transparent 0%, transparent 58%, rgba(46,110,46,0.55) 60%, rgba(18,48,22,0.92) 100%),
-                radial-gradient(ellipse at 50% 10%, rgba(255,244,200,0.16) 0%, transparent 45%),
-                radial-gradient(ellipse at 30% 40%, #1c3a24 0%, #0a1a10 70%);
+            background-image:
+                linear-gradient(180deg, transparent 0%, transparent 55%, rgba(18,48,22,0.55) 75%, rgba(10,20,10,0.88) 100%),
+                url('assets/battle/bg_grass.jpg');
+            background-size: cover;
+            background-position: center;
         }
 
         .battle-background.env-swamp {
-            background:
-                linear-gradient(180deg, transparent 0%, transparent 55%, rgba(60,70,40,0.6) 60%, rgba(20,26,16,0.94) 100%),
-                radial-gradient(ellipse at 60% 15%, rgba(180,200,140,0.10) 0%, transparent 50%),
-                radial-gradient(ellipse at 30% 40%, #2a3020 0%, #10140c 70%);
+            background-image:
+                linear-gradient(180deg, transparent 0%, transparent 52%, rgba(20,26,16,0.6) 75%, rgba(10,14,8,0.9) 100%),
+                url('assets/battle/bg_grass.jpg');
+            background-size: cover;
+            background-position: center;
+            filter: saturate(0.7) brightness(0.85) hue-rotate(-8deg);
         }
 
         .battle-background.env-desert {
-            background:
-                linear-gradient(180deg, transparent 0%, transparent 56%, rgba(150,110,50,0.55) 60%, rgba(58,38,16,0.92) 100%),
-                radial-gradient(ellipse at 55% 12%, rgba(255,200,110,0.22) 0%, transparent 48%),
-                radial-gradient(ellipse at 30% 40%, #3a2a14 0%, #180f08 70%);
+            background-image:
+                linear-gradient(180deg, transparent 0%, transparent 54%, rgba(58,38,16,0.5) 75%, rgba(30,18,8,0.88) 100%),
+                url('assets/battle/bg_desert.jpg');
+            background-size: cover;
+            background-position: center;
         }
 
         .battle-background.env-volcanic {
-            background:
-                linear-gradient(180deg, transparent 0%, transparent 55%, rgba(120,30,10,0.65) 60%, rgba(30,6,4,0.95) 100%),
-                radial-gradient(ellipse at 50% 65%, rgba(255,100,30,0.28) 0%, transparent 55%),
-                radial-gradient(ellipse at 30% 40%, #2a0e08 0%, #0c0402 70%);
+            background-image:
+                linear-gradient(180deg, transparent 0%, transparent 52%, rgba(30,6,4,0.55) 75%, rgba(16,4,2,0.9) 100%),
+                url('assets/battle/bg_volcanic.jpg');
+            background-size: cover;
+            background-position: center;
         }
 
         .battle-background.env-cave {
-            background:
-                linear-gradient(180deg, transparent 0%, transparent 60%, rgba(40,50,60,0.6) 62%, rgba(8,10,14,0.94) 100%),
-                radial-gradient(ellipse at 50% 20%, rgba(120,160,200,0.10) 0%, transparent 50%),
-                radial-gradient(ellipse at 30% 40%, #1a2028 0%, #08090c 70%);
+            background-image:
+                linear-gradient(180deg, transparent 0%, transparent 56%, rgba(8,10,14,0.55) 75%, rgba(4,5,8,0.9) 100%),
+                url('assets/battle/bg_dungeon.jpg');
+            background-size: cover;
+            background-position: center;
         }
 
         .battle-background.env-ruins {
-            background:
-                linear-gradient(180deg, transparent 0%, transparent 58%, rgba(110,100,80,0.5) 60%, rgba(28,24,18,0.92) 100%),
-                radial-gradient(ellipse at 55% 15%, rgba(220,200,150,0.14) 0%, transparent 48%),
-                radial-gradient(ellipse at 30% 40%, #2c281e 0%, #0e0c08 70%);
+            background-image:
+                linear-gradient(180deg, transparent 0%, transparent 54%, rgba(28,24,18,0.5) 75%, rgba(14,12,8,0.88) 100%),
+                url('assets/battle/bg_dungeon.jpg');
+            background-size: cover;
+            background-position: center;
+            filter: saturate(0.75) sepia(0.15);
         }
 
         .battle-background.env-castle {
-            background:
-                linear-gradient(180deg, transparent 0%, transparent 58%, rgba(60,20,60,0.55) 60%, rgba(16,6,18,0.94) 100%),
-                radial-gradient(ellipse at 25% 70%, rgba(255,90,40,0.14) 0%, transparent 40%),
-                radial-gradient(ellipse at 75% 70%, rgba(255,90,40,0.14) 0%, transparent 40%),
-                radial-gradient(ellipse at 30% 40%, #2a1a4e 0%, #0a0a1a 70%);
+            background-image:
+                linear-gradient(180deg, transparent 0%, transparent 54%, rgba(16,6,18,0.55) 75%, rgba(10,4,12,0.9) 100%),
+                url('assets/battle/bg_dungeon.jpg');
+            background-size: cover;
+            background-position: center;
+            filter: saturate(0.85) hue-rotate(20deg) brightness(0.9);
         }
 
-        /* Monster Area - Enhanced. 3 columns so up to 6 enemies form a compact
-           2x3 grid instead of a tall 3x2 stack that would run out of vertical
-           room in the shorter stage area. Widened 52% -> 56% to give the
-           larger sprites below a bit more breathing room. */
+        /* Monster Area - repositioned to actually stand on the painted stone
+           floor visible in the new background art instead of a rigid top-left
+           grid. All 4 backgrounds share the same composition (a floor
+           trapezoid narrowing toward a vanishing point around mid-height,
+           framed by trees/rock on both sides), so one set of absolute
+           percentage-based slots (see MONSTER_SLOTS in JS) works across all
+           of them. Kept to the left ~78% of the stage so nothing overlaps the
+           party HUD cards on the right.
+        */
         .monsters-area {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            grid-auto-rows: min-content;
-            gap: 10px 10px;
-            width: 56%;
-            padding-top: 10px;
-            align-content: start;
-            justify-items: center;
+            position: absolute;
+            inset: 0;
+            width: 78%;
+            pointer-events: none;
+        }
+        .monster-sprite {
+            position: absolute;
+            pointer-events: auto;
         }
 
         /* Fluid width (100% of its 1fr grid column, capped by max-width so
@@ -1235,18 +1249,17 @@
            been removed - a fixed px there would just fight this fluid
            behavior, so this is the one rule in effect now. */
         .monster-sprite {
-            width: 100%;
-            max-width: 100px;
+            width: 120px;
+            max-width: 30vw;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: flex-start;
             font-size: clamp(20px, 7vw, 30px);
-            position: relative;
-            animation: monsterFloat 2.5s infinite ease-in-out;
             cursor: pointer;
-            transition: filter 0.3s ease, transform 0.3s ease;
+            transition: filter 0.3s ease, transform 0.3s ease, left 0.4s ease, top 0.4s ease;
             filter: drop-shadow(0 8px 6px rgba(0,0,0,0.5));
+            animation: monsterFloat 2.5s infinite ease-in-out;
         }
 
         .monster-sprite:hover {
@@ -1256,8 +1269,8 @@
         }
 
         @keyframes monsterFloat {
-            0%, 100% { transform: translateY(0px) rotate(0deg); }
-            50% { transform: translateY(-8px) rotate(2deg); }
+            0%, 100% { transform: translate(-50%, 0) rotate(0deg) scale(var(--mscale, 1)); }
+            50% { transform: translate(-50%, -8px) rotate(2deg) scale(var(--mscale, 1)); }
         }
 
         /* Boss stays an explicit, generously large fixed size rather than
@@ -1273,8 +1286,8 @@
         }
 
         @keyframes bossFloat {
-            0%, 100% { transform: translateY(0px) scale(1); }
-            50% { transform: translateY(-10px) scale(1.02); }
+            0%, 100% { transform: translate(-50%, 0) scale(var(--mscale, 1)); }
+            50% { transform: translate(-50%, -10px) scale(calc(var(--mscale, 1) * 1.02)); }
         }
 
         /* Level badge, top-right corner of the sprite frame. Pulled out of
@@ -1420,42 +1433,28 @@
            beside its sprite via the shared .hero-slot wrapper (see
            updatePartyDisplay()). */
         .party-battle-area {
-            width: 40%;
-            display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-            justify-content: space-evenly;
-            gap: 6px;
-            padding-top: 4px;
-            padding-right: 6px;
-            /* Keeps the bottom-most hero's card clear of the floating
-               command pill (see .battle-ui), which now overlays the
-               bottom-center of the screen instead of reserving its own
-               row. */
-            padding-bottom: 90px;
-            min-height: 0;
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
         }
 
-        /* Stable per-hero wrapper: pairs each animated .battle-hero sprite
-           with its own info card as a plain sibling, so the card stays
-           anchored beside the character (per request: hero info moved
-           next to/behind the character it belongs to, instead of a shared
-           strip at the bottom) without getting dragged along by the
-           sprite's own attack-lunge transform. Card sits to the right of
-           the avatar - heroes face left toward the monsters, so the card
-           reads as sitting just behind their shoulder. */
+        /* .hero-slot is now just a non-visual grouping wrapper - the sprite
+           and card inside it are each independently absolutely positioned
+           (see HERO_SLOTS in JS for sprite placement on the floor, and the
+           index-based right-edge stacking for the card below), instead of a
+           flex row that kept both glued together in a fixed right column. */
         .hero-slot {
-            display: flex;
-            align-items: center;
-            gap: 6px;
+            display: contents;
         }
 
         .battle-hero {
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: transform 0.3s ease;
-            position: relative;
+            transition: transform 0.3s ease, left 0.4s ease, top 0.4s ease;
+            position: absolute;
+            transform: translate(-50%, 0) scale(var(--hscale, 1));
+            pointer-events: auto;
         }
 
         /* Attack lunge: lives on the outer (unmirrored) wrapper so the
@@ -1464,17 +1463,21 @@
            right side facing left, so moving toward the monsters means a
            negative translateX. Holds at the forward position through the
            weapon-swing/cast-thrust window (see .svg-attacking), then
-           returns to formation. */
+           returns to formation. The -50% baked into every step is the same
+           horizontal-centering offset .battle-hero carries at rest (see
+           above) - the lunge needs to compose with it, not replace it, or
+           the sprite jumps to a different anchor the instant it starts
+           lunging. */
         .battle-hero.lunging {
             animation: heroLungeAttack 0.62s ease-out;
             z-index: 25;
         }
 
         @keyframes heroLungeAttack {
-            0% { transform: translateX(0); }
-            32% { transform: translateX(-58px); }
-            62% { transform: translateX(-58px); }
-            100% { transform: translateX(0); }
+            0% { transform: translate(-50%, 0) scale(var(--hscale, 1)); }
+            32% { transform: translate(calc(-50% - 58px), 0) scale(var(--hscale, 1)); }
+            62% { transform: translate(calc(-50% - 58px), 0) scale(var(--hscale, 1)); }
+            100% { transform: translate(-50%, 0) scale(var(--hscale, 1)); }
         }
 
         .battle-hero.selected .hero-avatar {
@@ -1668,9 +1671,16 @@
             border-radius: 6px;
             padding: 3px 6px;
             width: 106px;
-            flex-shrink: 0;
             backdrop-filter: blur(2px);
             transition: background 0.25s ease, border-color 0.25s ease;
+            /* Right-edge stack, independent of the sprite's own position on
+               the floor now (see .battle-hero) - top offset is set per-index
+               inline (updatePartyDisplay()) so the 3 cards stay evenly
+               spaced down the right edge regardless of where each hero's
+               actual sprite stands. */
+            position: absolute;
+            right: 14px;
+            pointer-events: auto;
         }
 
         .hud-hero-card.hud-card-selected {
@@ -2312,7 +2322,12 @@
             50% { opacity: 0.65; transform: scale(1.08); }
         }
 
-        .monster-sprite { position: relative; }
+        /* (was `.monster-sprite { position: relative; }` here - no longer
+           needed now that .monster-sprite is position:absolute itself, which
+           already establishes a positioning context for children like
+           .monster-glow-ring. That old rule was overriding the absolute
+           positioning set earlier in the cascade, which is why monsters were
+           landing in a relative-flow jumble instead of on their floor slots.) */
 
         /* Idle "alive" bob so sprites don't feel static between attacks */
         .monster-sprite > div:nth-child(3) {
@@ -4199,7 +4214,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v78</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v83</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -6227,6 +6242,17 @@
     dt2CaveSheet.loaded = false;
     dt2CaveSheet.onload = () => { dt2CaveSheet.loaded = true; };
     const DT2_STRIDE = 16;
+    // Wall-leaning weapon props (irregular sizes, so loaded standalone rather
+    // than packed into the grid sheet above) - real wall-base decoration for
+    // caves instead of the 💧🍄 emoji that used to dot the open floor.
+    const dt2SwordSheet = new Image();
+    dt2SwordSheet.src = 'assets/tiles/dt2_sword.png';
+    dt2SwordSheet.loaded = false;
+    dt2SwordSheet.onload = () => { dt2SwordSheet.loaded = true; };
+    const dt2AxeSheet = new Image();
+    dt2AxeSheet.src = 'assets/tiles/dt2_axe.png';
+    dt2AxeSheet.loaded = false;
+    dt2AxeSheet.onload = () => { dt2AxeSheet.loaded = true; };
     const DT2_TILES = {
         wallTopLeft: [0,0], wallTopMid: [1,0], wallTopRight: [2,0],
         wallLeft: [3,0], wallMid: [4,0], wallRight: [5,0],
@@ -6924,6 +6950,13 @@
             ctx.textBaseline = 'middle';
 
             const isCave = dungeonState.type === 'cave' && dt2CaveSheet.loaded;
+            // Wall-base props (weapon leans, crates, skulls) for cave - queued here
+            // and painted after the main loop so they can overlap slightly into the
+            // wall row above without a later row overwriting them. Real objects
+            // instead of the old 💧🍄 emoji sprinkled anywhere on open floor - and
+            // gated to tiles that actually sit against a wall, so the middle of
+            // rooms stays clear to walk through.
+            const wallDecorQueue = [];
 
             for (let row = 0; row < tilesH; row++) {
                 for (let col = 0; col < tilesW; col++) {
@@ -6950,8 +6983,18 @@
                                 const [tc, tr] = variant[(mapRow + mapCol) % variant.length];
                                 ctx.drawImage(dungeonTileSheet, tc * DUNGEON_TILE_STRIDE, tr * DUNGEON_TILE_STRIDE, 16, 16, sx, sy, ts, ts);
                             }
-                            // sparse decorative floor icon (deterministic per-tile, not per-frame random)
-                            if (pal.floorIcons && pal.floorIcons.length) {
+                            // Wall-base decoration (cave only) - a weapon lean, crate, or
+                            // skull, only on floor tiles that actually sit right against a
+                            // wall to the north, so props read as "placed against the wall"
+                            // and the open middle of a room stays free to walk through.
+                            if (isCave) {
+                                const wallNorth = !(f.grid[mapRow - 1] && f.grid[mapRow - 1][mapCol] === 1);
+                                const dh = (mapCol * 41 + mapRow * 17) % 100;
+                                if (wallNorth && dh < 10) {
+                                    wallDecorQueue.push({ kind: ['sword', 'axe', 'crate', 'skull'][dh % 4], sx, sy });
+                                }
+                            } else if (pal.floorIcons && pal.floorIcons.length) {
+                                // sparse decorative floor icon (deterministic per-tile, not per-frame random)
                                 const fh = (mapCol * 41 + mapRow * 17) % 100;
                                 if (fh < pal.floorIconChance * 100) {
                                     ctx.font = `${Math.floor(ts * 0.55)}px "Courier New", monospace`;
@@ -7007,6 +7050,16 @@
                                 ctx.scale(flipX ? -1 : 1, flipY ? -1 : 1);
                                 ctx.drawImage(dt2CaveSheet, piece[0] * DT2_STRIDE, piece[1] * DT2_STRIDE, 16, 16, -ts / 2, -ts / 2, ts, ts);
                                 ctx.restore();
+                                // Occasional banner on a plain south-facing wall (visible to
+                                // the player, not on a corner/edge piece where it'd look odd
+                                // stretched across the notch).
+                                if (piece === DT2_TILES.wallTopMid && !flipY) {
+                                    const bh = (mapCol * 31 + mapRow * 19) % 100;
+                                    if (bh < 12) {
+                                        const banner = bh % 2 === 0 ? DT2_TILES.bannerBlue : DT2_TILES.bannerRed;
+                                        ctx.drawImage(dt2CaveSheet, banner[0] * DT2_STRIDE, banner[1] * DT2_STRIDE, 16, 16, sx, sy, ts, ts);
+                                    }
+                                }
                                 continue;
                             }
                             ctx.fillStyle = pal.wallFill;
@@ -7106,14 +7159,45 @@
                 ctx.shadowBlur = 0;
             }
 
-            // Chests
+            // Wall-base props queued during the floor/wall pass above - painted
+            // here so they can overlap slightly into the wall row without a
+            // later grid row's floor/wall fill drawing over them.
+            if (wallDecorQueue.length) {
+                wallDecorQueue.forEach(d => {
+                    if (d.kind === 'sword' && dt2SwordSheet.loaded) {
+                        const w = ts * 0.35, h = w * (21 / 10);
+                        ctx.drawImage(dt2SwordSheet, d.sx + ts * 0.15, d.sy + ts - h * 0.85, w, h);
+                    } else if (d.kind === 'axe' && dt2AxeSheet.loaded) {
+                        const w = ts * 0.32, h = w * (21 / 9);
+                        ctx.drawImage(dt2AxeSheet, d.sx + ts * 0.5, d.sy + ts - h * 0.85, w, h);
+                    } else if (d.kind === 'crate' && dt2CaveSheet.loaded) {
+                        const w = ts * 0.6, h = w * (24 / 16);
+                        ctx.drawImage(dt2CaveSheet, DT2_TILES.crate[0] * DT2_STRIDE, DT2_TILES.crate[1] * DT2_STRIDE, 16, 24, d.sx + ts * 0.2, d.sy + ts - h * 0.9, w, h);
+                    } else if (d.kind === 'skull' && dt2CaveSheet.loaded) {
+                        const w = ts * 0.4;
+                        ctx.drawImage(dt2CaveSheet, DT2_TILES.skull[0] * DT2_STRIDE, DT2_TILES.skull[1] * DT2_STRIDE, 16, 16, d.sx + ts * 0.3, d.sy + ts * 0.55, w, w);
+                    }
+                });
+            }
+
+            // Chests - real closed-chest art (0x72 DungeonTilesetII, CC0) instead
+            // of the 🎁/📭 emoji, for every dungeon type.
             f.chests.forEach(c => {
                 if (c.x < startCol - 1 || c.x > startCol + tilesW || c.y < startRow - 1 || c.y > startRow + tilesH) return;
                 const cPos = toScreen(c.x, c.y);
-                ctx.shadowColor = c.opened ? 'transparent' : '#ffd700';
-                ctx.shadowBlur = c.opened ? 0 : 12;
-                ctx.fillText(c.opened ? '📭' : '🎁', cPos.x, cPos.y);
-                ctx.shadowBlur = 0;
+                if (dt2CaveSheet.loaded) {
+                    ctx.save();
+                    if (!c.opened) { ctx.shadowColor = '#ffd700'; ctx.shadowBlur = 12; }
+                    if (c.opened) ctx.globalAlpha = 0.55;
+                    const cw = ts * 0.8;
+                    ctx.drawImage(dt2CaveSheet, DT2_TILES.chest[0] * DT2_STRIDE, DT2_TILES.chest[1] * DT2_STRIDE, 16, 16, cPos.x - cw / 2, cPos.y - cw / 2, cw, cw);
+                    ctx.restore();
+                } else {
+                    ctx.shadowColor = c.opened ? 'transparent' : '#ffd700';
+                    ctx.shadowBlur = c.opened ? 0 : 12;
+                    ctx.fillText(c.opened ? '📭' : '🎁', cPos.x, cPos.y);
+                    ctx.shadowBlur = 0;
+                }
             });
 
             // Player (always centered-ish since the camera follows them)
@@ -12020,10 +12104,19 @@
                 window.fx.attach(fxCanvas);
                 window.fx.resize();
             }
+            const slotAssignments = assignMonsterSlots(this.monsters);
             this.monsters.forEach((monster, index) => {
                 const div = document.createElement('div');
                 div.className = `monster-sprite ${monster.isBoss ? 'boss' : ''}`;
                 div.id = `monster-${index}`;
+                const slot = slotAssignments[index];
+                div.style.left = slot.x + '%';
+                div.style.top = slot.y + '%';
+                div.style.setProperty('--mscale', slot.scale);
+                // Later slots (further "back" on the floor) render behind
+                // earlier/closer ones so overlapping sprites layer correctly
+                // front-to-back instead of in DOM order.
+                div.style.zIndex = String(100 - Math.round(slot.y));
                 let badgesHTML = '<div class="monster-elemental-badge">';
                 const icons = { fire: '🔥', ice: '❄️', lightning: '⚡' };
                 if (monster.elementalWeakness && Object.keys(monster.elementalWeakness).length > 0) {
@@ -12117,6 +12210,15 @@
                 } else {
                     avatarEl = spriteDiv.querySelector('.hero-avatar');
                 }
+                // Floor position (see HERO_SLOTS) - set every update rather
+                // than only on creation since index assignment is stable
+                // per-hero for the life of the battle, so this is a cheap
+                // no-op after the first paint.
+                const heroSlotPos = HERO_SLOTS[index] || HERO_SLOTS[HERO_SLOTS.length - 1];
+                spriteDiv.style.left = heroSlotPos.x + '%';
+                spriteDiv.style.top = heroSlotPos.y + '%';
+                spriteDiv.style.setProperty('--hscale', heroSlotPos.scale);
+                spriteDiv.style.zIndex = String(60 - Math.round(heroSlotPos.y));
                 // This full class-list reassignment was wiping any transient
                 // effect class - aura-purple/aura-orange (buff casts), rage-aura/
                 // fortify-aura (buff items), item-flash, targetable - the instant
@@ -12216,6 +12318,9 @@
                     card.dataset.heroIndex = index;
                     slot.appendChild(card);
                 }
+                // Even vertical stack down the right edge, independent of
+                // wherever this hero's sprite actually stands on the floor.
+                card.style.top = `calc(8% + ${index} * 30%)`;
                 card.className = `hud-hero-card ${isSelected ? 'hud-card-selected' : ''} ${hero.isDead ? 'hud-card-dead' : ''}`;
                 card.innerHTML = `
                     <div class="hud-hero-name">${hero.name} ${hero.isDead ? '(KO)' : ''}</div>
@@ -16856,7 +16961,11 @@
             this.ui = new UIManager();
             this.audio = new AudioManager();
             this.isSelling = false;
-            this.lastTown = { x: 25, y: 25 };
+            // Default before any town has actually been visited - was previously
+            // {x:25,y:25}, an arbitrary placeholder that didn't correspond to
+            // any real town and could land a very-early death on invalid/
+            // unwalkable terrain. Brighthollow is the actual starting town.
+            this.lastTown = { x: 360, y: 360 };
             this.nearLocation = null;
             this.nearNPC = null;
             this.loopStarted = false;
@@ -16943,7 +17052,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v78]');
+            console.log('Game starting... [build v83]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
@@ -18796,7 +18905,17 @@
             if (this.audio) {
                 this.audio.refreshVolumeFromStorage();
             }
-            this.lastTown = { x: this.world.playerX, y: this.world.playerY };
+            // Only a real TOWN should ever become the "return here on defeat"
+            // fallback. This used to fire for every location type, so entering
+            // a cave/castle/ruins/spring overwrote lastTown with THAT location's
+            // world coordinates - meaning a death inside a dungeon could send the
+            // player back to the dungeon's own front door instead of a safe town,
+            // and if that door happened to sit on now-hazardous terrain (or just
+            // an awkward spot), they'd land stuck with nowhere to go. This is the
+            // root cause of the "stuck in the middle of the map after death" bug.
+            if (location.type === 'town') {
+                this.lastTown = { x: this.world.playerX, y: this.world.playerY };
+            }
             this.updateQuestProgress('visit_locations', 1, location.name);
             switch(location.type) {
                 case 'town':
@@ -25036,10 +25155,79 @@ const QUEST_DATA = [
         }, 1800);
     }
 
+    /** Battle-floor standing positions, as percentages of the .monsters-area
+     *  box (which itself is the left ~78% of the stage, matching the floor
+     *  trapezoid visible in the painted backgrounds - narrow near a vanishing
+     *  point around mid-height, wide at the bottom). Ordered back-to-front /
+     *  least-to-most prominent; assigned to monsters in array order, with a
+     *  boss (if present) always pulled out to BOSS_SLOT regardless of its
+     *  position in the array. Positions are the top-anchor point (not center)
+     *  since centering is handled by translateX(-50%) in the CSS animation.
+     */
+    const MONSTER_SLOTS = {
+        1: [{ x: 40, y: 46, scale: 1.25 }],
+        2: [{ x: 18, y: 52, scale: 1.05 }, { x: 60, y: 46, scale: 1.05 }],
+        3: [{ x: 10, y: 52, scale: 1.0 }, { x: 38, y: 58, scale: 1.1 }, { x: 66, y: 50, scale: 1.0 }],
+        4: [{ x: 8, y: 52, scale: 0.95 }, { x: 34, y: 58, scale: 1.05 }, { x: 60, y: 52, scale: 0.95 }, { x: 40, y: 26, scale: 0.65 }],
+        5: [{ x: 6, y: 52, scale: 0.9 }, { x: 30, y: 58, scale: 1.0 }, { x: 54, y: 52, scale: 0.9 }, { x: 20, y: 26, scale: 0.62 }, { x: 48, y: 24, scale: 0.62 }],
+        6: [{ x: 4, y: 52, scale: 0.85 }, { x: 26, y: 56, scale: 0.95 }, { x: 48, y: 56, scale: 0.95 }, { x: 70, y: 52, scale: 0.85 }, { x: 18, y: 24, scale: 0.6 }, { x: 50, y: 24, scale: 0.6 }]
+    };
+    const BOSS_SLOT = { x: 24, y: 42, scale: 1.35 };
+
+    /** Hero floor standing positions, mirroring MONSTER_SLOTS but on the
+     *  right side of the floor trapezoid (facing the monsters on the left) -
+     *  a back-to-front diagonal so all 3 heroes read as actually standing on
+     *  the ground instead of stacked in a UI column. Percentages are of the
+     *  full .battle-background stage (.party-battle-area now covers the
+     *  whole stage, same as .monsters-area). */
+    const HERO_SLOTS = [
+        { x: 62, y: 40, scale: 0.85 },
+        { x: 73, y: 50, scale: 0.95 },
+        { x: 84, y: 60, scale: 1.05 }
+    ];
+
+    /** Assigns each monster in `monsters` a {x,y,scale} floor slot - a boss
+     *  (if any) always takes the prominent BOSS_SLOT, other monsters fill the
+     *  remaining slots for that count in their existing array order. */
+    function assignMonsterSlots(monsters) {
+        const count = Math.min(monsters.length, 6) || 1;
+        const baseSlots = (MONSTER_SLOTS[count] || MONSTER_SLOTS[6]).slice();
+        const bossIdx = monsters.findIndex(m => m.isBoss);
+        const assignments = new Array(monsters.length);
+        if (bossIdx >= 0) {
+            assignments[bossIdx] = BOSS_SLOT;
+            let s = 0;
+            monsters.forEach((m, i) => {
+                if (i === bossIdx) return;
+                assignments[i] = baseSlots[s] || baseSlots[baseSlots.length - 1];
+                s++;
+            });
+        } else {
+            monsters.forEach((m, i) => {
+                assignments[i] = baseSlots[i] || baseSlots[baseSlots.length - 1];
+            });
+        }
+        return assignments;
+    }
+
     function getBattleEnvironment(location) {
         if (location === 'castle') return { scene: 'castle', particle: 'dust' };
         if (location === 'cave' || location === 'cave_elite') return { scene: 'cave', particle: 'mist' };
         if (location === 'ruins') return { scene: 'ruins', particle: 'spores' };
+        // Match the actual tile the party is standing on where we can - not
+        // just which quarter of the map it's in. A grass or forest tile out
+        // in Sylvaris (nominally "desert" territory near the oasis/rivers) or
+        // a stray patch of desert near a border should show the biome that's
+        // actually under their feet. Only DESERT and GRASS/FOREST have a real
+        // uploaded background to match against; anything else (road, or no
+        // world loaded) falls back to the broader quadrant-based pick below,
+        // which still covers mountain/lava-adjacent encounters correctly.
+        if (window.game && window.game.world && window.game.world.tiles) {
+            const w = window.game.world;
+            const terrain = w.tiles[w.playerY] && w.tiles[w.playerY][w.playerX];
+            if (terrain === CONFIG.TERRAIN.DESERT) return { scene: 'desert', particle: 'dust' };
+            if (terrain === CONFIG.TERRAIN.GRASS || terrain === CONFIG.TERRAIN.FOREST) return { scene: 'grass', particle: 'stars' };
+        }
         const quadrant = getCurrentWorldQuadrant();
         const biomeMap = {
             CORNELIA: { scene: 'grass', particle: 'stars' },
@@ -25064,9 +25252,13 @@ const QUEST_DATA = [
         if (secondaryParticle) {
             secondaryParticle.className = `parallax-layer ${env.particle}`;
         }
+        // The 7 scenes now render a real painted background image (see the
+        // env-* CSS above) instead of a flat gradient, so the old vector
+        // mountain/tree/spike silhouette layer is retired - drawing simple
+        // SVG shapes on top of a detailed painted scene looked like visual
+        // clutter rather than added depth once there was real art underneath.
         if (silhouettes) {
-            const layers = buildSilhouetteLayer(env.scene);
-            silhouettes.innerHTML = layers.far + layers.near;
+            silhouettes.innerHTML = '';
         }
     }
 
