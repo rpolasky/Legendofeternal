@@ -4238,7 +4238,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v75</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v76</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -6445,7 +6445,7 @@
     // neighboring bush instead of occasionally appearing as a true isolate (a
     // small/thin patch zone could otherwise produce just one qualifying tile).
     function isGrassBushTile(col, row) {
-        return clusterHash(col, row, 4, 61) < 15 && tileHash(col, row, 41) < 60;
+        return clusterHash(col, row, 4, 61) < 15 && tileHash(col, row, 41) < 30;
     }
     // Same idea for the sparser "ground bush" that appears at the tapering edge
     // of a forest (as opposed to a full big tree or rock/flower clutter there).
@@ -11259,14 +11259,21 @@
                                 const patchKind = clusterHash(col, row, 4, 61);
                                 const clutter = tileHash(col, row, 41);
                                 let deco = null;
-                                if (patchKind < 15 && clutter < 60) {
-                                    // Bush patch - only actually draws if at least one
-                                    // neighbor also qualifies (see isGrassBushTile above),
-                                    // so every bush that appears is part of a real clump of
-                                    // at least 2, never a lone icon standing by itself.
+                                if (patchKind < 15 && clutter < 30) {
+                                    // What used to be a "bush patch" using the small round
+                                    // canopy-blob icon - that icon reads as a bare treetop
+                                    // with no trunk, especially clumped, not a bush. Queues a
+                                    // real full multi-part tree instead, same as forest interior
+                                    // trees use, so every bit of greenery you see is an actual
+                                    // complete tree. Density is lower than the old icon version
+                                    // since a full tree already covers real visual space -
+                                    // still only draws if a neighbor also qualifies, so they
+                                    // still land in small clusters rather than one lone tree.
                                     const hasNeighbor = isGrassBushTile(col - 1, row) || isGrassBushTile(col + 1, row) ||
                                         isGrassBushTile(col, row - 1) || isGrassBushTile(col, row + 1);
-                                    if (hasNeighbor) deco = (tileHash(col, row, 62) < 50) ? WORLD_TILES.tree : WORLD_TILES.treeAlt;
+                                    if (hasNeighbor) {
+                                        bigTreeQueue.push({ row, screenX, screenY, variant: tileHash(col, row, 62) % 2 });
+                                    }
                                 } else if (patchKind < 40) {
                                     // flower/rock patch
                                     if (clutter < 5) deco = WORLD_TILES.flowers1;
@@ -11399,16 +11406,12 @@
                                             break;
                                         }
                                         let variant;
-                                        if (pick < 80) {
-                                            // Ground bush - same neighbor guarantee as the open-grass
-                                            // bush patches: only draws as a bush if a neighboring tile
-                                            // also would, otherwise falls through to rock/flower so it
-                                            // never appears as one lone bush icon by itself.
-                                            const hasNeighbor = isForestGroundBushTile(col - 1, row) || isForestGroundBushTile(col + 1, row) ||
-                                                isForestGroundBushTile(col, row - 1) || isForestGroundBushTile(col, row + 1);
-                                            variant = hasNeighbor ? ((bigTreeRoll < 50) ? WORLD_TILES.tree : WORLD_TILES.treeAlt) : WORLD_TILES.rock;
-                                        }
-                                        else if (pick < 92) variant = WORLD_TILES.rock;
+                                        // pick 65-80 used to be a "ground bush" using the small
+                                        // round icon - retired for the same reason as the grass
+                                        // version above (reads as a bare treetop, not a bush).
+                                        // Folded into rock clutter instead, so the only "tree"
+                                        // shape anywhere in the forest is a real full tree.
+                                        if (pick < 92) variant = WORLD_TILES.rock;
                                         else variant = WORLD_TILES.flowers1;
                                         ctx.drawImage(natureTileSheet, variant[0] * WORLD_TILE_STRIDE_NATURE, variant[1] * WORLD_TILE_STRIDE_NATURE, 16, 16, screenX, screenY, ts, ts);
                                     } else {
@@ -16953,7 +16956,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v75]');
+            console.log('Game starting... [build v76]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
