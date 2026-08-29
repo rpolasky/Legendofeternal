@@ -126,7 +126,7 @@
            position/size (top bar height reserved, rail widths) is computed
            by fitGameContainer()/updateSideRails() in the script, based on
            how much letterbox margin is actually available on the current
-           screen. This is what lets the D-pad/party status/minimap/quick
+           screen. This is what lets the D-pad/party status/quick
            buttons live in the unused margins instead of floating over the
            gameplay view. */
         /* #hud-top-bar is now just a floating corner cluster (hamburger +
@@ -240,7 +240,6 @@
         #hud-side-right {
             overflow-y: hidden;
         }
-        #hud-side-right #rail-minimap,
         #hud-side-right #rail-location-party {
             flex: 1 1 auto;
             min-height: 0;
@@ -249,15 +248,6 @@
         #hud-side-right #mobile-actions-wrap,
         #hud-side-left #mobile-dpad-wrap {
             flex-shrink: 0;
-        }
-
-        /* On short landscape viewports, the minimap was pushing the D-pad
-           and Talk/Menu/Reset buttons below the visible rail height,
-           clipping Reset off entirely. The rail is scrollable now as a
-           safety net either way, but drop the minimap first since the
-           D-pad/action buttons are the controls that actually matter. */
-        @media (max-height: 480px) {
-            #rail-minimap { display: none !important; }
         }
 
         .rail-section {
@@ -361,22 +351,6 @@
             padding: 12px 10px;
             border-bottom: 1px solid rgba(106, 74, 138, 0.4);
             margin-bottom: 4px;
-        }
-
-        #rail-minimap {
-            padding: 10px;
-            display: flex;
-            justify-content: center;
-        }
-        #rail-minimap canvas {
-            width: 100%;
-            max-width: 168px;
-            height: auto;
-            aspect-ratio: 1;
-            border: 2px solid var(--border-color);
-            border-radius: 4px;
-            background: rgba(10,10,26,0.9);
-            image-rendering: pixelated;
         }
 
         /* .mobile-controls-part covers the two rail children that used to
@@ -3722,19 +3696,6 @@
         }
 
         /* ====================================================================== */
-        /*                      MINIMAP - ENHANCED                              */
-        /* ====================================================================== */
-        #minimap-canvas {
-            background: rgba(10,10,26,0.9);
-            border: 2px solid var(--border-color);
-            width: 100%;
-            height: 100%;
-            image-rendering: pixelated;
-            border-radius: 4px;
-            box-shadow: inset 0 0 30px rgba(0,0,0,0.5);
-        }
-
-        /* ====================================================================== */
         /*                      LOCATION SCREENS - ENHANCED                     */
         /* ====================================================================== */
         .location-screen {
@@ -4238,7 +4199,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v76</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v77</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -4247,7 +4208,7 @@
     <!-- ================================================================= -->
     <!--   PERSISTENT CHROME: top bar + side rails, in REAL screen space   -->
     <!--   (siblings of #game-container, NOT scaled with it) - houses the  -->
-    <!--   quick-access buttons, party status, minimap, and D-pad so they  -->
+    <!--   quick-access buttons, party status, and D-pad so they      -->
     <!--   sit in the unused letterbox margins instead of covering the     -->
     <!--   actual game view, and stay a consistent touch size regardless   -->
     <!--   of how small/large the game itself is currently scaled to.      -->
@@ -4292,9 +4253,6 @@
     </div>
 
     <div id="hud-side-right">
-        <div id="rail-minimap" class="rail-section">
-            <canvas id="minimap-canvas" width="168" height="168"></canvas>
-        </div>
         <div id="rail-location-party" class="rail-section">
             <div class="rail-heading">⚔️ PARTY</div>
             <div class="party-status-mini" id="location-party-status-mini"></div>
@@ -5041,7 +4999,7 @@
      *  what caused the container to drift off-center, especially in native
      *  fullscreen). Reserves a horizontal strip at the top for #hud-top-bar
      *  and hands the leftover left/right margin to updateSideRails() so the
-     *  D-pad/party status/minimap can live in real, unscaled screen space
+     *  D-pad/party status can live in real, unscaled screen space
      *  instead of floating over the game view. */
     function fitGameContainer() {
         const container = document.getElementById('game-container');
@@ -5096,7 +5054,7 @@
 
     /** Shows/sizes the real (unscaled) left/right side rails in whatever
      *  margin is left beside the letterboxed game view, so the D-pad, party
-     *  status, and minimap sit in real screen space at a consistent touch
+     *  status sit in real screen space at a consistent touch
      *  size instead of shrinking with the game's zoom level or floating on
      *  top of the gameplay view. Falls back to hiding the rails (their
      *  contents fall back to the old on-canvas overlay position) if the
@@ -5165,9 +5123,9 @@
      *  exit - the same layout now works at any screen size. */
 
     /** Shows/hides the persistent touch chrome (top bar, D-pad, party
-     *  status rail, minimap rail) based on which screen is active - the
+     *  status rail) based on which screen is active - the
      *  D-pad/Talk/Menu/Reset show on any walkable screen (world/town/
-     *  dungeons); the top bar and the world-specific party/minimap rail
+     *  dungeons); the top bar and the world-specific party rail
      *  sections are scoped to the 'world' screen itself, since town/dungeon
      *  screens have their own on-canvas party status and menu/exit bar that
      *  this doesn't need to duplicate. Menus, popups, battle, and the start
@@ -5185,7 +5143,6 @@
         setVisible('touch-exit-btn', isWalkable && !isWorld);
         setVisible('hud-top-bar', isWorld);
         setVisible('hud-party-icon-btn', isWorld);
-        setVisible('rail-minimap', isWorld);
         // rail-location-party (the mini party-status box that used to sit
         // above the D-pad on town/cave/castle/ruins) is intentionally never
         // shown anymore - on a real device its hero cards could grow tall
@@ -11046,8 +11003,6 @@
         constructor() {
             this.canvas = document.getElementById('world-canvas');
             this.ctx = this.canvas ? this.canvas.getContext('2d') : null;
-            this.minimapCanvas = document.getElementById('minimap-canvas');
-            this.minimapCtx = this.minimapCanvas ? this.minimapCanvas.getContext('2d') : null;
             this.tileSize = CONFIG.TILE_SIZE;
             this.game = window.game;
             // Dialed back slightly from 1.35 - close enough to read tiles/
@@ -11741,75 +11696,6 @@
             drawHeroSprite(ctx, x, y, size, heroClass, { facing, moving, time, seed: index * 1.3 });
         }
 
-        renderMinimap(worldMap) {
-            if (!this.minimapCtx || !worldMap) return;
-            const ctx = this.minimapCtx;
-            const width = this.minimapCanvas.width;
-            const height = this.minimapCanvas.height;
-            ctx.fillStyle = '#0a0a1a';
-            ctx.fillRect(0, 0, width, height);
-            const scaleX = width / worldMap.width;
-            const scaleY = height / worldMap.height;
-            const scale = Math.min(scaleX, scaleY);
-            const offsetX = (width - worldMap.width * scale) / 2;
-            const offsetY = (height - worldMap.height * scale) / 2;
-            for (let y = 0; y < worldMap.height; y += 4) {
-                for (let x = 0; x < worldMap.width; x += 4) {
-                    const terrain = worldMap.tiles[y][x];
-                    let color;
-                    switch(terrain) {
-                        case CONFIG.TERRAIN.GRASS: color = '#2d4a2d'; break;
-                        case CONFIG.TERRAIN.FOREST: color = '#1a3d1a'; break;
-                        case CONFIG.TERRAIN.MOUNTAIN: color = '#4a4a4a'; break;
-                        case CONFIG.TERRAIN.WATER: color = '#1a3d5c'; break;
-                        case CONFIG.TERRAIN.DESERT: color = '#8b7355'; break;
-                        default: color = '#2d4a2d';
-                    }
-                    ctx.fillStyle = color;
-                    ctx.fillRect(offsetX + x * scale, offsetY + y * scale, 4 * scale, 4 * scale);
-                }
-            }
-            const visibleLocations = worldMap.getVisibleLocations();
-            if (visibleLocations.length > 0) {
-                visibleLocations.forEach(loc => {
-                    const mx = offsetX + loc.x * scale;
-                    const my = offsetY + loc.y * scale;
-                    if (loc.type === 'castle') {
-                        ctx.fillStyle = '#ff4444';
-                    } else if (loc.type === 'cave' || loc.type === 'ruins') {
-                        ctx.fillStyle = '#888888';
-                    } else if (loc.type === 'spring') {
-                        ctx.fillStyle = '#88ff88';
-                    } else {
-                        ctx.fillStyle = '#ffd700';
-                    }
-                    ctx.beginPath();
-                    ctx.arc(mx, my, 3, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.fillStyle = '#fff';
-                    ctx.font = '8px Courier New';
-                    ctx.fillText(loc.name.substring(0, 3), mx + 4, my);
-                });
-            }
-            const px = offsetX + worldMap.playerX * scale;
-            const py = offsetY + worldMap.playerY * scale;
-            ctx.fillStyle = '#00ff00';
-            ctx.shadowColor = '#00ff00';
-            ctx.shadowBlur = 10;
-            ctx.beginPath();
-            ctx.arc(px, py, 4, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.shadowBlur = 0;
-            ctx.strokeStyle = '#00ff00';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(px, py);
-            ctx.lineTo(px, py - 8);
-            ctx.stroke();
-            ctx.strokeStyle = '#4a4a6a';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(0, 0, width, height);
-        }
     }
 
     // =====================================================================
@@ -16956,7 +16842,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v76]');
+            console.log('Game starting... [build v77]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
@@ -16974,7 +16860,6 @@
             this.state.switchScreen('world');
             if (this.renderer && this.world) {
                 this.renderer.renderWorld(this.world);
-                this.renderer.renderMinimap(this.world);
                 this.ui.updateWorldHUD(this.party);
             }
             if (!this.loopStarted) {
@@ -21936,7 +21821,6 @@
             else if (this.state.currentScreen === 'world' && !this.state.isPaused) {
                 if (this.renderer && this.world) {
                     this.renderer.renderWorld(this.world);
-                    this.renderer.renderMinimap(this.world);
                     this.ui.updateWorldHUD(this.party);
                 } else {
                     if (this.renderer && this.renderer.ctx) {
