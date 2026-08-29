@@ -3471,6 +3471,31 @@
             line-height: 1;
         }
 
+        /* Single-row top bar variant (icons live between the header and the
+           hero portrait now, not below the stats) - smaller and horizontally
+           scrollable so all of them stay reachable in one easy strip even
+           on a narrow phone screen. */
+        .menu-icon-bar {
+            display: flex;
+            gap: 6px;
+            overflow-x: auto;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .menu-icon-bar .menu-icon-btn {
+            flex: 0 0 auto;
+            min-width: 62px;
+            padding: 7px 4px;
+            font-size: 9px;
+            gap: 3px;
+        }
+
+        .menu-icon-bar .menu-icon-btn .menu-icon-emoji {
+            font-size: 19px;
+        }
+
         .menu-subpanel {
             flex: 1;
             min-height: 0;
@@ -4195,7 +4220,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v63</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v64</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -4579,6 +4604,19 @@
 
             <!-- HUB (default view): hero switcher + stat breakdown + icon nav -->
             <div id="menu-hub-screen" class="menu-subpanel">
+                <div class="menu-icon-bar">
+                    <div class="menu-icon-btn" onclick="window.game.showMenuPanel('equipment')"><span class="menu-icon-emoji">⚔️</span>Equipment</div>
+                    <div class="menu-icon-btn" onclick="window.game.showMenuPanel('spells')"><span class="menu-icon-emoji">✨</span>Spells</div>
+                    <div class="menu-icon-btn" onclick="window.game.showMenuPanel('items')"><span class="menu-icon-emoji">🎒</span>Items</div>
+                    <div class="menu-icon-btn" onclick="window.game.showMenuPanel('quests')"><span class="menu-icon-emoji">📋</span>Quests</div>
+                    <div class="menu-icon-btn" onclick="window.game.showMenuPanel('achievements')"><span class="menu-icon-emoji">🏆</span>Achievements</div>
+                    <div class="menu-icon-btn" onclick="window.game.showMenuPanel('codex')"><span class="menu-icon-emoji">📖</span>Codex</div>
+                    <div class="menu-icon-btn" onclick="window.game.openWorldMap()"><span class="menu-icon-emoji">🗺️</span>Map</div>
+                    <div class="menu-icon-btn" onclick="window.game.openLoreJournal()"><span class="menu-icon-emoji">📜</span>Lore</div>
+                    <div class="menu-icon-btn" onclick="window.game.openLegendaryJournal()"><span class="menu-icon-emoji">🌟</span>Legendary</div>
+                    <div class="menu-icon-btn" onclick="window.game.showMenuPanel('settings')"><span class="menu-icon-emoji">⚙️</span>Settings</div>
+                </div>
+
                 <div class="menu-hero-switcher">
                     <div class="menu-hero-switcher-arrow" onclick="window.game.cycleMenuHero(-1)">◀</div>
                     <div class="menu-hero-portrait-block" onclick="window.game.cycleMenuHero(1)" title="Tap to switch hero">
@@ -4590,21 +4628,6 @@
                 </div>
 
                 <div id="menu-stat-breakdown"></div>
-
-                <h3 style="color: var(--highlight); margin: 16px 0 10px; font-size: 13px; border-bottom: 1px solid var(--border-color); padding-bottom: 6px;">Menu</h3>
-                <div class="menu-icon-grid">
-                    <div class="menu-icon-btn" onclick="window.game.showMenuPanel('equipment')"><span class="menu-icon-emoji">⚔️</span>Equipment</div>
-                    <div class="menu-icon-btn" onclick="window.game.showMenuPanel('items')"><span class="menu-icon-emoji">🎒</span>Items</div>
-                    <div class="menu-icon-btn" onclick="window.game.showMenuPanel('quests')"><span class="menu-icon-emoji">📋</span>Quests</div>
-                    <div class="menu-icon-btn" onclick="window.game.showMenuPanel('achievements')"><span class="menu-icon-emoji">🏆</span>Achievements</div>
-                    <div class="menu-icon-btn" onclick="window.game.showMenuPanel('codex')"><span class="menu-icon-emoji">📖</span>Monster Codex</div>
-                    <div class="menu-icon-btn" onclick="window.game.saveGame()"><span class="menu-icon-emoji">💾</span>Save</div>
-                    <div class="menu-icon-btn" onclick="window.game.loadGame()"><span class="menu-icon-emoji">📂</span>Load</div>
-                    <div class="menu-icon-btn" onclick="window.game.openWorldMap()"><span class="menu-icon-emoji">🗺️</span>World Map</div>
-                    <div class="menu-icon-btn" onclick="window.game.openLoreJournal()"><span class="menu-icon-emoji">📜</span>Lore</div>
-                    <div class="menu-icon-btn" onclick="window.game.openLegendaryJournal()"><span class="menu-icon-emoji">🌟</span>Legendary</div>
-                    <div class="menu-icon-btn" onclick="window.game.showMenuPanel('settings')"><span class="menu-icon-emoji">⚙️</span>Settings</div>
-                </div>
             </div>
 
             <!-- Equipment Panel -->
@@ -4640,9 +4663,20 @@
                         <div id="available-jewelry" class="shop-inventory" style="height: 160px; margin-top: 4px; padding: 8px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 4px;"></div>
                     </div>
                 </div>
+            </div>
+
+            <!-- Spells Panel -->
+            <div id="menu-spells-panel" class="menu-subpanel" style="display: none;">
+                <div id="menu-spells-hero-header" style="display: flex; align-items: center; gap: 14px; margin-bottom: 14px;">
+                    <div id="menu-spells-portrait"></div>
+                    <div>
+                        <div id="menu-spells-name" style="color: var(--highlight); font-size: 18px; font-weight: bold;"></div>
+                        <div id="menu-spells-class" style="color: #aaa; font-size: 12px; text-transform: capitalize;"></div>
+                    </div>
+                </div>
 
                 <h3 style="color: var(--highlight); margin-bottom: 6px; border-bottom: 1px solid var(--border-color); font-size: 13px;">Spells Known</h3>
-                <div id="hero-spells-list" class="shop-inventory" style="height: 120px; padding: 6px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 4px;"></div>
+                <div id="hero-spells-list" class="shop-inventory" style="padding: 6px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 4px;"></div>
             </div>
 
             <!-- Items Panel -->
@@ -16422,7 +16456,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v63]');
+            console.log('Game starting... [build v64]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
@@ -18304,6 +18338,7 @@
         showMenuPanel(name) {
             const panels = {
                 equipment: { el: 'menu-equipment-panel', title: '⚔️ EQUIPMENT', render: () => this.renderMenuEquipmentPanel() },
+                spells: { el: 'menu-spells-panel', title: '✨ SPELLS', render: () => this.renderMenuSpellsPanel() },
                 items: { el: 'menu-items-panel', title: '🎒 ITEMS', render: () => this.showMenuItemsTab('items') },
                 quests: { el: 'menu-quests-panel', title: '📋 QUESTS', render: () => this.renderQuestList() },
                 achievements: { el: 'menu-achievements-panel', title: '🏆 ACHIEVEMENTS', render: () => { if (this.achievements) this.achievements.renderAchievementsPanel(); } },
@@ -20133,6 +20168,18 @@
             this.renderEquipmentList('armor', hero, index);
             this.renderEquipmentList('shields', hero, index);
             this.renderEquipmentList('jewelry', hero, index);
+        }
+
+        /** Renders the standalone Spells panel for whichever hero is
+         *  currently selected on the hub - split out from the Equipment
+         *  panel so spells get their own dedicated screen. */
+        renderMenuSpellsPanel() {
+            const index = this.menuSelectedHeroIndex ?? 0;
+            var hero = this.party.heroes[index];
+            if (!hero) return;
+            document.getElementById('menu-spells-portrait').innerHTML = heroPortraitHTML(hero, 'detail-size');
+            document.getElementById('menu-spells-name').textContent = hero.name + ' (Lv ' + hero.level + ')' + (hero.isDead ? ' (KO)' : '');
+            document.getElementById('menu-spells-class').textContent = hero.heroClass;
             var spellsContainer = document.getElementById('hero-spells-list');
             spellsContainer.innerHTML = '';
             if (hero.spells && hero.spells.length > 0) {
@@ -20741,7 +20788,7 @@
             this.ui.closePopup();
             this.ui.showPopup('Spell Cast!', caster.name + ' casts ' + spell.name + ' on ' + target.name + '!\n' +
                 target.name + ' recovered ' + actualHeal + ' HP!');
-            this.renderMenuEquipmentPanel();
+            this.renderMenuSpellsPanel();
             this.ui.updateWorldHUD(this.party);
             this.updateGoldDisplays();
         }
@@ -20783,7 +20830,7 @@
             this.ui.closePopup();
             this.ui.showPopup('Spell Cast!', caster.name + ' casts ' + spell.name + '!\n' +
                 'All party members healed! Total: ' + totalHeal + ' HP restored!');
-            this.renderMenuEquipmentPanel();
+            this.renderMenuSpellsPanel();
             this.ui.updateWorldHUD(this.party);
             this.updateGoldDisplays();
         }
@@ -20845,7 +20892,7 @@
             this.ui.closePopup();
             this.ui.showPopup('Poison Cured!', caster.name + ' casts ' + spell.name + ' on ' + target.name + '!\n' +
                 target.name + ' is no longer poisoned!');
-            this.renderMenuEquipmentPanel();
+            this.renderMenuSpellsPanel();
             this.ui.updateWorldHUD(this.party);
             this.updateGoldDisplays();
         }
