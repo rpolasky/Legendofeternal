@@ -3341,6 +3341,232 @@
             margin-top: 2px;
         }
 
+        /* ====================================================================== */
+        /*                      MONSTER CODEX                                     */
+        /* ====================================================================== */
+        .codex-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 10px;
+        }
+
+        .codex-card {
+            background: rgba(0,0,0,0.35);
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px 12px;
+            text-align: center;
+        }
+
+        .codex-card.locked {
+            opacity: 0.5;
+            filter: grayscale(80%);
+        }
+
+        .codex-card.locked .codex-icon {
+            font-size: 26px;
+        }
+
+        .codex-card.locked .codex-name {
+            color: #888;
+            font-size: 12px;
+            letter-spacing: 2px;
+        }
+
+        .codex-card.discovered {
+            border-color: var(--highlight);
+            background: rgba(255,215,0,0.06);
+            text-align: left;
+        }
+
+        .codex-card .codex-icon {
+            font-size: 30px;
+            text-align: center;
+        }
+
+        .codex-card.discovered .codex-icon {
+            text-align: center;
+            margin-bottom: 4px;
+        }
+
+        .codex-card .codex-name {
+            font-weight: bold;
+            font-size: 13px;
+            color: var(--highlight);
+            text-align: center;
+        }
+
+        .codex-card .codex-tag {
+            font-size: 10px;
+            color: #999;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .codex-card .codex-desc {
+            font-size: 11px;
+            color: #bbb;
+            font-style: italic;
+            margin-bottom: 8px;
+            line-height: 1.3;
+        }
+
+        .codex-stats-grid {
+            border-top: 1px solid var(--border-color);
+            padding-top: 6px;
+        }
+
+        .codex-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            padding: 1px 0;
+            color: #ccc;
+        }
+
+        .codex-row span:first-child {
+            color: #888;
+        }
+
+        .codex-row span:last-child {
+            color: #ddd;
+            text-align: right;
+        }
+
+        /* ====================================================================== */
+        /*                    PLAYER MENU REDESIGN                                */
+        /* ====================================================================== */
+        .menu-icon-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+            gap: 10px;
+        }
+
+        .menu-icon-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            background: rgba(0,0,0,0.35);
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            padding: 14px 6px;
+            cursor: pointer;
+            color: #ddd;
+            font-size: 11px;
+            text-align: center;
+            transition: border-color 0.15s, background 0.15s;
+        }
+
+        .menu-icon-btn:hover, .menu-icon-btn:active {
+            border-color: var(--highlight);
+            background: rgba(255,215,0,0.08);
+        }
+
+        .menu-icon-btn .menu-icon-emoji {
+            font-size: 28px;
+            line-height: 1;
+        }
+
+        .menu-subpanel {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            padding: 14px 20px;
+        }
+
+        .menu-hero-switcher {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 18px;
+            margin-bottom: 16px;
+        }
+
+        .menu-hero-switcher-arrow {
+            background: rgba(0,0,0,0.4);
+            border: 2px solid var(--border-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            font-size: 18px;
+            color: var(--highlight);
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .menu-hero-switcher-arrow:hover {
+            border-color: var(--highlight);
+        }
+
+        .menu-hero-portrait-block {
+            text-align: center;
+            cursor: pointer;
+            min-width: 160px;
+        }
+
+        .menu-hero-portrait-block .menu-hero-name {
+            color: var(--highlight);
+            font-size: 20px;
+            font-weight: bold;
+            margin-top: 6px;
+        }
+
+        .menu-hero-portrait-block .menu-hero-subline {
+            color: #aaa;
+            font-size: 12px;
+            text-transform: capitalize;
+        }
+
+        .stat-breakdown-card {
+            background: rgba(0,0,0,0.35);
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-bottom: 10px;
+        }
+
+        .stat-breakdown-title {
+            color: var(--highlight);
+            font-weight: bold;
+            font-size: 13px;
+            margin-bottom: 6px;
+        }
+
+        .stat-breakdown-line {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #999;
+            padding: 2px 0;
+        }
+
+        .stat-breakdown-line .stat-breakdown-value {
+            color: #ccc;
+        }
+
+        .stat-breakdown-line.overall {
+            color: var(--highlight);
+            font-weight: bold;
+            font-size: 13px;
+            border-top: 1px solid var(--border-color);
+            margin-top: 4px;
+            padding-top: 5px;
+        }
+
+        .stat-breakdown-line.overall .stat-breakdown-value {
+            color: var(--highlight);
+        }
+
+        .stat-breakdown-grid-2col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
         /* Rare world encounter warning (see showRareEncounterWarning() in
            the script) - appended straight to <body> as position:fixed
            rather than into #game-container like .achievement-toast above,
@@ -3969,7 +4195,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v60</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v63</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -4338,149 +4564,166 @@
             </div>
         </div>
         <div id="menu-screen" class="screen menu-screen viewport-overlay" style="display: none; background: var(--panel-bg); flex-direction: column; height: 100%; overflow: hidden;">
+            <!-- Persistent header - shared by the hub and every sub-panel. Title
+                 and back-button visibility are updated by showMenuHub()/showMenuPanel(). -->
             <div class="menu-header" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; border-bottom: 2px solid var(--border-color); background: rgba(0,0,0,0.3);">
-                <div style="display: flex; align-items: center; gap: 15px;">
-                    <h2 style="color: var(--highlight); font-size: 22px; margin: 0;">⚔️ PARTY STATUS</h2>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <button id="menu-back-btn" class="menu-button" onclick="window.game.menuGoBack()" style="padding: 4px 12px; font-size: 13px; display: none;">◀ Back</button>
+                    <h2 id="menu-header-title" style="color: var(--highlight); font-size: 22px; margin: 0;">⚔️ PARTY STATUS</h2>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div id="menu-gold-display" style="background: rgba(0,0,0,0.8); border: 2px solid var(--gold-color); padding: 5px 20px; color: var(--gold-color); font-size: 17px; font-weight: bold; border-radius: 6px;">💰 G: 0</div>
                     <button class="menu-button" onclick="window.game.toggleMenu()" style="padding: 4px 15px; font-size: 13px;">✖ Close</button>
                 </div>
-                <div id="menu-gold-display" style="background: rgba(0,0,0,0.8); border: 2px solid var(--gold-color); padding: 5px 20px; color: var(--gold-color); font-size: 17px; font-weight: bold; border-radius: 6px;">💰 G: 0</div>
             </div>
-            
-            <div style="display: flex; gap: 15px; flex: 1; overflow: hidden; padding: 10px 20px;">
-                <!-- Left sidebar -->
-                <div style="width: 200px; display: flex; flex-direction: column; gap: 6px; overflow-y: auto; padding-bottom: 10px;">
-                    <div id="menu-hero-list"></div>
-                    
-                    <button class="menu-button" onclick="window.game.showMenuItems()" style="padding: 6px; font-size: 12px;">🎒 Use Items</button>
-                    <button class="menu-button" onclick="window.game.showHeroMenu()" style="padding: 6px; font-size: 12px;">👥 Party</button>
-                    <button class="menu-button" onclick="window.game.showQuestMenu()" style="padding: 6px; font-size: 12px;">📋 Quests</button>
-                    <button class="menu-button" onclick="window.game.showMenuAchievements()" style="padding: 6px; font-size: 12px;">🏆 Achievements</button>
-                    <button class="menu-button" onclick="window.game.saveGame()" style="padding: 6px; font-size: 12px;">💾 Save</button>
-                    <button class="menu-button" onclick="window.game.loadGame()" style="padding: 6px; font-size: 12px;">📂 Load</button>
-                    <button class="menu-button" onclick="window.game.openWorldMap()" style="padding: 6px; font-size: 12px;">🗺️ World Map</button>
-                    <button class="menu-button" onclick="window.game.openLoreJournal()" style="padding: 6px; font-size: 12px;">📖 Lore</button>
-                    <button class="menu-button" onclick="window.game.openLegendaryJournal()" style="padding: 6px; font-size: 12px;">⚔️ Legendary</button>
-                    <button class="menu-button" onclick="window.game.showQuestCompassMenu()" style="padding: 6px; font-size: 12px;">🧭 Track Quest</button>
-                    <button class="menu-button" onclick="toggleFullscreen()" style="padding: 6px; font-size: 12px;">⛶ Fullscreen</button>
-                    
-                    <div class="audio-controls">
-                        <h3 class="audio-title">🔊 Audio</h3>
-                        
-                        <div style="display: flex; gap: 5px; justify-content: center; margin-bottom: 6px;">
-                            <button class="menu-button" onclick="window.game.audio.mute()" style="padding: 3px 8px; font-size: 10px;">🔇 Mute</button>
-                            <button class="menu-button" onclick="window.game.audio.unmute()" style="padding: 3px 8px; font-size: 10px;">🔊 Unmute</button>
-                        </div>
-                        
-                        <div class="audio-slider-container">
-                            <div class="audio-slider-label">
-                                <span>🎵 Music</span>
-                                <span id="music-volume-value">25%</span>
-                            </div>
-                            <input type="range" min="0" max="1" step="0.05" value="0.25" class="audio-slider"
-                                   onchange="window.game.audio.setMusicVolume(this.value); localStorage.setItem('legendOfEternal_musicVolume', this.value);"
-                                   oninput="document.getElementById('music-volume-value').textContent = Math.round(this.value * 100) + '%'"
-                                   id="music-volume-slider">
-                        </div>
 
-                        <div class="audio-slider-container">
-                            <div class="audio-slider-label">
-                                <span>🔊 SFX</span>
-                                <span id="sfx-volume-value">25%</span>
-                            </div>
-                            <input type="range" min="0" max="1" step="0.05" value="0.25" class="audio-slider"
-                                   onchange="window.game.audio.setSFXVolume(this.value); localStorage.setItem('legendOfEternal_sfxVolume', this.value);"
-                                   oninput="document.getElementById('sfx-volume-value').textContent = Math.round(this.value * 100) + '%'"
-                                   id="sfx-volume-slider">
-                        </div>
+            <!-- HUB (default view): hero switcher + stat breakdown + icon nav -->
+            <div id="menu-hub-screen" class="menu-subpanel">
+                <div class="menu-hero-switcher">
+                    <div class="menu-hero-switcher-arrow" onclick="window.game.cycleMenuHero(-1)">◀</div>
+                    <div class="menu-hero-portrait-block" onclick="window.game.cycleMenuHero(1)" title="Tap to switch hero">
+                        <div id="menu-hub-portrait"></div>
+                        <div class="menu-hero-name" id="menu-hub-name"></div>
+                        <div class="menu-hero-subline" id="menu-hub-subline"></div>
+                    </div>
+                    <div class="menu-hero-switcher-arrow" onclick="window.game.cycleMenuHero(1)">▶</div>
+                </div>
+
+                <div id="menu-stat-breakdown"></div>
+
+                <h3 style="color: var(--highlight); margin: 16px 0 10px; font-size: 13px; border-bottom: 1px solid var(--border-color); padding-bottom: 6px;">Menu</h3>
+                <div class="menu-icon-grid">
+                    <div class="menu-icon-btn" onclick="window.game.showMenuPanel('equipment')"><span class="menu-icon-emoji">⚔️</span>Equipment</div>
+                    <div class="menu-icon-btn" onclick="window.game.showMenuPanel('items')"><span class="menu-icon-emoji">🎒</span>Items</div>
+                    <div class="menu-icon-btn" onclick="window.game.showMenuPanel('quests')"><span class="menu-icon-emoji">📋</span>Quests</div>
+                    <div class="menu-icon-btn" onclick="window.game.showMenuPanel('achievements')"><span class="menu-icon-emoji">🏆</span>Achievements</div>
+                    <div class="menu-icon-btn" onclick="window.game.showMenuPanel('codex')"><span class="menu-icon-emoji">📖</span>Monster Codex</div>
+                    <div class="menu-icon-btn" onclick="window.game.saveGame()"><span class="menu-icon-emoji">💾</span>Save</div>
+                    <div class="menu-icon-btn" onclick="window.game.loadGame()"><span class="menu-icon-emoji">📂</span>Load</div>
+                    <div class="menu-icon-btn" onclick="window.game.openWorldMap()"><span class="menu-icon-emoji">🗺️</span>World Map</div>
+                    <div class="menu-icon-btn" onclick="window.game.openLoreJournal()"><span class="menu-icon-emoji">📜</span>Lore</div>
+                    <div class="menu-icon-btn" onclick="window.game.openLegendaryJournal()"><span class="menu-icon-emoji">🌟</span>Legendary</div>
+                    <div class="menu-icon-btn" onclick="window.game.showMenuPanel('settings')"><span class="menu-icon-emoji">⚙️</span>Settings</div>
+                </div>
+            </div>
+
+            <!-- Equipment Panel -->
+            <div id="menu-equipment-panel" class="menu-subpanel" style="display: none;">
+                <div id="menu-equip-hero-header" style="display: flex; align-items: center; gap: 14px; margin-bottom: 14px;">
+                    <div id="menu-equip-portrait"></div>
+                    <div>
+                        <div id="menu-equip-name" style="color: var(--highlight); font-size: 18px; font-weight: bold;"></div>
+                        <div id="menu-equip-class" style="color: #aaa; font-size: 12px; text-transform: capitalize;"></div>
                     </div>
                 </div>
-                
-                <!-- Right details panel -->
-                <div style="flex: 1; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; padding-right: 5px;">
-                    
-                    <!-- Hero Details Panel -->
-                    <div id="hero-details-panel" style="flex: 1; background: rgba(0,0,0,0.5); border: 2px solid var(--border-color); padding: 15px; display: none; overflow-y: auto; border-radius: 6px;">
-                        <div id="hero-detail-portrait-row" style="display: flex; align-items: center; gap: 14px; margin-bottom: 12px;">
-                            <div id="hero-detail-portrait"></div>
-                            <div>
-                                <div id="hero-detail-name" style="color: var(--highlight); font-size: 18px; font-weight: bold;"></div>
-                                <div id="hero-detail-class" style="color: #aaa; font-size: 12px; text-transform: capitalize;"></div>
-                            </div>
-                        </div>
-                        <div id="detail-stats-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 4px;"></div>
-                        
-                        <div style="margin-bottom: 12px; border-top: 1px solid var(--border-color); padding-top: 10px;">
-                            <h3 style="color: var(--highlight); margin-bottom: 6px; font-size: 13px;">Menu Actions</h3>
-                            <button class="menu-button" onclick="window.game.useCabinFromMenu()" style="padding: 6px; width: 100%; font-size: 12px;">🏕 Use Cabin (Full Restore)</button>
-                        </div>
-                        
-                        <h3 style="color: var(--highlight); margin-bottom: 6px; border-bottom: 1px solid var(--border-color); font-size: 13px;">Equipment</h3>
-                        
-                        <div class="equipment-row">
-                            <div class="equipment-column">
-                                <p class="equipment-label">Weapon: <span id="current-weapon" class="equipment-value">None</span></p>
-                                <div id="available-weapons" class="shop-inventory" style="height: 160px; margin-top: 4px; padding: 8px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 4px;"></div>
-                            </div>
-                            <div class="equipment-column">
-                                <p class="equipment-label">Armor: <span id="current-armor" class="equipment-value">None</span></p>
-                                <div id="available-armor" class="shop-inventory" style="height: 160px; margin-top: 4px; padding: 8px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 4px;"></div>
-                            </div>
-                        </div>
-                        
-                        <div class="equipment-row">
-                            <div class="equipment-column">
-                                <p class="equipment-label">Shield: <span id="current-shield" class="equipment-value">None</span></p>
-                                <div id="available-shields" class="shop-inventory" style="height: 160px; margin-top: 4px; padding: 8px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 4px;"></div>
-                            </div>
-                            <div class="equipment-column">
-                                <p class="equipment-label">Jewelry: <span id="current-jewelry" class="equipment-value">None</span></p>
-                                <div id="available-jewelry" class="shop-inventory" style="height: 160px; margin-top: 4px; padding: 8px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 4px;"></div>
-                            </div>
-                        </div>
 
-                        <h3 style="color: var(--highlight); margin-bottom: 6px; border-bottom: 1px solid var(--border-color); font-size: 13px;">Spells Known</h3>
-                        <div id="hero-spells-list" class="shop-inventory" style="height: 120px; padding: 6px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 4px;"></div>
-                    </div>
-                    
-                    <!-- Items Panel -->
-                    <div id="menu-items-panel" style="flex: 1; background: rgba(0,0,0,0.5); border: 2px solid var(--border-color); padding: 15px; display: none; overflow-y: auto; border-radius: 6px;">
-                        <div style="display: flex; gap: 8px; margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
-                            <button id="menu-items-tab-btn" class="menu-button" onclick="window.game.showMenuItemsTab('items')" style="padding: 5px 15px; font-size: 13px;">🎒 Items</button>
-                            <button id="menu-materials-tab-btn" class="menu-button" onclick="window.game.showMenuItemsTab('materials')" style="padding: 5px 15px; font-size: 13px;">🧱 Materials</button>
-                            <button id="menu-fragments-tab-btn" class="menu-button" onclick="window.game.showMenuItemsTab('fragments')" style="padding: 5px 15px; font-size: 13px;">💎 Fragments</button>
-                        </div>
-                        <div id="menu-inventory-list" class="shop-inventory" style="height: 250px; margin-bottom: 12px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 4px; padding: 6px;"></div>
-                        <div id="menu-materials-list" class="shop-inventory" style="height: 250px; margin-bottom: 12px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 4px; padding: 6px; display: none;"></div>
-                        <div id="menu-fragments-list" class="shop-inventory" style="height: 250px; margin-bottom: 12px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 4px; padding: 6px; display: none;"></div>
-                        <div id="menu-item-details" style="padding: 10px; background: rgba(0,0,0,0.3); border-radius: 4px; min-height: 60px;"></div>
-                    </div>
-                    
-                    <!-- Quest Tracker Panel -->
-                    <div id="menu-quests-panel" style="flex: 1; background: rgba(0,0,0,0.5); border: 2px solid var(--border-color); padding: 15px; display: none; overflow-y: auto; border-radius: 6px;">
-                        <h3 style="color: var(--highlight); margin-bottom: 12px;">📋 Active Quests</h3>
-                        <div id="menu-quest-list" class="shop-inventory" style="height: 250px; margin-bottom: 12px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 4px; padding: 6px;"></div>
-                        <div id="menu-quest-details" style="padding: 10px; background: rgba(0,0,0,0.3); border-radius: 4px; min-height: 60px;"></div>
-                    </div>
+                <h3 style="color: var(--highlight); margin-bottom: 6px; border-bottom: 1px solid var(--border-color); font-size: 13px;">Equipment</h3>
 
-                    <!-- Achievements Panel -->
-                    <div id="menu-achievements-panel" style="flex: 1; min-height: 0; background: rgba(0,0,0,0.5); border: 2px solid var(--border-color); padding: 15px; display: none; overflow-y: auto; border-radius: 6px;">
-                        <div id="achievements-summary" style="display: flex; justify-content: space-between; align-items: center; gap: 14px; margin-bottom: 14px; background: rgba(0,0,0,0.3); border-radius: 6px; padding: 12px 16px;">
-                            <div>
-                                <h3 style="color: var(--highlight); margin-bottom: 4px;">🏆 Achievements</h3>
-                                <div id="achievements-progress-text" style="color: #aaa; font-size: 12px;">0 / 30 unlocked (0%)</div>
-                                <div class="achievements-bar"><div class="achievements-bar-fill" id="achievements-progress-fill" style="width:0%;"></div></div>
-                            </div>
-                            <div style="text-align: center; flex-shrink: 0;">
-                                <div style="color: #888; font-size: 10px; text-transform: uppercase; letter-spacing: 1px;">Adventure Rating</div>
-                                <div id="achievements-rating-grade" style="font-size: 34px; font-weight: bold; color: var(--highlight); line-height: 1;">-</div>
-                            </div>
-                        </div>
-                        <div id="achievements-grid" class="achievements-grid" style="max-height: 320px; overflow-y: auto; padding-right: 6px;"></div>
+                <div class="equipment-row">
+                    <div class="equipment-column">
+                        <p class="equipment-label">Weapon: <span id="current-weapon" class="equipment-value">None</span></p>
+                        <div id="available-weapons" class="shop-inventory" style="height: 160px; margin-top: 4px; padding: 8px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 4px;"></div>
                     </div>
-                    
+                    <div class="equipment-column">
+                        <p class="equipment-label">Armor: <span id="current-armor" class="equipment-value">None</span></p>
+                        <div id="available-armor" class="shop-inventory" style="height: 160px; margin-top: 4px; padding: 8px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 4px;"></div>
+                    </div>
+                </div>
+
+                <div class="equipment-row">
+                    <div class="equipment-column">
+                        <p class="equipment-label">Shield: <span id="current-shield" class="equipment-value">None</span></p>
+                        <div id="available-shields" class="shop-inventory" style="height: 160px; margin-top: 4px; padding: 8px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 4px;"></div>
+                    </div>
+                    <div class="equipment-column">
+                        <p class="equipment-label">Jewelry: <span id="current-jewelry" class="equipment-value">None</span></p>
+                        <div id="available-jewelry" class="shop-inventory" style="height: 160px; margin-top: 4px; padding: 8px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 4px;"></div>
+                    </div>
+                </div>
+
+                <h3 style="color: var(--highlight); margin-bottom: 6px; border-bottom: 1px solid var(--border-color); font-size: 13px;">Spells Known</h3>
+                <div id="hero-spells-list" class="shop-inventory" style="height: 120px; padding: 6px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 4px;"></div>
+            </div>
+
+            <!-- Items Panel -->
+            <div id="menu-items-panel" class="menu-subpanel" style="display: none;">
+                <div style="display: flex; gap: 8px; margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+                    <button id="menu-items-tab-btn" class="menu-button" onclick="window.game.showMenuItemsTab('items')" style="padding: 5px 15px; font-size: 13px;">🎒 Items</button>
+                    <button id="menu-materials-tab-btn" class="menu-button" onclick="window.game.showMenuItemsTab('materials')" style="padding: 5px 15px; font-size: 13px;">🧱 Materials</button>
+                    <button id="menu-fragments-tab-btn" class="menu-button" onclick="window.game.showMenuItemsTab('fragments')" style="padding: 5px 15px; font-size: 13px;">💎 Fragments</button>
+                </div>
+                <div id="menu-inventory-list" class="shop-inventory" style="height: 250px; margin-bottom: 12px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 4px; padding: 6px;"></div>
+                <div id="menu-materials-list" class="shop-inventory" style="height: 250px; margin-bottom: 12px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 4px; padding: 6px; display: none;"></div>
+                <div id="menu-fragments-list" class="shop-inventory" style="height: 250px; margin-bottom: 12px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 4px; padding: 6px; display: none;"></div>
+                <div id="menu-item-details" style="padding: 10px; background: rgba(0,0,0,0.3); border-radius: 4px; min-height: 60px;"></div>
+            </div>
+
+            <!-- Quest Tracker Panel - tapping a quest opens its details in the
+                 shared popup (ui.showPopup) instead of a description area you
+                 had to scroll down to, since quest lists can run long. -->
+            <div id="menu-quests-panel" class="menu-subpanel" style="display: none;">
+                <div id="menu-quest-list" class="shop-inventory" style="padding: 6px;"></div>
+            </div>
+
+            <!-- Achievements Panel -->
+            <div id="menu-achievements-panel" class="menu-subpanel" style="display: none;">
+                <div id="achievements-summary" style="display: flex; justify-content: space-between; align-items: center; gap: 14px; margin-bottom: 14px; background: rgba(0,0,0,0.3); border-radius: 6px; padding: 12px 16px;">
+                    <div>
+                        <div id="achievements-progress-text" style="color: #aaa; font-size: 12px;">0 / 30 unlocked (0%)</div>
+                        <div class="achievements-bar"><div class="achievements-bar-fill" id="achievements-progress-fill" style="width:0%;"></div></div>
+                    </div>
+                    <div style="text-align: center; flex-shrink: 0;">
+                        <div style="color: #888; font-size: 10px; text-transform: uppercase; letter-spacing: 1px;">Adventure Rating</div>
+                        <div id="achievements-rating-grade" style="font-size: 34px; font-weight: bold; color: var(--highlight); line-height: 1;">-</div>
+                    </div>
+                </div>
+                <div id="achievements-grid" class="achievements-grid"></div>
+            </div>
+
+            <!-- Monster Codex Panel -->
+            <div id="menu-codex-panel" class="menu-subpanel" style="display: none;">
+                <div style="margin-bottom: 14px; background: rgba(0,0,0,0.3); border-radius: 6px; padding: 12px 16px;">
+                    <div id="codex-progress-text" style="color: #aaa; font-size: 12px;">0 / 0 discovered (0%)</div>
+                    <div class="achievements-bar"><div class="achievements-bar-fill" id="codex-progress-fill" style="width:0%;"></div></div>
+                </div>
+                <div id="codex-grid" class="codex-grid"></div>
+            </div>
+
+            <!-- Settings Panel: audio, fullscreen, quest compass -->
+            <div id="menu-settings-panel" class="menu-subpanel" style="display: none;">
+                <button class="menu-button" onclick="window.game.showQuestCompassMenu()" style="padding: 8px; width: 100%; font-size: 13px; margin-bottom: 10px;">🧭 Track a Quest</button>
+                <button class="menu-button" onclick="toggleFullscreen()" style="padding: 8px; width: 100%; font-size: 13px; margin-bottom: 16px;">⛶ Fullscreen</button>
+
+                <div class="audio-controls">
+                    <h3 class="audio-title">🔊 Audio</h3>
+                    <div style="display: flex; gap: 5px; justify-content: center; margin-bottom: 6px;">
+                        <button class="menu-button" onclick="window.game.audio.mute()" style="padding: 3px 8px; font-size: 10px;">🔇 Mute</button>
+                        <button class="menu-button" onclick="window.game.audio.unmute()" style="padding: 3px 8px; font-size: 10px;">🔊 Unmute</button>
+                    </div>
+                    <div class="audio-slider-container">
+                        <div class="audio-slider-label">
+                            <span>🎵 Music</span>
+                            <span id="music-volume-value">25%</span>
+                        </div>
+                        <input type="range" min="0" max="1" step="0.05" value="0.25" class="audio-slider"
+                               onchange="window.game.audio.setMusicVolume(this.value); localStorage.setItem('legendOfEternal_musicVolume', this.value);"
+                               oninput="document.getElementById('music-volume-value').textContent = Math.round(this.value * 100) + '%'"
+                               id="music-volume-slider">
+                    </div>
+                    <div class="audio-slider-container">
+                        <div class="audio-slider-label">
+                            <span>🔊 SFX</span>
+                            <span id="sfx-volume-value">25%</span>
+                        </div>
+                        <input type="range" min="0" max="1" step="0.05" value="0.25" class="audio-slider"
+                               onchange="window.game.audio.setSFXVolume(this.value); localStorage.setItem('legendOfEternal_sfxVolume', this.value);"
+                               oninput="document.getElementById('sfx-volume-value').textContent = Math.round(this.value * 100) + '%'"
+                               id="sfx-volume-slider">
+                    </div>
                 </div>
             </div>
         </div>
+
 
         <!-- ================================================================= -->
         <!--                         FISHING MINIGAME                          -->
@@ -7356,6 +7599,14 @@
     class Monster {
         constructor(template, isBoss = false) {
             this.name = template.name;
+            // Immutable species id, captured once here before generateMonsters()
+            // ever renames the display name (Elite/Menacing prefixing) - the
+            // Monster Codex keys entries off this so a boosted "Menacing
+            // Goblin" or double-named "Elite Goblin" (from the regular-boost
+            // roll) still resolves back to the correct base template's
+            // authored stats/abilities rather than whatever name the monster
+            // happens to be wearing in that particular fight.
+            this.speciesName = template.name;
             this.sprite = template.sprite;
             this.level = template.level;
             this.maxHp = template.hp * (isBoss ? 3 : 1);
@@ -7701,6 +7952,31 @@
             drops: { material: 'Ashen Core', chance: 1.0, quantity: 3, type: 'treasure', value: 2000 }
         }
     };
+
+    // =====================================================================
+    //                    MONSTER CODEX - SPECIES LIST
+    // =====================================================================
+    // Flattens every monster template (QUADRANTS + CASTLE_BOSSES, deduped by
+    // name where a story boss doubles as a QUADRANTS entry - Ancient Mummy
+    // Lord, Voraxis) into one list the codex UI renders from. Built once at
+    // load time directly off the same authored data the game itself battles
+    // against, so the codex can never drift out of sync with real stats.
+    const MONSTER_CODEX_LIST = (() => {
+        const regionLabels = { CORNELIA: 'Brighthollow', PRAVOCA: 'Duskmere', ELFHEIM: 'Sylvaris', CHAOS: 'Ashen Wastes' };
+        const list = [];
+        Object.keys(QUADRANTS).forEach(key => {
+            QUADRANTS[key].monsters.forEach(m => {
+                list.push({ ...m, region: regionLabels[key] || key });
+            });
+        });
+        Object.keys(CASTLE_BOSSES).forEach(locName => {
+            const b = CASTLE_BOSSES[locName];
+            if (!list.some(m => m.name === b.name)) {
+                list.push({ ...b, region: locName });
+            }
+        });
+        return list;
+    })();
 
     // A large, unmissable pop-up fired the moment a specific story boss
     // falls, on top of (not instead of) the normal victory popup - see the
@@ -11208,11 +11484,13 @@
             
             for (let i = 0; i < count; i++) {
                 let template;
+                let pulledFromEliteTemplatePool = false;
                 const eliteChance = isSpecialLocation ? 0.5 : 0.2;
                 if (isElite || Math.random() < eliteChance) {
                     const eliteCandidates = quadrantData.monsters.filter(m => m.isElite);
                     if (eliteCandidates.length > 0) {
                         template = eliteCandidates[Math.floor(Math.random() * eliteCandidates.length)];
+                        pulledFromEliteTemplatePool = true;
                     } else {
                         const candidates = quadrantData.monsters.filter(m => !m.isElite);
                         template = candidates[Math.floor(Math.random() * candidates.length)];
@@ -11223,7 +11501,17 @@
                 }
                 if (!template) template = quadrantData.monsters[0];
                 const monster = new Monster(template, false);
-                if (isElite || (isSpecialLocation && Math.random() < 0.3)) {
+                // Only apply the extra "Elite X" boost to a monster that
+                // ISN'T already pulled from the elite-tagged template pool
+                // above - otherwise an already-strong template (e.g. Elite
+                // Goblin, already ~4x a regular Goblin's exp/HP) gets a
+                // SECOND multiplier stacked on top ("Elite Elite Goblin"),
+                // paying out roughly 3x its intended reward. This was the
+                // main driver behind dungeon leveling far outpacing the
+                // overworld - cave_elite encounters (isElite forced true)
+                // hit this every single time since both conditions below
+                // were always true simultaneously.
+                if (!pulledFromEliteTemplatePool && (isElite || (isSpecialLocation && Math.random() < 0.3))) {
                     monster.name = `Elite ${monster.name}`;
                     monster.maxHp = Math.floor(monster.maxHp * 1.8);
                     monster.currentHp = monster.maxHp;
@@ -13577,6 +13865,10 @@
                 this.monsters.forEach(monster => {
                     window.game.updateQuestProgress('monster_kill', 1, monster.name);
                     window.game.trackMonsterKill(monster.name, monster.isBoss, monster.isElite, monster.isRareEncounter);
+                    if (window.game.monsterCodex) {
+                        const isNewEntry = window.game.monsterCodex.discover(monster.speciesName || monster.name);
+                        if (isNewEntry) this.log(`📖 Monster Codex updated: ${monster.speciesName || monster.name}!`);
+                    }
                     // Shadow Stalkers are part of the whole Brighthollow region's
                     // monster pool, not exclusive to the Shadow Grove dungeon - they
                     // (and Elite Shadow Stalkers) can spawn in any Brighthollow
@@ -14245,7 +14537,7 @@
             uncommon: [
                 { name: 'Hi-Potion', type: 'consumable', effect: 'heal', power: 150, price: 150, desc: 'Restores 150 HP' },
                 { name: 'Elixir', type: 'consumable', effect: 'restore_mp', power: 80, price: 200, desc: 'Restores 80 MP' },
-                { name: 'Steel Sword', type: 'weapon', attack: 12, price: 400, desc: 'Quality steel blade' },
+                { name: 'Steel Sword', type: 'weapon', attack: 12, price: 800, desc: 'Quality steel blade' },
                 { name: 'Chain Mail', type: 'armor', defense: 8, price: 300, desc: 'Interlocking metal rings' },
                 { name: 'Shadow Guard', type: 'armor', defense: 16, price: 450, warriorOnly: true, desc: 'Dark-tempered steel for warriors' },
                 { name: 'Necromancers Hood', type: 'armor', defense: 6, magic: 14, price: 420, mageOnly: true, desc: 'Whispers secrets of the dead' },
@@ -14257,30 +14549,30 @@
                 { name: 'Orc Hide', type: 'material', price: 60, desc: 'Thick orc hide - durable material' },
                 { name: 'Dark Steel', type: 'material', price: 150, desc: 'Corrupted steel from dark knights' },
                 { name: 'Smoke Bomb', type: 'consumable', effect: 'escape_buff', power: 0.5, price: 80, desc: 'Increases escape chance' },
-                { name: 'Battle Axe', type: 'weapon', attack: 16, price: 600, warriorOnly: true, desc: 'Heavy two-handed axe' },
-                { name: 'Dreadnaught Axe', type: 'weapon', attack: 22, price: 650, warriorOnly: true, desc: 'Causes fear in those who face it' },
-                { name: 'Soulreaper Staff', type: 'weapon', attack: 8, magic: 24, price: 680, mageOnly: true, desc: 'Drains life essence from enemies' },
-                { name: 'Gravekeepers Maul', type: 'weapon', attack: 16, magic: 12, price: 660, paladinOnly: true, desc: 'Sends undead to final rest' },
+                { name: 'Battle Axe', type: 'weapon', attack: 16, price: 1200, warriorOnly: true, desc: 'Heavy two-handed axe' },
+                { name: 'Dreadnaught Axe', type: 'weapon', attack: 22, price: 1300, warriorOnly: true, desc: 'Causes fear in those who face it' },
+                { name: 'Soulreaper Staff', type: 'weapon', attack: 8, magic: 24, price: 1360, mageOnly: true, desc: 'Drains life essence from enemies' },
+                { name: 'Gravekeepers Maul', type: 'weapon', attack: 16, magic: 12, price: 1320, paladinOnly: true, desc: 'Sends undead to final rest' },
                 { name: 'Boneplate Armor', type: 'armor', defense: 22, attack: 4, price: 600, warriorOnly: true, desc: 'Forged from monster bones' },
                 { name: 'Wraithweave Robe', type: 'armor', defense: 8, magic: 18, evadeChance: 0.15, price: 620, mageOnly: true, desc: 'Partially intangible, evades 15% of attacks' },
                 { name: 'Cryptwarden Shield', type: 'armor', defense: 18, magic: 6, price: 610, paladinOnly: true, desc: 'Wards against necromantic energy' }
             ],
             legendary: [
-                { name: 'Knight Sword', type: 'weapon', attack: 18, defense: 3, price: 800, paladinOnly: true, desc: 'Fine paladin blade' },
+                { name: 'Knight Sword', type: 'weapon', attack: 18, defense: 3, price: 1600, paladinOnly: true, desc: 'Fine paladin blade' },
                 { name: 'Darksteel Plate', type: 'armor', defense: 18, price: 900, warriorOnly: true, desc: 'Powerful darksteel armor' },
                 { name: 'Ancient Tome', type: 'spell_tome', spell: 'Blizzara', price: 1000, desc: 'Contains powerful ice magic' },
                 { name: 'Crystal Skull', type: 'material', price: 400, desc: 'Mysterious crystal skull - ultra rare' },
-                { name: 'Hellfire Greatsword', type: 'weapon', attack: 32, magic: 12, element: 'fire', price: 1800, warriorOnly: true, desc: 'Wreathed in demonic flames' },
-                { name: 'Glacial Scepter', type: 'weapon', attack: 10, magic: 35, element: 'ice', price: 1900, mageOnly: true, desc: 'Freezes the very air around it' },
-                { name: 'Thunderbolt Greathammer', type: 'weapon', attack: 24, magic: 18, element: 'lightning', price: 1850, paladinOnly: true, desc: 'Calls lightning with each strike' },
-                { name: 'Boneshear Warhammer', type: 'weapon', attack: 26, defense: 4, price: 950, warriorOnly: true, bonusVsFamily: { undead: 0.2 }, desc: 'Cracks bone like dry kindling. The dead do not rise twice from its blow. 20% more damage to undead.' }
+                { name: 'Hellfire Greatsword', type: 'weapon', attack: 32, magic: 12, element: 'fire', price: 3600, warriorOnly: true, desc: 'Wreathed in demonic flames' },
+                { name: 'Glacial Scepter', type: 'weapon', attack: 10, magic: 35, element: 'ice', price: 3800, mageOnly: true, desc: 'Freezes the very air around it' },
+                { name: 'Thunderbolt Greathammer', type: 'weapon', attack: 24, magic: 18, element: 'lightning', price: 3700, paladinOnly: true, desc: 'Calls lightning with each strike' },
+                { name: 'Boneshear Warhammer', type: 'weapon', attack: 26, defense: 4, price: 1900, warriorOnly: true, bonusVsFamily: { undead: 0.2 }, desc: 'Cracks bone like dry kindling. The dead do not rise twice from its blow. 20% more damage to undead.' }
             ]
         },
         sylvaris: {
             uncommon: [
                 { name: 'Mega-Potion', type: 'consumable', effect: 'heal', power: 300, price: 400, desc: 'Restores 300 HP' },
                 { name: 'Hi-Elixir', type: 'consumable', effect: 'restore_mp', power: 200, price: 500, desc: 'Restores 200 MP' },
-                { name: 'Mythril Sword', type: 'weapon', attack: 28, price: 1300, desc: 'Lightweight mythril blade' }
+                { name: 'Mythril Sword', type: 'weapon', attack: 28, price: 3900, desc: 'Lightweight mythril blade' }
             ],
             rare: [
                 { name: 'Sand Worm Tooth', type: 'material', price: 80, desc: 'Massive sand worm tooth' },
@@ -14291,12 +14583,12 @@
                 { name: 'Napalm', type: 'consumable', effect: 'damage_all', power: 80, element: 'fire', price: 300, desc: 'Fire damage to all enemies' }
             ],
             legendary: [
-                { name: 'Pharaoh\'s Staff', type: 'weapon', magic: 22, attack: 12, price: 1800, mageOnly: true, desc: 'Ancient pharaoh staff' },
-                { name: 'Elemental Rod', type: 'weapon', magic: 25, attack: 10, price: 2000, mageOnly: true, desc: 'Rod of the elements' },
+                { name: 'Pharaoh\'s Staff', type: 'weapon', magic: 22, attack: 12, price: 5400, mageOnly: true, desc: 'Ancient pharaoh staff' },
+                { name: 'Elemental Rod', type: 'weapon', magic: 25, attack: 10, price: 6000, mageOnly: true, desc: 'Rod of the elements' },
                 { name: 'Fire Core', type: 'material', price: 500, desc: 'Pure fire elemental core' },
                 { name: 'Golden Idol', type: 'material', price: 600, desc: 'Priceless golden idol' },
                 { name: 'Firaga Tome', type: 'spell_tome', spell: 'Firaga', price: 2500, desc: 'Ultimate fire magic tome' },
-                { name: 'Sandwarden Scepter', type: 'weapon', magic: 24, attack: 10, price: 2100, mageOnly: true, bonusVsFamily: { elemental: 0.2, construct: 0.15 }, desc: 'Attuned to the desert\'s restless spirits. 20% more damage to elemental creatures, 15% to constructs.' }
+                { name: 'Sandwarden Scepter', type: 'weapon', magic: 24, attack: 10, price: 6300, mageOnly: true, bonusVsFamily: { elemental: 0.2, construct: 0.15 }, desc: 'Attuned to the desert\'s restless spirits. 20% more damage to elemental creatures, 15% to constructs.' }
             ]
         },
         chaos: {
@@ -14314,23 +14606,23 @@
                 { name: 'Flame Steel', type: 'material', price: 280, desc: 'Fire-infused steel' },
                 { name: 'Ice Crystal', type: 'material', price: 280, desc: 'Pure ice crystal' },
                 { name: 'Ashen Shard', type: 'material', price: 400, desc: 'Fragment of chaos energy' },
-                { name: 'Sandstorm Scimitar', type: 'weapon', attack: 35, price: 1200, warriorOnly: true, desc: 'Strikes with blinding speed' },
-                { name: 'Djinn Lamp Staff', type: 'weapon', attack: 12, magic: 38, price: 1250, mageOnly: true, desc: 'Harnesses wish-granting power' },
-                { name: 'Sunwalkers Spear', type: 'weapon', attack: 28, magic: 18, price: 1220, paladinOnly: true, desc: 'Pierces with desert sun fury' },
+                { name: 'Sandstorm Scimitar', type: 'weapon', attack: 35, price: 4800, warriorOnly: true, desc: 'Strikes with blinding speed' },
+                { name: 'Djinn Lamp Staff', type: 'weapon', attack: 12, magic: 38, price: 5000, mageOnly: true, desc: 'Harnesses wish-granting power' },
+                { name: 'Sunwalkers Spear', type: 'weapon', attack: 28, magic: 18, price: 4880, paladinOnly: true, desc: 'Pierces with desert sun fury' },
                 { name: 'Scorpion Sting Mail', type: 'armor', defense: 32, attack: 8, price: 1100, warriorOnly: true, desc: 'Poison-tipped barbs on armor' },
                 { name: 'Sand Spirit Cloak', type: 'armor', defense: 12, magic: 28, price: 1150, mageOnly: true, desc: 'Blends into desert surroundings' },
                 { name: 'Dawnbringer Cuirass', type: 'armor', defense: 30, magic: 10, price: 1120, paladinOnly: true, desc: 'Glimmers with morning light' }
             ],
             legendary: [
-                { name: 'Blade of Dawn', type: 'weapon', attack: 35, magic: 15, price: 3000, desc: 'Legendary holy blade' },
+                { name: 'Blade of Dawn', type: 'weapon', attack: 35, magic: 15, price: 12000, desc: 'Legendary holy blade' },
                 { name: 'Dragon Scale Mail', type: 'armor', defense: 40, price: 2800, warriorOnly: true, desc: 'Armor of dragons' },
                 { name: 'Archmage Robe', type: 'armor', magic: 30, defense: 20, price: 2800, mageOnly: true, desc: 'Ultimate mage robes' },
                 { name: 'Ashen Core', type: 'material', price: 1000, desc: 'Pure chaos energy - legendary' },
                 { name: 'Void Crystal', type: 'material', price: 800, desc: 'Crystal from the void' },
-                { name: 'Inferno Claymore', type: 'weapon', attack: 48, magic: 18, element: 'fire', price: 2800, warriorOnly: true, desc: 'Leaves a trail of fire with each swing' },
-                { name: 'Absolute Zero Rod', type: 'weapon', attack: 14, magic: 52, element: 'ice', price: 3000, mageOnly: true, desc: 'Can freeze enemies solid' },
-                { name: 'Tempest Avenger', type: 'weapon', attack: 38, magic: 24, element: 'lightning', price: 2900, paladinOnly: true, desc: 'Channels the power of storms' },
-                { name: 'Dragonbane Zweihander', type: 'weapon', attack: 40, price: 2700, warriorOnly: true, bonusVsFamily: { dragon: 0.2, demon: 0.15 }, desc: 'A massive two-handed blade forged to hunt what the world fears most. 20% more damage to dragons, 15% to demons.' }
+                { name: 'Inferno Claymore', type: 'weapon', attack: 48, magic: 18, element: 'fire', price: 11200, warriorOnly: true, desc: 'Leaves a trail of fire with each swing' },
+                { name: 'Absolute Zero Rod', type: 'weapon', attack: 14, magic: 52, element: 'ice', price: 12000, mageOnly: true, desc: 'Can freeze enemies solid' },
+                { name: 'Tempest Avenger', type: 'weapon', attack: 38, magic: 24, element: 'lightning', price: 11600, paladinOnly: true, desc: 'Channels the power of storms' },
+                { name: 'Dragonbane Zweihander', type: 'weapon', attack: 40, price: 10800, warriorOnly: true, bonusVsFamily: { dragon: 0.2, demon: 0.15 }, desc: 'A massive two-handed blade forged to hunt what the world fears most. 20% more damage to dragons, 15% to demons.' }
             ]
         }
     };
@@ -14795,17 +15087,17 @@
                 { name: 'Shortstaff', type: 'weapon', price: 120, attack: 2, magic: 6, desc: 'A basic wooden staff for mages', mageOnly: true }
             ];
             const town2Weapons = [
-                { name: 'Steel Sword', type: 'weapon', price: 450, attack: 14, desc: 'Forged from quality steel' },
-                { name: 'Battle Axe', type: 'weapon', price: 600, attack: 20, desc: 'A heavy two-handed axe', warriorOnly: true },
-                { name: 'Knight Sword', type: 'weapon', price: 550, attack: 18, desc: 'A fine blade favored by paladins', paladinOnly: true },
-                { name: 'Steel Blade', type: 'weapon', price: 500, attack: 16, desc: 'Sharp steel blade' },
-                { name: 'Grand Mage Staff', type: 'weapon', price: 800, attack: 8, magic: 18, desc: 'Powerful staff for accomplished mages', mageOnly: true }
+                { name: 'Steel Sword', type: 'weapon', price: 900, attack: 14, desc: 'Forged from quality steel' },
+                { name: 'Battle Axe', type: 'weapon', price: 1200, attack: 20, desc: 'A heavy two-handed axe', warriorOnly: true },
+                { name: 'Knight Sword', type: 'weapon', price: 1100, attack: 18, desc: 'A fine blade favored by paladins', paladinOnly: true },
+                { name: 'Steel Blade', type: 'weapon', price: 1000, attack: 16, desc: 'Sharp steel blade' },
+                { name: 'Grand Mage Staff', type: 'weapon', price: 1600, attack: 8, magic: 18, desc: 'Powerful staff for accomplished mages', mageOnly: true }
             ];
             const town3Weapons = [
-                { name: 'Great Axe', type: 'weapon', price: 1500, attack: 32, desc: 'Massive axe of destruction', warriorOnly: true },
-                { name: 'Broadsword', type: 'weapon', price: 1400, attack: 30, desc: 'Legendary paladin blade', paladinOnly: true },
-                { name: 'Wizard Staff', type: 'weapon', price: 1800, attack: 12, magic: 28, desc: 'Ultimate staff for master mages', mageOnly: true },
-                { name: 'Mythril Sword', type: 'weapon', price: 1300, attack: 28, desc: 'Lightweight mythril blade' }
+                { name: 'Great Axe', type: 'weapon', price: 4500, attack: 32, desc: 'Massive axe of destruction', warriorOnly: true },
+                { name: 'Broadsword', type: 'weapon', price: 4200, attack: 30, desc: 'Legendary paladin blade', paladinOnly: true },
+                { name: 'Wizard Staff', type: 'weapon', price: 5400, attack: 12, magic: 28, desc: 'Ultimate staff for master mages', mageOnly: true },
+                { name: 'Mythril Sword', type: 'weapon', price: 3900, attack: 28, desc: 'Lightweight mythril blade' }
             ];
             switch(town) {
                 case 'brighthollow': return town1Weapons;
@@ -15891,6 +16183,132 @@
     }
 
     // =====================================================================
+    //                        MONSTER CODEX MANAGER
+    // =====================================================================
+    // A Pokedex-style bestiary: every monster species is listed by name
+    // from the start, but full details (portrait, stats, family, elemental
+    // weaknesses/resistances, abilities, drops) only reveal once the party
+    // has defeated at least one of that species. Discovery is keyed off
+    // Monster.speciesName - the canonical template name captured before any
+    // runtime "Elite "/"Menacing " renaming - so a boosted encounter still
+    // unlocks the correct base entry rather than creating a phantom
+    // "Menacing Goblin" species distinct from "Goblin".
+    class MonsterCodex {
+        constructor() {
+            this.discovered = {}; // speciesName -> ISO timestamp string
+        }
+
+        /** Called once per kill from Game.trackMonsterKill(). Returns true
+         *  only the first time a species is discovered, so callers can
+         *  decide whether to show a "New Entry!" toast. */
+        discover(speciesName) {
+            if (!speciesName || this.discovered[speciesName]) return false;
+            this.discovered[speciesName] = new Date().toISOString();
+            if (window.game && window.game.state && window.game.state.currentScreen === 'menu') {
+                this.renderCodexPanel();
+            }
+            return true;
+        }
+
+        isDiscovered(speciesName) {
+            return !!this.discovered[speciesName];
+        }
+
+        getCompletionPercent() {
+            const total = MONSTER_CODEX_LIST.length;
+            const done = Object.keys(this.discovered).length;
+            return total ? Math.round((done / total) * 100) : 0;
+        }
+
+        /** Renders the codex grid into #codex-grid, plus the summary bar.
+         *  Locked entries show only a silhouette and "???"; a discovered
+         *  entry expands into full stats/family/resistances/abilities. */
+        renderCodexPanel() {
+            const grid = document.getElementById('codex-grid');
+            const progressText = document.getElementById('codex-progress-text');
+            const progressFill = document.getElementById('codex-progress-fill');
+            if (!grid) return;
+            const total = MONSTER_CODEX_LIST.length;
+            const done = Object.keys(this.discovered).length;
+            const pct = this.getCompletionPercent();
+            if (progressText) progressText.textContent = `${done} / ${total} discovered (${pct}%)`;
+            if (progressFill) progressFill.style.width = pct + '%';
+
+            const elementIcon = { fire: '🔥', ice: '❄️', lightning: '⚡' };
+            const abilityLabels = { heal_self: 'Self-Heal', buff_self: 'Self-Buff', spell_damage: 'Spell Attack' };
+
+            grid.innerHTML = '';
+            MONSTER_CODEX_LIST.forEach(m => {
+                const isFound = this.isDiscovered(m.name);
+                const card = document.createElement('div');
+                card.className = 'codex-card ' + (isFound ? 'discovered' : 'locked');
+                if (!isFound) {
+                    card.innerHTML = `
+                        <div class="codex-icon">❓</div>
+                        <div class="codex-name">???</div>
+                    `;
+                    grid.appendChild(card);
+                    return;
+                }
+
+                const weakKeys = Object.keys(m.elementalWeakness || {});
+                const resistKeys = Object.keys(m.elementalResist || {});
+                const weakStr = weakKeys.length
+                    ? weakKeys.map(e => `${elementIcon[e] || ''} ${e}`).join(', ')
+                    : 'None';
+                const resistStr = resistKeys.length
+                    ? resistKeys.map(e => `${elementIcon[e] || ''} ${e}`).join(', ')
+                    : 'None';
+
+                let abilityHtml = '';
+                if (m.abilityType) {
+                    const label = m.abilityName || abilityLabels[m.abilityType] || m.abilityType;
+                    abilityHtml = `<div class="codex-row"><span>Special</span><span>${label} (${Math.round((m.abilityChance || 0) * 100)}% chance)</span></div>`;
+                }
+
+                let poisonHtml = '';
+                if (m.poisonChance) {
+                    poisonHtml = `<div class="codex-row"><span>Poison</span><span>${Math.round(m.poisonChance * 100)}% chance, ${m.poisonDamage} dmg/turn</span></div>`;
+                }
+
+                let dropHtml = '';
+                if (m.drops && m.drops.material) {
+                    dropHtml = `<div class="codex-row"><span>Drops</span><span>${m.drops.material}</span></div>`;
+                }
+
+                card.innerHTML = `
+                    <div class="codex-icon">${m.sprite || '❓'}</div>
+                    <div class="codex-name">${m.name}</div>
+                    <div class="codex-tag">${m.region || ''}${m.isBoss ? ' • BOSS' : (m.isElite ? ' • Elite' : '')}</div>
+                    <div class="codex-desc">${m.desc || ''}</div>
+                    <div class="codex-stats-grid">
+                        <div class="codex-row"><span>Level</span><span>${m.level}</span></div>
+                        <div class="codex-row"><span>HP</span><span>${m.hp}</span></div>
+                        <div class="codex-row"><span>Attack</span><span>${m.attack}</span></div>
+                        <div class="codex-row"><span>Defense</span><span>${m.defense}</span></div>
+                        <div class="codex-row"><span>Speed</span><span>${m.speed}</span></div>
+                        <div class="codex-row"><span>Family</span><span>${m.family || '-'}</span></div>
+                        <div class="codex-row"><span>Weak to</span><span>${weakStr}</span></div>
+                        <div class="codex-row"><span>Resists</span><span>${resistStr}</span></div>
+                        ${abilityHtml}
+                        ${poisonHtml}
+                        ${dropHtml}
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        toSaveData() {
+            return { discovered: this.discovered };
+        }
+
+        loadSaveData(data) {
+            this.discovered = (data && data.discovered) || {};
+        }
+    }
+
+    // =====================================================================
     //                          MAIN GAME CLASS
     // =====================================================================
 
@@ -15938,6 +16356,7 @@
             this.monsterKills = {};
             this.claimedBounties = new Set();
             this.achievements = new AchievementManager();
+            this.monsterCodex = new MonsterCodex();
             this.legendaryWeapons = {
                 'Goblin Crown': false,
                 'Darksteel Plate': false,
@@ -16003,7 +16422,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v60]');
+            console.log('Game starting... [build v63]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
@@ -17877,61 +18296,180 @@
             this.saveGame(true);
         }
 
-        showQuestMenu() {
-            console.log('Showing quest menu');
-            const heroPanel = document.getElementById('hero-details-panel');
-            const itemsPanel = document.getElementById('menu-items-panel');
-            const questsPanel = document.getElementById('menu-quests-panel');
-            const achievementsPanel = document.getElementById('menu-achievements-panel');
-            if (!questsPanel) {
-                console.error('menu-quests-panel not found!');
-                return;
-            }
-            heroPanel.style.display = 'none';
-            itemsPanel.style.display = 'none';
-            questsPanel.style.display = 'block';
-            if (achievementsPanel) achievementsPanel.style.display = 'none';
+        /** Generic full-screen sub-panel switcher for the redesigned player
+         *  menu. Hides the hub and every other sub-panel, shows the
+         *  requested one, updates the shared header (title + back button),
+         *  and calls that panel's own render function. menuGoBack() (wired
+         *  to the header's Back button) always returns to the hub. */
+        showMenuPanel(name) {
+            const panels = {
+                equipment: { el: 'menu-equipment-panel', title: '⚔️ EQUIPMENT', render: () => this.renderMenuEquipmentPanel() },
+                items: { el: 'menu-items-panel', title: '🎒 ITEMS', render: () => this.showMenuItemsTab('items') },
+                quests: { el: 'menu-quests-panel', title: '📋 QUESTS', render: () => this.renderQuestList() },
+                achievements: { el: 'menu-achievements-panel', title: '🏆 ACHIEVEMENTS', render: () => { if (this.achievements) this.achievements.renderAchievementsPanel(); } },
+                codex: { el: 'menu-codex-panel', title: '📖 MONSTER CODEX', render: () => { if (this.monsterCodex) this.monsterCodex.renderCodexPanel(); } },
+                settings: { el: 'menu-settings-panel', title: '⚙️ SETTINGS', render: () => this.loadVolumeSettings() }
+            };
+            const target = panels[name];
+            if (!target) return;
+            const hub = document.getElementById('menu-hub-screen');
+            if (hub) hub.style.display = 'none';
+            Object.values(panels).forEach(p => {
+                const el = document.getElementById(p.el);
+                if (el) el.style.display = 'none';
+            });
+            const el = document.getElementById(target.el);
+            if (el) el.style.display = 'block';
+            const titleEl = document.getElementById('menu-header-title');
+            if (titleEl) titleEl.textContent = target.title;
+            const backBtn = document.getElementById('menu-back-btn');
+            if (backBtn) backBtn.style.display = 'inline-block';
             this.updateMenuGold();
-            this.renderQuestList();
+            target.render();
+        }
+
+        /** Returns from any sub-panel to the hub (hero switcher + stat
+         *  breakdown + icon nav) - wired to the header's Back button. */
+        menuGoBack() {
+            this.showMenuHub();
+        }
+
+        showMenuHub() {
+            const hub = document.getElementById('menu-hub-screen');
+            ['menu-equipment-panel', 'menu-items-panel', 'menu-quests-panel', 'menu-achievements-panel', 'menu-codex-panel', 'menu-settings-panel'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = 'none';
+            });
+            if (hub) hub.style.display = 'block';
+            const titleEl = document.getElementById('menu-header-title');
+            if (titleEl) titleEl.textContent = '⚔️ PARTY STATUS';
+            const backBtn = document.getElementById('menu-back-btn');
+            if (backBtn) backBtn.style.display = 'none';
+            this.updateMenuGold();
+            this.renderMenuHubHero();
+        }
+
+        /** Moves the hub's hero switcher forward/back through the party,
+         *  wrapping at either end - wired to the arrow buttons and to
+         *  tapping the portrait itself. */
+        cycleMenuHero(direction) {
+            if (!this.party || !this.party.heroes.length) return;
+            const count = this.party.heroes.length;
+            this.menuSelectedHeroIndex = ((this.menuSelectedHeroIndex ?? 0) + direction + count) % count;
+            this.renderMenuHubHero();
+        }
+
+        /** Renders the hub's portrait/name/class block and stat breakdown
+         *  for whichever hero is currently selected. */
+        renderMenuHubHero() {
+            if (!this.party || !this.party.heroes.length) return;
+            if (this.menuSelectedHeroIndex === undefined || this.menuSelectedHeroIndex >= this.party.heroes.length) {
+                this.menuSelectedHeroIndex = 0;
+            }
+            const hero = this.party.heroes[this.menuSelectedHeroIndex];
+            const portraitEl = document.getElementById('menu-hub-portrait');
+            if (portraitEl) portraitEl.innerHTML = heroPortraitHTML(hero, 'detail-size');
+            const nameEl = document.getElementById('menu-hub-name');
+            if (nameEl) nameEl.textContent = `${hero.name} (Lv ${hero.level})${hero.isDead ? ' (KO)' : ''}`;
+            const sublineEl = document.getElementById('menu-hub-subline');
+            if (sublineEl) sublineEl.textContent = hero.heroClass;
+            this.renderMenuStatBreakdown(hero);
+        }
+
+        /** Splits every gear-affected stat into Base / Gear Bonus / Gem
+         *  Bonus / Overall, mirroring exactly how Hero.getEffectiveStats()
+         *  actually computes damage - same shield-eligibility check, same
+         *  four stats. Gem Bonus is read from item.gemAppliedBonus (set at
+         *  socket time - see applyGemToSlot()), so it's always the real
+         *  gem contribution, never an estimate. Any remainder (buffs,
+         *  archetype % modifiers, status effects) is surfaced as a single
+         *  "Active Effects" line only when nonzero, so the four core
+         *  numbers always add up cleanly on their own. */
+        getHeroStatBreakdown(hero) {
+            const statKeys = ['attack', 'defense', 'magic', 'speed'];
+            const base = { ...hero.baseStats };
+            const gear = { attack: 0, defense: 0, magic: 0, speed: 0 };
+            const gem = { attack: 0, defense: 0, magic: 0, speed: 0 };
+            const addItem = (item) => {
+                if (!item) return;
+                statKeys.forEach(stat => {
+                    const raw = item[stat] || 0;
+                    const gemPart = (item.gemAppliedBonus && item.gemAppliedBonus[stat]) || 0;
+                    gear[stat] += (raw - gemPart);
+                    gem[stat] += gemPart;
+                });
+            };
+            addItem(hero.equipment.weapon);
+            addItem(hero.equipment.armor);
+            if (hero.equipment.shield && (hero.heroClass === 'warrior' || hero.heroClass === 'paladin' || (hero.heroClass === 'mage' && hero.equipment.shield.healerShield))) {
+                addItem(hero.equipment.shield);
+            }
+            addItem(hero.equipment.jewelry);
+            const overall = hero.getEffectiveStats();
+            const other = {};
+            statKeys.forEach(stat => {
+                other[stat] = overall[stat] - (base[stat] + gear[stat] + gem[stat]);
+            });
+            return { statKeys, base, gear, gem, other, overall };
+        }
+
+        renderMenuStatBreakdown(hero) {
+            const container = document.getElementById('menu-stat-breakdown');
+            if (!container) return;
+            const { statKeys, base, gear, gem, other, overall } = this.getHeroStatBreakdown(hero);
+            const statLabels = { attack: 'Attack', defense: 'Defense', magic: 'Magic', speed: 'Speed' };
+            let html = '<div class="stat-breakdown-grid-2col">';
+            statKeys.forEach(stat => {
+                html += `<div class="stat-breakdown-card">
+                    <div class="stat-breakdown-title">${statLabels[stat]}</div>
+                    <div class="stat-breakdown-line"><span>Base</span><span class="stat-breakdown-value">${base[stat]}</span></div>
+                    <div class="stat-breakdown-line"><span>Gear Bonus</span><span class="stat-breakdown-value">+${gear[stat]}</span></div>
+                    <div class="stat-breakdown-line"><span>Gem Bonus</span><span class="stat-breakdown-value">+${gem[stat]}</span></div>
+                    ${other[stat] !== 0 ? `<div class="stat-breakdown-line"><span>Active Effects</span><span class="stat-breakdown-value">${other[stat] > 0 ? '+' : ''}${other[stat]}</span></div>` : ''}
+                    <div class="stat-breakdown-line overall"><span>Overall</span><span class="stat-breakdown-value">${overall[stat]}</span></div>
+                </div>`;
+            });
+            html += '</div>';
+            html += `<div class="stat-breakdown-card">
+                <div class="stat-breakdown-title">Vitals</div>
+                <div class="stat-breakdown-line"><span>HP</span><span class="stat-breakdown-value">${hero.currentHp}/${overall.maxHp}</span></div>
+                <div class="stat-breakdown-line"><span>MP</span><span class="stat-breakdown-value">${hero.currentMp}/${overall.maxMp}</span></div>
+                <div class="stat-breakdown-line"><span>Crit Chance (from Speed)</span><span class="stat-breakdown-value">+${Math.round(hero.getSpeedCritBonus() * 100)}%</span></div>
+                <div class="stat-breakdown-line"><span>EXP</span><span class="stat-breakdown-value">${hero.experience}/${hero.experienceToNext}</span></div>
+            </div>`;
+            container.innerHTML = html;
         }
 
         renderQuestList() {
             const container = document.getElementById('menu-quest-list');
-            const details = document.getElementById('menu-quest-details');
-            if (!container || !details) return;
-            console.log('Rendering quest list. Active quests:', this.quests);
+            if (!container) return;
             container.innerHTML = '';
-            details.innerHTML = '<p style="color: #888; text-align: center;">Select a quest to view details</p>';
             if (this.quests.length === 0) {
                 container.innerHTML = '<p style="color: #888; text-align: center; padding: 20px;">No active quests</p>';
                 return;
             }
-            this.quests.forEach((quest, index) => {
+            this.quests.forEach((quest) => {
                 const progress = quest.progress || 0;
                 const isComplete = progress >= quest.goal;
-                console.log(`Adding quest to menu: ${quest.name} (ID: ${quest.id})`);
                 const div = document.createElement('div');
                 div.className = 'shop-item';
                 div.innerHTML = `
                     <span>${isComplete ? '✅' : '📋'} ${quest.name}</span>
                     <span style="color: ${isComplete ? '#44ff44' : '#888'};">${progress}/${quest.goal}</span>
                 `;
-                div.onclick = () => {
-                    console.log('Menu quest clicked:', quest.name, 'ID:', quest.id);
-                    this.showMenuQuestDetails(quest);
-                };
+                div.onclick = () => this.showQuestPopup(quest);
                 container.appendChild(div);
             });
         }
 
-        showMenuQuestDetails(quest) {
-            console.log('showMenuQuestDetails called with:', quest.name, quest.id);
-            const details = document.getElementById('menu-quest-details');
-            if (!details) return;
+        /** Shows a quest's full description/progress/reward in the shared
+         *  game-wide popup (ui.showPopup) rather than a details area below
+         *  the list - quest lists can run long enough that scrolling down
+         *  to read a description was consistently awkward on mobile. */
+        showQuestPopup(quest) {
             const active = this.quests.find(q => q.id === quest.id);
             const progress = active ? active.progress : 0;
             const isComplete = progress >= quest.goal;
-            console.log('Quest progress:', progress, 'Goal:', quest.goal, 'isComplete:', isComplete);
             let progressMessage = '';
             if (quest.type === 'elemental_kills' && active) {
                 progressMessage = `<p><strong>Fire Kills:</strong> ${active.fireKills || 0}/5</p>
@@ -17940,9 +18478,8 @@
                 progressMessage = `<p><strong>Shadow Stalkers Defeated:</strong> ${(active && active.stalkerCount) || 0}/${quest.goals.stalkers.required}</p>
                                    <p><strong>Shadow Essence Found:</strong> ${(active && active.essenceCount) || 0}/${quest.goals.essence.required}</p>`;
             }
-            details.innerHTML = `
-                <h3 style="color: var(--highlight);">${quest.name}</h3>
-                <p style="margin: 15px 0;">${quest.description}</p>
+            const html = `
+                <p style="margin-bottom: 15px;">${quest.description}</p>
                 ${progressMessage}
                 <p><strong>Progress:</strong> ${progress}/${quest.goal}</p>
                 <p><strong>Reward:</strong> ${quest.reward.gold} G, ${quest.reward.item}</p>
@@ -17950,46 +18487,11 @@
                 ${!isComplete ? `
                     <p style="color: #ffaa00; margin-top: 10px;">Quest in progress - keep going!</p>
                 ` : `
-                    <button class="menu-button" onclick="window.game.completeQuestById('${quest.id}')" 
+                    <button class="menu-button" onclick="window.game.completeQuestById('${quest.id}')"
                         style="margin-top: 20px; width: 100%; background: #44ff44; color: #000;">✨ CLAIM REWARD ✨</button>
                 `}
             `;
-        }
-
-        showHeroMenu() {
-            document.getElementById('menu-items-panel').style.display = 'none';
-            document.getElementById('hero-details-panel').style.display = 'none';
-            document.getElementById('menu-quests-panel').style.display = 'none';
-            const achievementsPanel = document.getElementById('menu-achievements-panel');
-            if (achievementsPanel) achievementsPanel.style.display = 'none';
-            this.renderMenu();
-        }
-
-        showMenuItems() {
-            const panel = document.getElementById('hero-details-panel');
-            const itemsPanel = document.getElementById('menu-items-panel');
-            const questsPanel = document.getElementById('menu-quests-panel');
-            const achievementsPanel = document.getElementById('menu-achievements-panel');
-            panel.style.display = 'none';
-            itemsPanel.style.display = 'block';
-            questsPanel.style.display = 'none';
-            if (achievementsPanel) achievementsPanel.style.display = 'none';
-            this.updateMenuGold();
-            this.showMenuItemsTab('items');
-        }
-
-        showMenuAchievements() {
-            const heroPanel = document.getElementById('hero-details-panel');
-            const itemsPanel = document.getElementById('menu-items-panel');
-            const questsPanel = document.getElementById('menu-quests-panel');
-            const achievementsPanel = document.getElementById('menu-achievements-panel');
-            if (!achievementsPanel) return;
-            heroPanel.style.display = 'none';
-            itemsPanel.style.display = 'none';
-            questsPanel.style.display = 'none';
-            achievementsPanel.style.display = 'block';
-            this.updateMenuGold();
-            if (this.achievements) this.achievements.renderAchievementsPanel();
+            this.ui.showPopup(quest.name, html, true);
         }
 
         /** Switches between the Items, Materials, and Fragments sub-tabs of the item menu. */
@@ -19579,27 +20081,11 @@
         }
 
         renderMenu() {
-            const heroList = document.getElementById('menu-hero-list');
-            heroList.innerHTML = '';
             this.updateMenuGold();
-            document.getElementById('hero-details-panel').style.display = 'none';
-            document.getElementById('menu-items-panel').style.display = 'none';
-            this.party.heroes.forEach((hero, index) => {
-                const stats = hero.getEffectiveStats();
-                const btn = document.createElement('button');
-                btn.className = 'menu-button menu-hero-btn';
-                btn.style.width = '100%';
-                btn.innerHTML = `
-                    ${heroPortraitHTML(hero)}
-                    <span class="menu-hero-btn-label">
-                        <span>${hero.name} (Lv ${hero.level})${hero.isDead ? ' (KO)' : ''}</span>
-                        <span class="menu-hero-btn-hp">HP ${hero.currentHp}/${stats.maxHp}</span>
-                    </span>
-                `;
-                btn.onclick = () => this.showHeroDetails(index);
-                heroList.appendChild(btn);
-            });
-            this.loadVolumeSettings();
+            if (this.menuSelectedHeroIndex === undefined || this.menuSelectedHeroIndex >= this.party.heroes.length) {
+                this.menuSelectedHeroIndex = 0;
+            }
+            this.showMenuHub();
         }
 
         loadVolumeSettings() {
@@ -19628,24 +20114,17 @@
             }
         }
 
-        showHeroDetails(index) {
+        /** Renders the Equipment sub-panel for whichever hero is currently
+         *  selected on the hub (this.menuSelectedHeroIndex) - replaces the
+         *  old showHeroDetails(index), which used to render both stats and
+         *  equipment together in one shared panel. */
+        renderMenuEquipmentPanel() {
+            const index = this.menuSelectedHeroIndex ?? 0;
             var hero = this.party.heroes[index];
-            var panel = document.getElementById('hero-details-panel');
-            var itemsPanel = document.getElementById('menu-items-panel');
-            panel.style.display = 'block';
-            itemsPanel.style.display = 'none';
-            document.getElementById('hero-detail-portrait').innerHTML = heroPortraitHTML(hero, 'detail-size');
-            document.getElementById('hero-detail-name').textContent = hero.name + ' (Lv ' + hero.level + ')' + (hero.isDead ? ' (KO)' : '');
-            document.getElementById('hero-detail-class').textContent = hero.heroClass;
-            var stats = hero.getEffectiveStats();
-            var grid = document.getElementById('detail-stats-grid');
-            grid.innerHTML = '<div><strong>HP:</strong> ' + hero.currentHp + '/' + stats.maxHp + '</div>' +
-                '<div><strong>MP:</strong> ' + hero.currentMp + '/' + stats.maxMp + '</div>' +
-                '<div><strong>ATK:</strong> ' + stats.attack + ' (Base: ' + hero.baseStats.attack + ')</div>' +
-                '<div><strong>DEF:</strong> ' + stats.defense + ' (Base: ' + hero.baseStats.defense + ')</div>' +
-                '<div><strong>MAG:</strong> ' + stats.magic + '</div>' +
-                '<div><strong>SPD:</strong> ' + stats.speed + ' (+' + Math.round(hero.getSpeedCritBonus() * 100) + '% Crit)</div>' +
-                '<div><strong>EXP:</strong> ' + hero.experience + '/' + hero.experienceToNext + '</div>';
+            if (!hero) return;
+            document.getElementById('menu-equip-portrait').innerHTML = heroPortraitHTML(hero, 'detail-size');
+            document.getElementById('menu-equip-name').textContent = hero.name + ' (Lv ' + hero.level + ')' + (hero.isDead ? ' (KO)' : '');
+            document.getElementById('menu-equip-class').textContent = hero.heroClass;
             document.getElementById('current-weapon').textContent = hero.equipment.weapon ? hero.equipment.weapon.name : 'None';
             document.getElementById('current-armor').textContent = hero.equipment.armor ? hero.equipment.armor.name : 'None';
             document.getElementById('current-shield').textContent = hero.equipment.shield ? hero.equipment.shield.name : 'None';
@@ -19713,7 +20192,7 @@
                         window.game.party.inventory[type].push(equippedItem);
                     }
                     hero.equipment[slot] = null;
-                    window.game.showHeroDetails(heroIndex);
+                    window.game.renderMenuEquipmentPanel();
                     window.game.ui.showPopup('Item Unequipped', equippedItem.name + ' removed.');
                     window.game.updateEquipmentUpgradeQuest();
                 };
@@ -19782,7 +20261,7 @@
                             } else {
                                 window.game.party.inventory[type].splice(idx, 1);
                             }
-                            window.game.showHeroDetails(heroIndex);
+                            window.game.renderMenuEquipmentPanel();
                             window.game.ui.showPopup('Item Equipped', item.name + ' equipped on ' + hero.name + '.');
                             window.game.updateEquipmentUpgradeQuest();
                             if (window.game.achievements) window.game.achievements.report('item_equipped', { hero: hero, item: item });
@@ -19796,9 +20275,18 @@
             }
         }
 
-        useCabinFromMenu() {
+        /** Fully restores the whole party's HP/MP and clears KO status,
+         *  consuming one Cabin item. Wired to the "Use on Party" button
+         *  that appears when a full_restore item is selected in the Items
+         *  panel (see renderMenuInventory()) - this was previously only
+         *  reachable through a separate "Use Cabin" menu button that called
+         *  a differently-named function; that button is gone now that the
+         *  Items panel covers the same ground, but nothing in the Items
+         *  panel itself had ever defined useCabin(), so the "Use on Party"
+         *  button had actually never worked. */
+        useCabin() {
             if (!this.party) return;
-            const cabinItem = this.party.inventory.items.find(i => i.name === "Cabin");
+            const cabinItem = this.party.inventory.items.find(i => i.name === 'Cabin');
             if (!cabinItem || cabinItem.quantity <= 0) {
                 this.ui.showPopup('No Cabin', 'You don\'t have any Cabins!');
                 return;
@@ -19810,10 +20298,10 @@
             });
             cabinItem.quantity--;
             if (cabinItem.quantity <= 0) {
-                this.party.inventory.items = this.party.inventory.items.filter(i => i.name !== "Cabin");
+                this.party.inventory.items = this.party.inventory.items.filter(i => i.name !== 'Cabin');
             }
             this.ui.showPopup('Cabin Used', 'All party members fully restored!\nHP and MP maxed out.');
-            this.renderMenu();
+            this.renderMenuInventory();
             this.ui.updateWorldHUD(this.party);
         }
 
@@ -20253,7 +20741,7 @@
             this.ui.closePopup();
             this.ui.showPopup('Spell Cast!', caster.name + ' casts ' + spell.name + ' on ' + target.name + '!\n' +
                 target.name + ' recovered ' + actualHeal + ' HP!');
-            this.showHeroDetails(casterIndex);
+            this.renderMenuEquipmentPanel();
             this.ui.updateWorldHUD(this.party);
             this.updateGoldDisplays();
         }
@@ -20295,7 +20783,7 @@
             this.ui.closePopup();
             this.ui.showPopup('Spell Cast!', caster.name + ' casts ' + spell.name + '!\n' +
                 'All party members healed! Total: ' + totalHeal + ' HP restored!');
-            this.showHeroDetails(casterIndex);
+            this.renderMenuEquipmentPanel();
             this.ui.updateWorldHUD(this.party);
             this.updateGoldDisplays();
         }
@@ -20357,7 +20845,7 @@
             this.ui.closePopup();
             this.ui.showPopup('Poison Cured!', caster.name + ' casts ' + spell.name + ' on ' + target.name + '!\n' +
                 target.name + ' is no longer poisoned!');
-            this.showHeroDetails(casterIndex);
+            this.renderMenuEquipmentPanel();
             this.ui.updateWorldHUD(this.party);
             this.updateGoldDisplays();
         }
@@ -20441,6 +20929,7 @@
                 legendaryWeapons: this.legendaryWeapons,
                 claimedBounties: Array.from(this.claimedBounties || []),
                 achievements: this.achievements ? this.achievements.toSaveData() : null,
+                monsterCodex: this.monsterCodex ? this.monsterCodex.toSaveData() : null,
                 unlockedLore: this.unlockedLore || ['intro'],
                 trackedQuestId: this.trackedQuestId || null,
                 state: {
@@ -20624,6 +21113,12 @@
                 this.trackedQuestId = saveData.trackedQuestId || null;
                 if (!this.achievements) this.achievements = new AchievementManager();
                 this.achievements.loadSaveData(saveData.achievements);
+                if (!this.monsterCodex) this.monsterCodex = new MonsterCodex();
+                // Older saves predate the codex entirely - loadSaveData()
+                // handles a null/undefined payload the same way
+                // achievements.loadSaveData() does above (falls back to an
+                // empty discovered set), so nothing else needs a version gate.
+                this.monsterCodex.loadSaveData(saveData.monsterCodex);
                 this.renderer = new Renderer();
                 this.worldMapRenderer = new WorldMapRenderer();
                 this.state.flags = saveData.state?.flags || {};
@@ -20737,6 +21232,7 @@
                 'Goblin Crown': false, 'Darksteel Plate': false, 'Pharaoh\'s Staff': false, 'Ashen Core': false
             };
             this.achievements = new AchievementManager();
+            this.monsterCodex = new MonsterCodex();
             this.start();
             // Save happens once the player closes the intro (see
             // closeLoreJournal) rather than on a fixed timer, so a slow
