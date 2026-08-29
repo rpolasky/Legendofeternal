@@ -4199,7 +4199,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v77</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v78</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -6175,9 +6175,10 @@
             accent: '#ffaa44', deco: '💎',
             wallIcons: ['🪨', '🪨', '🪨', '⛏️'], wallIconChance: 0.22,
             floorIcons: ['💧', '🍄'], floorIconChance: 0.05,
-            // [col,row] into assets/tiles/dungeon.png (16px tiles, 1px gap, 12 cols).
-            // Two entries per role = the same alternating-checkerboard variation the
-            // flat-color version used, just with real tiles instead of two hex colors.
+            // Cave now renders through the dedicated isCave branch above (real
+            // edge-aware wall kit + 8 floor variants from dt2CaveSheet) - these
+            // dungeonTileSheet coordinates only matter as a fallback if that
+            // sheet somehow fails to load.
             tileWall: [[0,0],[1,2]],
             tileFloor: [[0,4],[1,4]],
             tileRoomFloor: [[6,3],[3,4]]
@@ -6188,6 +6189,10 @@
             accent: '#ff5555', deco: '🔥',
             wallIcons: ['🧱', '🧱', '🧱', '🕯️'], wallIconChance: 0.2,
             floorIcons: ['🕸️'], floorIconChance: 0.03,
+            // Real stone-brick wall variants (Dark Dimension tileset, free) instead
+            // of a 2-tile checkerboard - see wallSheet/wallSheetVariants below.
+            wallSheet: null, // set after ddCastleWallSheet loads (assigned below)
+            wallSheetVariants: [[0,1],[1,1],[2,1],[0,2],[1,2],[2,2],[0,3],[1,3],[2,3]],
             tileWall: [[4,0],[9,4]],
             tileFloor: [[3,4],[5,4]],
             tileRoomFloor: [[6,3],[4,4]]
@@ -6198,6 +6203,11 @@
             accent: '#b8860b', deco: '🏺',
             wallIcons: ['🪨', '🪨', '🗿'], wallIconChance: 0.18,
             floorIcons: ['🍂', '🕸️'], floorIconChance: 0.05,
+            // Same stone wall art as Castle but a weathered amber tint (see the
+            // globalAlpha/fillStyle wash applied where this palette is used) so
+            // Ruins doesn't look identical to Castle despite sharing the sheet.
+            wallSheet: null,
+            wallSheetVariants: [[0,1],[1,1],[2,1],[0,2],[1,2],[2,2],[0,3],[1,3],[2,3]],
             tileWall: [[3,0],[3,2]],
             tileFloor: [[2,4],[4,4]],
             tileRoomFloor: [[1,4],[5,4]]
@@ -6207,6 +6217,51 @@
     // Shared 16x16 dungeon tile sheet (Kenney "Tiny Dungeon", CC0). Loaded once;
     // renderFloor() falls back to the flat palette colors above until this resolves
     // (or forever, if the asset is missing) so there's never a blank frame.
+    // 0x72's "16x16 DungeonTileset II" (CC0) - a genuine edge-aware wall kit with
+    // dedicated pieces for every wall/floor boundary shape (edges, outer corners,
+    // interior fill) instead of one repeated tile + a bevel overlay trick. Used
+    // for Cave-type dungeons. Packed into one sheet at build time; see the
+    // coordinate map in DT2_TILES below.
+    const dt2CaveSheet = new Image();
+    dt2CaveSheet.src = 'assets/tiles/dt2_cave.png';
+    dt2CaveSheet.loaded = false;
+    dt2CaveSheet.onload = () => { dt2CaveSheet.loaded = true; };
+    const DT2_STRIDE = 16;
+    const DT2_TILES = {
+        wallTopLeft: [0,0], wallTopMid: [1,0], wallTopRight: [2,0],
+        wallLeft: [3,0], wallMid: [4,0], wallRight: [5,0],
+        wallEdgeLeft: [0,1], wallEdgeRight: [1,1], wallEdgeTopLeft: [2,1], wallEdgeTopRight: [3,1],
+        wallEdgeBottomLeft: [4,1], wallEdgeBottomRight: [5,1], wallEdgeMidLeft: [0,2], wallEdgeMidRight: [1,2],
+        wallOuterTopLeft: [2,2], wallOuterTopRight: [3,2], wallOuterMidLeft: [4,2], wallOuterMidRight: [5,2],
+        wallOuterFrontLeft: [0,3], wallOuterFrontRight: [1,3],
+        floor: [[2,3],[3,3],[4,3],[5,3],[0,4],[1,4],[2,4],[3,4]],
+        floorLadder: [4,4], floorStairs: [5,4],
+        column: [0,5], columnWall: [1,5], crate: [2,5], skull: [3,5],
+        wallHole1: [4,5], wallHole2: [5,5], bannerBlue: [0,6], bannerRed: [1,6], chest: [2,6]
+    };
+
+    // Dark Dimension Tileset (finalbossblues, free, same Time Fantasy family as
+    // Ashlands/Beach/Gentle Forest already used elsewhere) - real stone-brick
+    // wall variants and decoration (rubble, crystal formations) for Castle and
+    // Ruins dungeons, replacing the emoji-decorated flat color they used before.
+    const ddCastleWallSheet = new Image();
+    ddCastleWallSheet.src = 'assets/tiles/dd_castle_wall.png';
+    ddCastleWallSheet.loaded = false;
+    ddCastleWallSheet.onload = () => { ddCastleWallSheet.loaded = true; };
+    const ddRubbleSheet = new Image();
+    ddRubbleSheet.src = 'assets/tiles/dd_rubble_strip.png';
+    ddRubbleSheet.loaded = false;
+    ddRubbleSheet.onload = () => { ddRubbleSheet.loaded = true; };
+    const ddCrystalSheet = new Image();
+    ddCrystalSheet.src = 'assets/tiles/dd_crystal.png';
+    ddCrystalSheet.loaded = false;
+    ddCrystalSheet.onload = () => { ddCrystalSheet.loaded = true; };
+    // DUNGEON_PALETTES (defined above) references these by object identity, not
+    // by re-declaring the Image - assigned here since these loaders must exist
+    // first.
+    DUNGEON_PALETTES.castle.wallSheet = ddCastleWallSheet;
+    DUNGEON_PALETTES.ruins.wallSheet = ddCastleWallSheet;
+
     const dungeonTileSheet = new Image();
     dungeonTileSheet.src = 'assets/tiles/dungeon.png';
     dungeonTileSheet.loaded = false;
@@ -6868,6 +6923,8 @@
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
 
+            const isCave = dungeonState.type === 'cave' && dt2CaveSheet.loaded;
+
             for (let row = 0; row < tilesH; row++) {
                 for (let col = 0; col < tilesW; col++) {
                     const mapCol = startCol + col;
@@ -6880,9 +6937,15 @@
                             const b = inRoom ? pal.roomFloorB : pal.floorB;
                             ctx.fillStyle = (mapRow + mapCol) % 2 === 0 ? a : b;
                             ctx.fillRect(sx, sy, ts, ts);
-                            // Real pixel-art tile drawn over the flat-color fallback once the
-                            // sheet has loaded, so there's never a blank frame while it fetches.
-                            if (dungeonTileSheet.loaded && pal.tileFloor) {
+                            if (isCave) {
+                                // 8 real floor variants (cracks/rubble/detail) instead of a
+                                // 2-tile checkerboard, so open floors read as textured stone
+                                // instead of an obvious repeat.
+                                const fv = DT2_TILES.floor[(mapRow * 7 + mapCol * 13) % DT2_TILES.floor.length];
+                                ctx.drawImage(dt2CaveSheet, fv[0] * DT2_STRIDE, fv[1] * DT2_STRIDE, 16, 16, sx, sy, ts, ts);
+                            } else if (dungeonTileSheet.loaded && pal.tileFloor) {
+                                // Real pixel-art tile drawn over the flat-color fallback once the
+                                // sheet has loaded, so there's never a blank frame while it fetches.
                                 const variant = inRoom ? (pal.tileRoomFloor || pal.tileFloor) : pal.tileFloor;
                                 const [tc, tr] = variant[(mapRow + mapCol) % variant.length];
                                 ctx.drawImage(dungeonTileSheet, tc * DUNGEON_TILE_STRIDE, tr * DUNGEON_TILE_STRIDE, 16, 16, sx, sy, ts, ts);
@@ -6915,16 +6978,58 @@
                                 ctx.fill();
                             }
                         } else {
+                            // Neighbor floor-adjacency, computed up front so cave's edge-aware
+                            // wall pieces and the carved-rock bevel (castle/ruins) can both use it.
+                            const floorE = f.grid[mapRow] && f.grid[mapRow][mapCol + 1] === 1;
+                            const floorW = f.grid[mapRow] && f.grid[mapRow][mapCol - 1] === 1;
+                            const floorS = f.grid[mapRow + 1] && f.grid[mapRow + 1][mapCol] === 1;
+                            const floorN = f.grid[mapRow - 1] && f.grid[mapRow - 1][mapCol] === 1;
+                            if (isCave) {
+                                // Genuine edge-aware wall kit (0x72's DungeonTilesetII, CC0) -
+                                // dedicated art for every boundary shape instead of one repeated
+                                // tile plus a drop-shadow trick. Adjacent-corner cases (2 floor
+                                // sides meeting at a corner) get the real outer-corner piece;
+                                // single-side cases get the matching edge piece; pure interior
+                                // gets the plain fill. 3+ open sides is rare in a carved maze and
+                                // falls back to fill - same acceptable simplification used for
+                                // water's hardest cases earlier this session.
+                                let piece = DT2_TILES.wallMid, flipX = false, flipY = false;
+                                if (floorN && floorW && !floorS && !floorE) { piece = DT2_TILES.wallOuterTopLeft; }
+                                else if (floorN && floorE && !floorS && !floorW) { piece = DT2_TILES.wallOuterTopRight; }
+                                else if (floorS && floorW && !floorN && !floorE) { piece = DT2_TILES.wallOuterMidLeft; }
+                                else if (floorS && floorE && !floorN && !floorW) { piece = DT2_TILES.wallOuterMidRight; }
+                                else if (floorW && !floorN && !floorS && !floorE) { piece = DT2_TILES.wallEdgeMidLeft; }
+                                else if (floorE && !floorN && !floorS && !floorW) { piece = DT2_TILES.wallEdgeMidRight; }
+                                else if (floorS && !floorN && !floorE && !floorW) { piece = DT2_TILES.wallTopMid; }
+                                else if (floorN && !floorS && !floorE && !floorW) { piece = DT2_TILES.wallTopMid; flipY = true; }
+                                ctx.save();
+                                ctx.translate(sx + ts / 2, sy + ts / 2);
+                                ctx.scale(flipX ? -1 : 1, flipY ? -1 : 1);
+                                ctx.drawImage(dt2CaveSheet, piece[0] * DT2_STRIDE, piece[1] * DT2_STRIDE, 16, 16, -ts / 2, -ts / 2, ts, ts);
+                                ctx.restore();
+                                continue;
+                            }
                             ctx.fillStyle = pal.wallFill;
                             ctx.fillRect(sx, sy, ts, ts);
-                            if (dungeonTileSheet.loaded && pal.tileWall) {
+                            if (pal.wallSheet && pal.wallSheet.loaded) {
+                                const variants = pal.wallSheetVariants;
+                                const wv = variants[(mapCol * 7 + mapRow * 11) % variants.length];
+                                ctx.drawImage(pal.wallSheet, wv[0] * 16, wv[1] * 16, 16, 16, sx, sy, ts, ts);
+                                // Ruins reuses Castle's stone wall art but with a warm amber
+                                // wash so the two dungeon types don't look identical despite
+                                // sharing the same source tiles.
+                                if (dungeonState.type === 'ruins') {
+                                    ctx.fillStyle = 'rgba(150,100,40,0.28)';
+                                    ctx.fillRect(sx, sy, ts, ts);
+                                }
+                            } else if (dungeonTileSheet.loaded && pal.tileWall) {
                                 const [tc, tr] = pal.tileWall[(mapRow + mapCol) % pal.tileWall.length];
                                 ctx.drawImage(dungeonTileSheet, tc * DUNGEON_TILE_STRIDE, tr * DUNGEON_TILE_STRIDE, 16, 16, sx, sy, ts, ts);
                             }
                             // pixel/emoji wall texture (same idea as the overworld's mountain/tree tiles) -
                             // only used as a fallback while the real tile sheet is still loading.
                             const wh = (mapCol * 13 + mapRow * 29) % 100;
-                            if (!dungeonTileSheet.loaded && pal.wallIcons && pal.wallIcons.length && wh < pal.wallIconChance * 100) {
+                            if (!dungeonTileSheet.loaded && !(pal.wallSheet && pal.wallSheet.loaded) && pal.wallIcons && pal.wallIcons.length && wh < pal.wallIconChance * 100) {
                                 ctx.font = `${Math.floor(ts * 0.75)}px "Courier New", monospace`;
                                 ctx.fillStyle = 'rgba(255,255,255,0.85)';
                                 ctx.fillText(pal.wallIcons[wh % pal.wallIcons.length], sx + ts / 2, sy + ts / 2);
@@ -6932,13 +7037,9 @@
                                 ctx.fillStyle = 'rgba(0,0,0,0.25)';
                                 ctx.fillRect(sx + ts * 0.2, sy + ts * 0.3, ts * 0.15, ts * 0.5);
                             }
-                            // Neighbor floor-adjacency, used for both the inset "carved rock" edges
-                            // below and outer-corner bevels, so walls read less like a uniform grid
-                            // and more like carved tunnel rock.
-                            const floorE = f.grid[mapRow] && f.grid[mapRow][mapCol + 1] === 1;
-                            const floorW = f.grid[mapRow] && f.grid[mapRow][mapCol - 1] === 1;
-                            const floorS = f.grid[mapRow + 1] && f.grid[mapRow + 1][mapCol] === 1;
-                            const floorN = f.grid[mapRow - 1] && f.grid[mapRow - 1][mapCol] === 1;
+                            // Neighbor floor-adjacency was computed above (shared with cave's
+                            // edge-aware wall pieces) - used here for the inset "carved rock"
+                            // edges and outer-corner bevels on castle/ruins walls.
                             // subtle inset edge where wall meets an adjacent floor tile, for a carved-rock relief look
                             if (floorE) { ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(sx + ts - 3, sy, 3, ts); }
                             if (floorW) { ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(sx, sy, 3, ts); }
@@ -16842,7 +16943,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v77]');
+            console.log('Game starting... [build v78]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
