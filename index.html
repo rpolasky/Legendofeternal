@@ -1268,7 +1268,16 @@
         }
 
         .monster-sprite:hover {
-            transform: scale(1.08) translateY(-8px);
+            /* No transform here anymore - on touch devices, tapping to select
+               an attack target triggers :hover and it stays "stuck" active
+               until something else changes the hover target (since touch
+               screens simulate hover-on-tap but never really release it the
+               way a mouse pointer moving away would). That's exactly what
+               was reported as "the monster enlarges and moves forward when
+               selected, and stays that way until the next command" - it
+               wasn't a selection feature, it was this hover rule firing and
+               sticking. The glow still gives a clear "this one's targeted"
+               cue without any size or position change. */
             z-index: 30;
             filter: drop-shadow(0 10px 8px rgba(0,0,0,0.5)) drop-shadow(0 0 16px var(--highlight));
         }
@@ -4212,7 +4221,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v86</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v101</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -5970,11 +5979,122 @@
         return tiles;
     }
 
+    /** Like expandSegments, but the path meanders with a gentle sine-wave
+     *  perpendicular offset instead of running dead straight along the tile
+     *  grid axis - a real dirt path through a village never runs ruler-
+     *  straight for 20+ tiles. `thickness` widens it into a proper 2-3 tile
+     *  band (not just a wavy 1-tile line) the same way river/lava widening
+     *  works elsewhere. The wobble is baked into the actual tile set (not
+     *  just a visual offset at render time), so the walkable area always
+     *  matches exactly what's drawn - no mismatch between where the path
+     *  looks like it is and where the player can actually walk. */
+    function expandOrganicSegments(segments, thickness = 2) {
+        const seen = new Set();
+        const tiles = [];
+        const half = Math.floor(thickness / 2);
+        (segments || []).forEach(([[x1, y1], [x2, y2]], segIdx) => {
+            const horiz = (x1 !== x2);
+            const len = horiz ? Math.abs(x2 - x1) : Math.abs(y2 - y1);
+            const dir = horiz ? Math.sign(x2 - x1) : Math.sign(y2 - y1);
+            const amp = Math.min(1.4, Math.max(0.6, len * 0.05));
+            const freq = 0.35 + (segIdx % 3) * 0.08; // slight variety between segments
+            for (let s = 0; s <= len; s++) {
+                // Envelope tapers the wobble to zero at both ends of the segment
+                // (sin(0)=0, sin(pi)=0, peaks in the middle) so the path still
+                // connects cleanly to whatever it's plugged into at each end
+                // (usually a building door or another road) instead of drifting
+                // away from the exact point it's supposed to terminate at.
+                const envelope = len > 2 ? Math.sin(Math.PI * s / len) : 0;
+                const wobble = Math.round(Math.sin(s * freq + segIdx * 1.7) * amp * envelope);
+                const cx = horiz ? x1 + s * dir : x1 + wobble;
+                const cy = horiz ? y1 + wobble : y1 + s * dir;
+                for (let t = -half; t <= thickness - 1 - half; t++) {
+                    const px = horiz ? cx : cx + t;
+                    const py = horiz ? cy + t : cy;
+                    const key = px + ',' + py;
+                    if (!seen.has(key)) { seen.add(key); tiles.push({ x: px, y: py }); }
+                }
+            }
+        });
+        return tiles;
+    }
+
     /** Like expandSegments, but interpolates true diagonal steps between waypoints
      *  instead of snapping to horizontal/vertical - used for rivers that should cut
      *  across a town at an angle instead of running along the tile grid axes.
      *  `thickness` widens the path perpendicular to travel so it reads as a proper
      *  river band rather than a 1-tile-wide line. */
+    /** Smooths a set of {x,y} tiles via cellular-automata passes: a non-member
+     *  tile with >=6 of its 8 neighbors already in the set gets added (fills
+     *  concave single-tile notches), and a member tile with <=2 of 8
+     *  neighbors in the set gets dropped (shaves stray convex nubs). Used to
+     *  turn a rasterized-diagonal river path's staircase edge into something
+     *  that reads as a smooth flowing curve. */
+    function smoothTileBlob(tiles, width, height, iterations = 2) {
+        let set = new Set(tiles.map(t => t.x + ',' + t.y));
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        tiles.forEach(t => { minX = Math.min(minX, t.x); maxX = Math.max(maxX, t.x); minY = Math.min(minY, t.y); maxY = Math.max(maxY, t.y); });
+        minX = Math.max(0, minX - 1); maxX = Math.min(width - 1, maxX + 1);
+        minY = Math.max(0, minY - 1); maxY = Math.min(height - 1, maxY + 1);
+        const neighborCount = (s, x, y) => {
+            let c = 0;
+            for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+                if (dx === 0 && dy === 0) continue;
+                if (s.has((x + dx) + ',' + (y + dy))) c++;
+            }
+            return c;
+        };
+        for (let iter = 0; iter < iterations; iter++) {
+            const next = new Set(set);
+            for (let y = minY; y <= maxY; y++) {
+                for (let x = minX; x <= maxX; x++) {
+                    const key = x + ',' + y;
+                    const n = neighborCount(set, x, y);
+                    if (set.has(key)) {
+                        if (n <= 2) next.delete(key);
+                    } else {
+                        if (n >= 6) next.add(key);
+                    }
+                }
+            }
+            set = next;
+        }
+        return Array.from(set).map(k => { const [x, y] = k.split(',').map(Number); return { x, y }; });
+    }
+
+    /** Builds a river as pure axis-aligned (horizontal/vertical only) bands
+     *  between waypoints, instead of diagonal steps - a rasterized diagonal
+     *  line at limited thickness inherently produces a staircase edge, which
+     *  is exactly what was reported as jagged spikes shooting into the
+     *  water even after smoothing. A path that's only ever straight bands
+     *  meeting at right angles has zero diagonal edges to begin with, so
+     *  there's nothing for the autotile system to render as a notch - every
+     *  edge is a clean straight run or a plain 90-degree corner, both of
+     *  which the water autotile already handles perfectly (see the world
+     *  map lake/oasis). Each segment goes horizontal-then-vertical. */
+    function expandAxisAlignedPath(waypoints, thickness) {
+        const seen = new Set();
+        const tiles = [];
+        const half = Math.floor(thickness / 2);
+        const stampRect = (ax, ay, bx, by) => {
+            const minX = Math.min(ax, bx) - half, maxX = Math.max(ax, bx) + (thickness - 1 - half);
+            const minY = Math.min(ay, by) - half, maxY = Math.max(ay, by) + (thickness - 1 - half);
+            for (let y = minY; y <= maxY; y++) {
+                for (let x = minX; x <= maxX; x++) {
+                    const key = x + ',' + y;
+                    if (!seen.has(key)) { seen.add(key); tiles.push({ x, y }); }
+                }
+            }
+        };
+        for (let i = 0; i < waypoints.length - 1; i++) {
+            const [x1, y1] = waypoints[i];
+            const [x2, y2] = waypoints[i + 1];
+            stampRect(x1, y1, x2, y1); // horizontal run
+            stampRect(x2, y1, x2, y2); // vertical run
+        }
+        return tiles;
+    }
+
     function expandDiagonalPath(waypoints, thickness) {
         const seen = new Set();
         const tiles = [];
@@ -6015,23 +6135,31 @@
                 { id: 'inn', x: 52, y: 36, w: 7, h: 5, icon: '🏨', label: 'Inn', action: 'inn' },
                 { id: 'guild', x: 69, y: 39, w: 7, h: 5, icon: '🏛️', label: 'Guild Hall', action: 'guild' },
                 { id: 'gate', x: 48, y: 58, w: 1, h: 1, icon: '🚪', label: 'Town Gate', action: 'exit' },
+                // Cut down from 14 decorative "do nothing" houses to 5: 3 kept
+                // together as a real cluster earmarked for the future shop
+                // breakout (apothecary/gem-crafter/spell-weaver), plus 2 purely
+                // decorative houses elsewhere for visual fill. Arranged in a
+                // horizontal row (not stacked vertically) specifically to avoid
+                // the roof-overhang collision below - see the note there.
                 { id: 'house1', x: 18, y: 5, w: 5, h: 5, icon: '🏠', label: 'Cabin', action: null },
-                { id: 'house2', x: 17, y: 47, w: 5, h: 5, icon: '🏠', label: 'House', action: null },
-                { id: 'house3', x: 87, y: 48, w: 5, h: 5, icon: '🏠', label: 'Manor', action: null },
-                { id: 'house4', x: 61, y: 41, w: 5, h: 4, icon: '🏠', label: 'Cabin', action: null },
-                { id: 'house5', x: 24, y: 48, w: 5, h: 4, icon: '🏠', label: 'Manor', action: null },
                 { id: 'house6', x: 39, y: 13, w: 6, h: 4, icon: '🏠', label: 'Residence', action: null },
-                { id: 'house7', x: 16, y: 26, w: 6, h: 4, icon: '🏠', label: 'Row House', action: null },
-                { id: 'house8', x: 41, y: 44, w: 5, h: 5, icon: '🏠', label: 'Row House', action: null },
-                { id: 'house9', x: 9, y: 46, w: 5, h: 4, icon: '🏠', label: 'Residence', action: null },
-                { id: 'house10', x: 85, y: 27, w: 6, h: 4, icon: '🏠', label: 'Homestead', action: null },
-                { id: 'house11', x: 86, y: 8, w: 5, h: 5, icon: '🏠', label: 'Homestead', action: null },
-                { id: 'house12', x: 8, y: 24, w: 5, h: 4, icon: '🏠', label: 'Manor', action: null },
-                { id: 'house13', x: 67, y: 29, w: 5, h: 5, icon: '🏠', label: 'Farmhouse', action: null },
-                { id: 'house14', x: 21, y: 36, w: 5, h: 4, icon: '🏠', label: 'Farmhouse', action: null }
+                // Future-shop cluster: kept in the same row (all y=22) rather
+                // than stacked above/below each other or above Item Shop -
+                // building art is a complete sprite scaled to width and
+                // bottom-anchored, so its roof extends upward well past the
+                // building's own logical h*ts footprint (by design, so roofs
+                // can be tall) - that's what caused a "Farmhouse" positioned
+                // above "Item Shop" to visually overlap it even though their
+                // grid footprints never touched. Keeping same-cluster houses
+                // in one row instead of stacking columns sidesteps needing to
+                // calculate that overhang margin for every pair by hand.
+                { id: 'house12', x: 8, y: 25, w: 5, h: 4, icon: '🏠', label: 'Manor', action: null },
+                { id: 'house7', x: 16, y: 25, w: 6, h: 4, icon: '🏠', label: 'Row House', action: null },
+                { id: 'house14', x: 25, y: 25, w: 5, h: 4, icon: '🏠', label: 'Farmhouse', action: null }
             ],
             roadSegments: [
-                [[48,9],[48,58]], [[45,22],[51,22]], [[43,24],[53,24]], [[41,26],[55,26]], [[39,28],[57,28]], [[41,32],[55,32]], [[43,34],[53,34]], [[45,36],[51,36]], [[48,19],[48,22]], [[10,10],[86,10]], [[10,10],[10,50]], [[86,10],[86,50]], [[10,50],[86,50]], [[45,10],[45,10]], [[11,22],[11,22]], [[28,16],[28,10]], [[58,16],[58,10]], [[75,22],[75,22]], [[14,41],[14,36]], [[31,46],[31,50]], [[55,41],[55,36]], [[72,44],[72,50]], [[20,10],[20,10]], [[19,52],[19,50]], [[89,53],[89,50]], [[63,45],[63,50]], [[26,52],[26,50]], [[42,17],[42,22]], [[19,30],[19,36]], [[43,49],[43,50]], [[11,50],[11,50]], [[88,31],[88,36]], [[88,13],[88,10]], [[10,28],[10,22]], [[69,34],[69,36]], [[23,40],[23,36]]
+                [[48,9],[48,58]], [[45,22],[51,22]], [[43,24],[53,24]], [[41,26],[55,26]], [[39,28],[57,28]], [[41,32],[55,32]], [[43,34],[53,34]], [[45,36],[51,36]], [[48,19],[48,22]], [[10,10],[86,10]], [[10,10],[10,50]], [[86,10],[86,50]], [[10,50],[86,50]], [[45,10],[45,10]], [[11,22],[11,22]], [[28,16],[28,10]], [[58,16],[58,10]], [[75,22],[75,22]], [[14,41],[14,36]], [[31,46],[31,50]], [[55,41],[55,36]], [[72,44],[72,50]], [[20,10],[20,10]], [[19,52],[19,50]], [[89,53],[89,50]], [[63,45],[63,50]], [[26,52],[26,50]], [[42,17],[42,22]], [[19,30],[19,36]], [[43,49],[43,50]], [[11,50],[11,50]], [[88,31],[88,36]], [[88,13],[88,10]], [[10,29],[10,22]], [[69,34],[69,36]], [[23,40],[23,36]],
+                [[10,29],[27,29]]
             ],
             riverPath: [[6, 6], [24, 18], [45, 10], [70, 20], [90, 10]],
             riverThickness: 3,
@@ -6070,11 +6198,11 @@
                 { id: 'house3', x: 45, y: 19, w: 6, h: 4, icon: '🏚️', label: 'Shade Cottage', action: null },
                 { id: 'house4', x: 59, y: 33, w: 5, h: 4, icon: '🏚️', label: 'Vigil House', action: null },
                 { id: 'house5', x: 46, y: 46, w: 5, h: 5, icon: '🏚️', label: 'Ashen House', action: null },
-                { id: 'house6', x: 31, y: 38, w: 6, h: 4, icon: '🏚️', label: 'Crypt House', action: null },
+                { id: 'house6', x: 36, y: 38, w: 6, h: 4, icon: '🏚️', label: 'Crypt House', action: null },
                 { id: 'house7', x: 6, y: 27, w: 6, h: 4, icon: '🏚️', label: 'Shade Cottage', action: null },
                 { id: 'house8', x: 23, y: 29, w: 5, h: 4, icon: '🏚️', label: 'Shade Cottage', action: null },
                 { id: 'house9', x: 64, y: 14, w: 5, h: 5, icon: '🏚️', label: 'Mourner\'s Rest', action: null },
-                { id: 'house10', x: 14, y: 8, w: 5, h: 4, icon: '🏚️', label: 'Crypt House', action: null },
+                { id: 'house10', x: 16, y: 8, w: 5, h: 4, icon: '🏚️', label: 'Crypt House', action: null },
                 { id: 'house11', x: 82, y: 42, w: 5, h: 5, icon: '🏚️', label: 'Ashen House', action: null },
                 { id: 'house12', x: 85, y: 12, w: 6, h: 4, icon: '🏚️', label: 'Shade Cottage', action: null },
                 { id: 'house13', x: 39, y: 47, w: 5, h: 4, icon: '🏚️', label: 'Ashen House', action: null },
@@ -6129,7 +6257,7 @@
                 { id: 'house11', x: 67, y: 49, w: 5, h: 5, icon: '🏠', label: 'Oasis Cottage', action: null },
                 { id: 'house12', x: 67, y: 10, w: 5, h: 4, icon: '🏠', label: 'Sandstone Home', action: null },
                 { id: 'house13', x: 67, y: 28, w: 5, h: 4, icon: '🏠', label: 'Adobe House', action: null },
-                { id: 'house14', x: 64, y: 43, w: 6, h: 4, icon: '🏠', label: 'Desert Villa', action: null }
+                { id: 'house14', x: 60, y: 44, w: 6, h: 4, icon: '🏠', label: 'Desert Villa', action: null }
             ],
             roadSegments: [
                 [[48,9],[48,58]], [[45,24],[51,24]], [[43,26],[53,26]], [[41,28],[55,28]], [[39,30],[57,30]], [[41,34],[55,34]], [[43,36],[53,36]], [[45,38],[51,38]], [[48,21],[48,24]], [[10,10],[86,10]], [[10,10],[10,50]], [[86,10],[86,50]], [[10,50],[86,50]], [[45,10],[45,10]], [[11,24],[11,24]], [[28,19],[28,24]], [[58,19],[58,24]], [[75,24],[75,24]], [[14,46],[14,50]], [[31,41],[31,38]], [[55,46],[55,50]], [[72,41],[72,38]], [[89,38],[89,38]], [[31,51],[31,50]], [[60,36],[60,38]], [[87,47],[87,50]], [[10,32],[10,38]], [[21,30],[21,24]], [[89,20],[89,24]], [[45,49],[45,50]], [[44,26],[44,24]], [[8,13],[8,10]], [[69,54],[69,50]], [[69,14],[69,10]], [[69,32],[69,38]], [[67,47],[67,50]]
@@ -6408,10 +6536,71 @@
     const BEACH_TILE = 48;
     const WATER_AUTOTILE = {
         fill:   [6, 0],
-        edgeV:  [0, 0], // land west, water east
-        edgeH:  [1, 0], // land north, water south
-        corner: [8, 1]  // land NW, water SE
+        edgeV:  [0, 0], // land west, water east - CONFIRMED correct (re-checked
+                        // pixel-by-pixel: a clean vertical sand strip on the left)
+        corner: [8, 1]  // land NW, water SE - also re-confirmed correct
+        // No edgeH entry anymore - [1,0] was originally logged as "land
+        // north, water south" but re-checking the actual pixels just now
+        // showed EVERY cell in that row (0 through 5) is the exact same
+        // vertical edge as edgeV, just animation-frame variants. There never
+        // was a real horizontal edge piece at that coordinate - that
+        // mislabeling is what caused the "vertical shoots into the river"
+        // artifact on horizontal shorelines (a river running east-west has
+        // land to the north/south, which needs a horizontal-oriented sand
+        // strip, but was drawing this same vertical strip instead). Fixed by
+        // deriving the horizontal edge from a 90-degree rotation of the
+        // confirmed-correct vertical edge piece instead - see
+        // drawWaterAutotileTile() below.
     };
+
+    /** Draws one water tile with the correct edge/corner/fill piece for its
+     *  4 orthogonal land-neighbor flags, flipping/rotating the single
+     *  confirmed-correct edge and corner source pieces to cover all
+     *  8 orientations instead of needing 8 separate source pieces (and
+     *  instead of a second, wrong, "horizontal edge" coordinate - see
+     *  WATER_AUTOTILE above for why that doesn't exist anymore). Shared by
+     *  the world map lake/oasis and the town rivers, which used to each have
+     *  their own copy of this logic (with the same bug duplicated in both). */
+    function drawWaterAutotileTile(ctx, screenX, screenY, ts, landN, landS, landE, landW) {
+        let piece = WATER_AUTOTILE.fill, flipX = false, flipY = false, rot = 0, bandDraws = null;
+        const landCount = (landN?1:0) + (landS?1:0) + (landE?1:0) + (landW?1:0);
+        if (landN && landW && !landS && !landE) { piece = WATER_AUTOTILE.corner; }
+        else if (landN && landE && !landS && !landW) { piece = WATER_AUTOTILE.corner; flipX = true; }
+        else if (landS && landW && !landN && !landE) { piece = WATER_AUTOTILE.corner; flipY = true; }
+        else if (landS && landE && !landN && !landW) { piece = WATER_AUTOTILE.corner; flipX = true; flipY = true; }
+        else if (landW && !landN && !landS && !landE) { piece = WATER_AUTOTILE.edgeV; }
+        else if (landE && !landN && !landS && !landW) { piece = WATER_AUTOTILE.edgeV; flipX = true; }
+        else if (landN && !landS && !landE && !landW) { piece = WATER_AUTOTILE.edgeV; rot = 90; }
+        else if (landS && !landN && !landE && !landW) { piece = WATER_AUTOTILE.edgeV; rot = -90; }
+        else if (landCount >= 2) {
+            bandDraws = [];
+            if (landN) bandDraws.push({ piece: WATER_AUTOTILE.edgeV, rot: 90, clip: [0, 0, ts, ts / 2] });
+            if (landS) bandDraws.push({ piece: WATER_AUTOTILE.edgeV, rot: -90, clip: [0, ts / 2, ts, ts / 2] });
+            if (landW) bandDraws.push({ piece: WATER_AUTOTILE.edgeV, rot: 0, clip: [0, 0, ts / 2, ts] });
+            if (landE) bandDraws.push({ piece: WATER_AUTOTILE.edgeV, flipX: true, clip: [ts / 2, 0, ts / 2, ts] });
+        }
+        const drawPiece = (p, fx, fy, r) => {
+            ctx.save();
+            ctx.translate(screenX + ts / 2, screenY + ts / 2);
+            if (r) ctx.rotate(r * Math.PI / 180);
+            ctx.scale(fx ? -1 : 1, fy ? -1 : 1);
+            ctx.drawImage(beachA1Sheet, p[0] * BEACH_TILE, p[1] * BEACH_TILE, BEACH_TILE, BEACH_TILE, -ts / 2, -ts / 2, ts, ts);
+            ctx.restore();
+        };
+        if (bandDraws) {
+            ctx.drawImage(beachA1Sheet, WATER_AUTOTILE.fill[0] * BEACH_TILE, WATER_AUTOTILE.fill[1] * BEACH_TILE, BEACH_TILE, BEACH_TILE, screenX, screenY, ts, ts);
+            bandDraws.forEach(b => {
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(screenX + b.clip[0], screenY + b.clip[1], b.clip[2], b.clip[3]);
+                ctx.clip();
+                drawPiece(b.piece, b.flipX, b.flipY, b.rot);
+                ctx.restore();
+            });
+        } else {
+            drawPiece(piece, flipX, flipY, rot);
+        }
+    }
 
     // Gentle Forest big tree object (two 80x96 variants side by side) - used
     // as an overlapping "canopy" object drawn on top of forest tiles instead
@@ -6507,6 +6696,104 @@
         TOWN_BUILDING_IMAGES[key] = img;
     });
     const TOWN_PACK_TILE = 28; // native pixel size of one tile in the new pack's source art
+    let roofPatternCache = null; // lazily-built CanvasPattern, see drawCottageBuilding
+
+    // Village pack (free, user-supplied) - real tree objects and fence posts
+    // for towns, replacing the 🌲 emoji tiles and giving buildings an actual
+    // fenced-garden perimeter instead of floating on bare grass.
+    const villageTreeSheet = new Image();
+    villageTreeSheet.src = 'assets/town/village_tree.png';
+    villageTreeSheet.loaded = false;
+    villageTreeSheet.onload = () => { villageTreeSheet.loaded = true; };
+    const VILLAGE_TREE_W = 48, VILLAGE_TREE_H = 48;
+
+    const villageBridgeSheet = new Image();
+    villageBridgeSheet.src = 'assets/town/village_bridge.png';
+    villageBridgeSheet.loaded = false;
+    villageBridgeSheet.onload = () => { villageBridgeSheet.loaded = true; };
+
+    // Small ground-decoration variety (rock piles, mushroom clusters, tall
+    // grass tufts, flower clusters) from the same pack, for both near-
+    // building garden beds and general scattered township decoration -
+    // real art instead of leaning on natureTileSheet's flowers alone for
+    // everything.
+    const villageDetailSheets = [1, 2, 3, 4, 5, 6].map(i => {
+        const img = new Image();
+        img.src = `assets/town/village_detail${i}.png`;
+        img.loaded = false;
+        img.onload = () => { img.loaded = true; };
+        return img;
+    });
+
+    const villageGrassSheet = new Image();
+    villageGrassSheet.src = 'assets/town/village_grass.png';
+    villageGrassSheet.loaded = false;
+    villageGrassSheet.onload = () => { villageGrassSheet.loaded = true; };
+
+    const villageFenceSheet = new Image();
+    villageFenceSheet.src = 'assets/town/village_fence.png';
+    villageFenceSheet.loaded = false;
+    villageFenceSheet.onload = () => { villageFenceSheet.loaded = true; };
+
+    // Real wall band (door + windows already baked in, cropped from just
+    // below the source art's own roofline) instead of the old Kenney brick-
+    // tile repeat - this is the actual fix for "the walls look nothing like
+    // the art pack." Stretched to fit each building's pixel width/height
+    // since these are fixed-size source crops, not a tileable pattern - a
+    // building's own procedural gable (see drawCottageBuilding) still draws
+    // on top, so a sliver of the source image's own roof edge visible in
+    // the crop ends up covered rather than double-roofed.
+    const villageWallSheets = [new Image(), new Image()];
+    villageWallSheets[0].src = 'assets/town/village_wallband1.png';
+    villageWallSheets[1].src = 'assets/town/village_wallband2.png';
+    villageWallSheets.forEach(img => { img.loaded = false; img.onload = () => { img.loaded = true; }; });
+    const VILLAGE_WALL_DIMS = [{ w: 80, h: 34 }, { w: 128, h: 50 }];
+
+    // The COMPLETE building sprites (roof + walls + door + windows, all one
+    // piece, exactly as they come in the pack) - per explicit request, used
+    // as-is instead of synthesized from cropped/stretched parts. Scaled
+    // uniformly (not stretched independently per axis) to match each
+    // building's designated width, then bottom-anchored at ground level -
+    // the image's own natural height then just extends upward as far as it
+    // needs to, the same way the earlier procedural roof was already
+    // allowed to draw above the building's collision box.
+    const villageFullBuildings = [
+        { img: new Image(), src: 'assets/town/village_house1_full.png', w: 80, h: 112 },
+        { img: new Image(), src: 'assets/town/village_house2_full.png', w: 128, h: 112 },
+        { img: new Image(), src: 'assets/town/village_church_full.png', w: 128, h: 112 }
+    ];
+    villageFullBuildings.forEach(v => { v.img.loaded = false; v.img.onload = () => { v.img.loaded = true; }; v.img.src = v.src; });
+
+    // Small wooden signpost, drawn procedurally (post + placard) so any shop
+    // icon can sit on it at a small readable size instead of floating as a
+    // giant emoji over the building art.
+    function drawShopSignpost(ctx, cx, groundY, ts, icon) {
+        // Doubled from the original size per request ("hard to read") - post,
+        // placard, and icon font are all 2x, with a heavier placard border
+        // and a light drop shadow so the bigger placard still reads clearly
+        // against busy backgrounds instead of just looking blurrier at scale.
+        const postW = Math.max(3, ts * 0.14);
+        const postH = ts * 1.0;
+        ctx.fillStyle = '#5a3d22';
+        ctx.fillRect(cx - postW / 2, groundY - postH, postW, postH);
+        const plW = ts * 1.15, plH = ts * 0.78;
+        const plY = groundY - postH - plH * 0.5;
+        ctx.save();
+        ctx.shadowColor = 'rgba(0,0,0,0.4)';
+        ctx.shadowBlur = 3;
+        ctx.shadowOffsetY = 2;
+        ctx.fillStyle = '#8a6339';
+        ctx.fillRect(cx - plW / 2, plY, plW, plH);
+        ctx.restore();
+        ctx.strokeStyle = '#3a2513';
+        ctx.lineWidth = Math.max(1.5, ts * 0.045);
+        ctx.strokeRect(cx - plW / 2, plY, plW, plH);
+        ctx.font = `${Math.floor(plH * 0.72)}px "Courier New", monospace`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(icon, cx, plY + plH / 2 + 1);
+    }
 
     /** Draws one shop/inn/guild building using the cottage kit: wall texture
      *  tiled across the whole footprint (alternating the source image's two
@@ -6529,6 +6816,26 @@
     function drawCottageBuilding(ctx, bx, by, ts, b) {
         const imgs = TOWN_BUILDING_IMAGES;
         const w = b.w, h = b.h;
+        const doorCol = Math.floor(w / 2) - (h >= 2 ? 0 : 0);
+        const variant = villageFullBuildings[hashStringToSeed(b.id) % villageFullBuildings.length];
+        if (variant.img.loaded) {
+            // The complete building sprite (roof + walls + door + windows,
+            // all one piece, exactly as it comes in the pack) - per explicit
+            // request, used as-is rather than synthesized from cropped or
+            // stretched parts. Scaled UNIFORMLY (one scale factor, not
+            // independent width/height stretch) to match this building's
+            // designated pixel width, then bottom-anchored at ground level -
+            // its natural height just extends upward from there as far as it
+            // needs to, the same way the roof was already allowed to draw
+            // above the building's collision box before.
+            const scale = (w * ts) / variant.w;
+            const drawW = variant.w * scale;
+            const drawH = variant.h * scale;
+            ctx.drawImage(variant.img, 0, 0, variant.w, variant.h, bx, by + h * ts - drawH, drawW, drawH);
+            return;
+        }
+        // Fallback while that image loads: the old tiled brick/stone wall +
+        // separately-drawn door/window pieces, plus a procedural gable roof.
         const brick = (hashStringToSeed(b.id) % 2 === 0);
         const wallTile = brick ? WORLD_TILES.wallBrick : WORLD_TILES.wallStone;
         for (let row = 0; row < h; row++) {
@@ -6537,30 +6844,54 @@
                     bx + col * ts, by + row * ts, ts, ts);
             }
         }
-        const doorCol = Math.floor(w / 2) - (h >= 2 ? 0 : 0);
         const windowCols = w >= 6 ? [1, w - 2] : (w >= 4 ? [doorCol === 1 ? w - 2 : 1] : []);
         windowCols.forEach(c => {
             if (c === doorCol || c < 0 || c >= w) return;
-            // Cropped to the window's actual 16x16 content (its 28x28 canvas
-            // is otherwise padding) so it fills the destination tile instead
-            // of looking small and pinned to one corner.
             ctx.drawImage(imgs.window, 0, 0, 16, 16, bx + c * ts, by, ts, ts);
         });
         if (h >= 2) {
-            // Same deal - door content is 16x32 out of a 28x56 canvas.
             ctx.drawImage(imgs.door, 0, 0, 16, 32, bx + doorCol * ts, by + (h - 2) * ts, ts, ts * 2);
         } else {
             ctx.drawImage(imgs.door, 0, TOWN_PACK_TILE, 16, TOWN_PACK_TILE, bx + doorCol * ts, by + (h - 1) * ts, ts, ts);
         }
-        const roofH = ts * 1.15;
-        for (let col = 0; col < w; col += 2) {
-            const cw = Math.min(2, w - col);
-            // Source crop stops at 48px, not the full 56px canvas - the art
-            // itself only fills the top-left 48x48 of that image (checked
-            // pixel-by-pixel after the wall-tile bug above), the rest is
-            // white padding that would otherwise stretch into a visible gap.
-            ctx.drawImage(imgs.roof, 0, 0, cw * 24, 48, bx + col * ts, by - roofH, cw * ts, roofH);
+        const roofW = w * ts;
+        const roofH = ts * 1.35;
+        const overhang = ts * 0.18;
+        const ridgeFlat = Math.min(roofW * 0.35, ts * 1.4);
+        const baseY = by;
+        const peakY = by - roofH;
+        const lipY = by - roofH * 0.14;
+        const cx = bx + roofW / 2;
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(bx - overhang, baseY);
+        ctx.lineTo(bx - overhang, lipY);
+        ctx.lineTo(cx - ridgeFlat / 2, peakY);
+        ctx.lineTo(cx + ridgeFlat / 2, peakY);
+        ctx.lineTo(bx + roofW + overhang, lipY);
+        ctx.lineTo(bx + roofW + overhang, baseY);
+        ctx.closePath();
+        if (!roofPatternCache && imgs.roof.loaded) {
+            roofPatternCache = ctx.createPattern(imgs.roof, 'repeat');
         }
+        ctx.fillStyle = roofPatternCache || '#6a3a2a';
+        ctx.fill();
+        ctx.globalCompositeOperation = 'source-atop';
+        const leftGrad = ctx.createLinearGradient(bx - overhang, 0, cx, 0);
+        leftGrad.addColorStop(0, 'rgba(255,255,255,0.08)');
+        leftGrad.addColorStop(1, 'rgba(0,0,0,0.12)');
+        ctx.fillStyle = leftGrad;
+        ctx.fillRect(bx - overhang, peakY, roofW / 2 + overhang, roofH);
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.strokeStyle = 'rgba(0,0,0,0.45)';
+        ctx.lineWidth = Math.max(1.5, ts * 0.05);
+        ctx.beginPath();
+        ctx.moveTo(cx - ridgeFlat / 2, peakY);
+        ctx.lineTo(cx + ridgeFlat / 2, peakY);
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(0,0,0,0.25)';
+        ctx.fillRect(bx - overhang, baseY - ts * 0.08, roofW + overhang * 2, ts * 0.08);
+        ctx.restore();
     }
 
     /** Draws the King/Palace building using the castle kit: the crenellated
@@ -9996,12 +10327,27 @@
             this.gate = layout.gate;
             this.wanderers = layout.wanderers || [];
             this.fishingSpots = layout.fishingSpots || [];
-            this.roads = expandSegments(layout.roadSegments);
-            this.river = layout.riverPath ? expandDiagonalPath(layout.riverPath, layout.riverThickness || 2) : expandSegments(layout.riverSegments);
+            this.roads = expandOrganicSegments(layout.roadSegments, 2);
+            this.river = layout.riverPath ? expandAxisAlignedPath(layout.riverPath, layout.riverThickness || 2) : expandSegments(layout.riverSegments);
+            // No smoothing pass needed anymore - expandAxisAlignedPath only
+            // ever produces straight horizontal/vertical bands meeting at
+            // plain right angles, so there's no diagonal staircase for a
+            // smoothing pass to have to fix in the first place.
             // A river should never visually cut through a building - regardless of
             // how carefully a path's waypoints were planned, drop any tile that lands
             // inside a building's footprint.
-            this.river = this.river.filter(t => !layout.buildings.some(b => t.x >= b.x && t.x < b.x + b.w && t.y >= b.y && t.y < b.y + b.h));
+            // A river should never visually cut through a building, AND never seal off
+            // its door - the door is always the bottom-center tile of the footprint, so
+            // exclude a padded zone that's wider in front of that specific tile (a real
+            // "clear the doorstep" margin) rather than just the building's exact
+            // footprint, which still let the river run directly past a door with no
+            // land tile left for the player to actually stand on to get out.
+            this.river = this.river.filter(t => !layout.buildings.some(b => {
+                const doorCol = b.x + Math.floor(b.w / 2);
+                const inFootprint = t.x >= b.x && t.x < b.x + b.w && t.y >= b.y && t.y < b.y + b.h;
+                const inDoorstep = t.x >= doorCol - 1 && t.x <= doorCol + 1 && t.y >= b.y + b.h && t.y <= b.y + b.h + 1;
+                return inFootprint || inDoorstep;
+            }));
             this.roadSet = new Set(this.roads.map(t => t.x + ',' + t.y));
             this.riverSet = new Set(this.river.map(t => t.x + ',' + t.y));
             this.playerX = layout.gate.x;
@@ -10079,6 +10425,7 @@
             const height = this.canvas.height;
             const time = Date.now() / 1000;
             const pal = townMap.palette;
+            const townBigTreeQueue = [];
 
             const sky = ctx.createLinearGradient(0, 0, 0, height);
             sky.addColorStop(0, pal.skyTop);
@@ -10154,6 +10501,14 @@
                             const [tc, tr] = WORLD_TILES.desert[(row + col) % WORLD_TILES.desert.length];
                             ctx.drawImage(desertTileSheet, tc * WORLD_TILE_STRIDE_DESERT, tr * WORLD_TILE_STRIDE_DESERT, 16, 16, col * ts, row * ts, ts, ts);
                         }
+                    } else if (villageGrassSheet.loaded) {
+                        // The village pack's own flat grass tile, matching the exact
+                        // background color the decoration pieces (rocks, mushroom
+                        // clusters, grass tufts) were cropped against - using the
+                        // world map's textured grass here instead left a visible
+                        // color-mismatch box around every decoration sprite, since
+                        // they're two different tilesets with two different greens.
+                        ctx.drawImage(villageGrassSheet, 0, 0, 16, 16, col * ts, row * ts, ts, ts);
                     } else if (natureTileSheet.loaded) {
                         const [tc, tr] = WORLD_TILES.grass[(row + col) % WORLD_TILES.grass.length];
                         ctx.drawImage(natureTileSheet, tc * WORLD_TILE_STRIDE_NATURE, tr * WORLD_TILE_STRIDE_NATURE, 16, 16, col * ts, row * ts, ts, ts);
@@ -10170,33 +10525,121 @@
                 }
             }
 
-            // River (drawn before roads so a road tile crossing it reads as a little bridge)
+            // River (drawn before roads so a road tile crossing it reads as a little
+            // bridge) - real edge-aware water tiles (same beachA1Sheet/WATER_AUTOTILE
+            // system built for the world map's lake/oasis) instead of a flat color
+            // fill, so town rivers get genuine sand-blended banks instead of a hard
+            // rectangle edge.
             townMap.river.forEach(t => {
                 const rx = t.x * ts, ry = t.y * ts;
-                const shimmer = (Math.sin(time * 2 + t.x * 0.6 + t.y * 0.4) + 1) / 2;
-                ctx.fillStyle = shimmer > 0.5 ? pal.riverLight : pal.river;
-                ctx.fillRect(rx, ry, ts, ts);
-                // Organic bank edge - scatter a little "foam" fringe of the
-                // river color past whichever sides don't border more river,
-                // so banks read as a soft blend instead of a hard rectangle.
                 const rKey = (dx, dy) => townMap.riverSet.has((t.x + dx) + ',' + (t.y + dy));
-                drawTileEdgeFringe(ctx, rx, ry, ts, rKey(0, -1), rKey(0, 1), rKey(1, 0), rKey(-1, 0), pal.riverLight, t.x * 37 + t.y * 53);
+                if (beachA1Sheet.loaded) {
+                    drawWaterAutotileTile(ctx, rx, ry, ts, !rKey(0, -1), !rKey(0, 1), !rKey(1, 0), !rKey(-1, 0));
+                } else {
+                    const shimmer = (Math.sin(time * 2 + t.x * 0.6 + t.y * 0.4) + 1) / 2;
+                    ctx.fillStyle = shimmer > 0.5 ? pal.riverLight : pal.river;
+                    ctx.fillRect(rx, ry, ts, ts);
+                    drawTileEdgeFringe(ctx, rx, ry, ts, rKey(0, -1), rKey(0, 1), rKey(1, 0), rKey(-1, 0), pal.riverLight, t.x * 37 + t.y * 53);
+                }
+                const shimmer2 = (Math.sin(time * 1.4 + t.x * 0.6 + t.y * 0.4) + 1) / 2;
+                ctx.fillStyle = `rgba(200,235,255,${(shimmer2 * 0.12).toFixed(2)})`;
+                ctx.fillRect(rx, ry, ts, ts);
             });
 
             // Cobblestone road network
             townMap.roads.forEach(t => {
-                if (townMap.riverSet.has(t.x + ',' + t.y)) return; // river takes visual priority at crossings
+                if (townMap.riverSet.has(t.x + ',' + t.y)) return; // river/bridge takes visual priority at crossings
                 const rx = t.x * ts, ry = t.y * ts;
-                ctx.fillStyle = (t.x + t.y) % 2 === 0 ? pal.road : pal.roadLight;
-                ctx.fillRect(rx, ry, ts, ts);
-                ctx.strokeStyle = 'rgba(0,0,0,0.15)';
-                ctx.strokeRect(rx + 1, ry + 1, ts - 2, ts - 2);
+                if (natureTileSheet.loaded) {
+                    // Real dirt-path texture (same tile the world map roads use)
+                    // instead of a flat two-color checkerboard fill.
+                    ctx.fillStyle = '#8B7355';
+                    ctx.fillRect(rx, ry, ts, ts);
+                    const [tc, tr] = WORLD_TILES.road[0];
+                    ctx.drawImage(natureTileSheet, tc * WORLD_TILE_STRIDE_NATURE, tr * WORLD_TILE_STRIDE_NATURE, 16, 16, rx, ry, ts, ts);
+                } else {
+                    ctx.fillStyle = (t.x + t.y) % 2 === 0 ? pal.road : pal.roadLight;
+                    ctx.fillRect(rx, ry, ts, ts);
+                    ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+                    ctx.strokeRect(rx + 1, ry + 1, ts - 2, ts - 2);
+                }
                 // Organic dirt-shoulder edge - same fringe trick as the
                 // river, using a dirt tone so the road's border into grass
                 // looks worn-in rather than a uniform tiled block.
                 const roKey = (dx, dy) => townMap.roadSet.has((t.x + dx) + ',' + (t.y + dy)) && !townMap.riverSet.has((t.x + dx) + ',' + (t.y + dy));
                 drawTileEdgeFringe(ctx, rx, ry, ts, roKey(0, -1), roKey(0, 1), roKey(1, 0), roKey(-1, 0), pal.road, t.x * 41 + t.y * 59);
             });
+
+            // Real bridge art wherever a road actually crosses the river - one
+            // bridge PER CROSSING (a connected cluster of road-tiles-over-river),
+            // sized to span that cluster's full width, instead of one small
+            // bridge sprite stamped on every individual tile in the crossing
+            // (which was both cluttered with redundant overlapping bridges and
+            // made each one look tiny relative to the crossing it was on).
+            if (villageBridgeSheet.loaded) {
+                const crossingTiles = townMap.roads.filter(t => townMap.riverSet.has(t.x + ',' + t.y));
+                const crossingSet = new Set(crossingTiles.map(t => t.x + ',' + t.y));
+                const visited = new Set();
+                crossingTiles.forEach(start => {
+                    const startKey = start.x + ',' + start.y;
+                    if (visited.has(startKey)) return;
+                    // Flood-fill this crossing's connected tiles into one cluster.
+                    const cluster = [];
+                    const queue = [start];
+                    visited.add(startKey);
+                    while (queue.length) {
+                        const t = queue.pop();
+                        cluster.push(t);
+                        [[1,0],[-1,0],[0,1],[0,-1]].forEach(([dx,dy]) => {
+                            const nx = t.x + dx, ny = t.y + dy, nk = nx + ',' + ny;
+                            if (crossingSet.has(nk) && !visited.has(nk)) {
+                                visited.add(nk);
+                                queue.push({ x: nx, y: ny });
+                            }
+                        });
+                    }
+                    const minX = Math.min(...cluster.map(t => t.x)), maxX = Math.max(...cluster.map(t => t.x));
+                    const minY = Math.min(...cluster.map(t => t.y)), maxY = Math.max(...cluster.map(t => t.y));
+                    const ccx = Math.round((minX + maxX) / 2), ccy = Math.round((minY + maxY) / 2);
+                    // Orientation must come from the RIVER's own local shape at this
+                    // point, not the crossing patch's bounding box - the patch is
+                    // just the intersection of road-width and river-width, which
+                    // stays small and roughly square even at a T-junction or bend,
+                    // so its own shape doesn't reliably say which way the river
+                    // actually runs there (that was the bug: a bridge crossing a
+                    // north-south channel was coming out horizontal). Instead, walk
+                    // outward from the crossing's center along each axis, using the
+                    // full riverSet, and see which direction the river actually
+                    // extends further - a wide east-west band needs a bridge
+                    // spanning north-south to cross it, and vice versa.
+                    let extentX = 0, extentY = 0;
+                    while (townMap.riverSet.has((ccx - extentX - 1) + ',' + ccy) || townMap.riverSet.has((ccx + extentX + 1) + ',' + ccy)) extentX++;
+                    while (townMap.riverSet.has(ccx + ',' + (ccy - extentY - 1)) || townMap.riverSet.has(ccx + ',' + (ccy + extentY + 1))) extentY++;
+                    const spanVert = extentX >= extentY;
+                    const cx = (minX + maxX + 1) / 2 * ts, cy = (minY + maxY + 1) / 2 * ts;
+                    // Length needed to actually clear the river's real width at
+                    // this point (2x the extent walked above, plus the 1 center
+                    // tile), not the small crossing patch's own bounds - that
+                    // patch is only as wide as the road, which is narrower than
+                    // the river it needs to cross. Floored to a minimum of 2.5
+                    // tiles regardless - a genuinely narrow channel still needs a
+                    // visually complete, substantial-looking bridge structure,
+                    // not a technically-correct but tiny stub scaled exactly to
+                    // its measured width.
+                    const spanLen = Math.max(2.5, (spanVert ? extentY : extentX) * 2 + 1) * ts;
+                    const aspect = (villageBridgeSheet.naturalHeight / villageBridgeSheet.naturalWidth) || 0.5;
+                    // Bridge length matches the crossing's actual span (with a
+                    // little overhang onto both banks), width is set from the
+                    // source art's own aspect ratio so it doesn't look stretched.
+                    const bridgeLen = spanLen * 1.1;
+                    const bridgeWidth = bridgeLen * aspect;
+                    ctx.save();
+                    ctx.translate(cx, cy);
+                    if (spanVert) ctx.rotate(Math.PI / 2);
+                    ctx.drawImage(villageBridgeSheet, -bridgeLen / 2, -bridgeWidth / 2, bridgeLen, bridgeWidth);
+                    ctx.restore();
+                });
+            }
 
             // Scattered decorative trees on open grass tiles (skips roads/river/buildings/NPC spots)
             const npcTileSet = new Set(townMap.npcSpots.map(n => n.x + ',' + n.y));
@@ -10219,28 +10662,63 @@
                                 ctx.fillStyle = pal.treeColor;
                                 ctx.fillText('🌵', col * ts + ts / 2, row * ts + ts / 2);
                             }
+                        } else if (villageTreeSheet.loaded) {
+                            // Real multi-part tree object (same idea as the world map's
+                            // big-tree system) instead of a single flat 🌲 glyph -
+                            // queued here, drawn in a second pass after buildings so it
+                            // can overlap slightly without a later row painting over it.
+                            townBigTreeQueue.push({ row, screenX: col * ts, screenY: row * ts });
                         } else {
                             ctx.fillStyle = pal.treeColor;
                             ctx.fillText('🌲', col * ts + ts / 2, row * ts + ts / 2);
                         }
                     } else if (hash >= 10 && hash < 16) {
-                        // Ground clutter (barrels/crates/flowers) - only within a
-                        // tile or two of a building so it reads as "stuff outside
-                        // someone's shop" rather than scattered randomly on open grass.
+                        // Garden-bed clutter near buildings, replacing the old
+                        // 🛢️📦🌾🪣 emoji scatter - real flower/rock/mushroom art
+                        // (mixing the world map's flower tiles with the village
+                        // pack's own detail pieces) reads as "someone's garden,"
+                        // not "random junk," matching the reference town look.
                         let nearBuilding = false;
                         for (let dy = -2; dy <= 2 && !nearBuilding; dy++) {
                             for (let dx = -2; dx <= 2 && !nearBuilding; dx++) {
                                 if (townMap.getBuildingAt(col + dx, row + dy)) nearBuilding = true;
                             }
                         }
-                        if (nearBuilding) {
+                        if (nearBuilding && hash % 2 === 0 && villageDetailSheets[0].loaded) {
+                            const vd = villageDetailSheets[hash % villageDetailSheets.length];
+                            ctx.drawImage(vd, 0, 0, 16, 16, col * ts, row * ts, ts, ts);
+                        } else if (nearBuilding && natureTileSheet.loaded) {
+                            const gardenTiles = [WORLD_TILES.flowers1, WORLD_TILES.flowers2, WORLD_TILES.blueFlower, WORLD_TILES.rock];
+                            const gt = gardenTiles[hash % gardenTiles.length];
+                            ctx.drawImage(natureTileSheet, gt[0] * WORLD_TILE_STRIDE_NATURE, gt[1] * WORLD_TILE_STRIDE_NATURE, 16, 16, col * ts, row * ts, ts, ts);
+                        } else if (nearBuilding) {
                             const clutterIcons = ['🛢️', '📦', '🌾', '🪣'];
                             ctx.font = `${Math.floor(ts * 0.55)}px "Courier New", monospace`;
                             ctx.fillText(clutterIcons[hash % clutterIcons.length], col * ts + ts / 2, row * ts + ts * 0.7);
                             ctx.font = `${Math.floor(ts * 0.85)}px "Courier New", monospace`;
                         }
+                    } else if (hash >= 16 && hash < 20 && villageDetailSheets[0].loaded) {
+                        // General township decoration - sparse rock piles/grass
+                        // tufts/mushroom clusters scattered through open grass
+                        // everywhere, not just clustered around buildings, so the
+                        // whole town feels lived-in the way the reference art does.
+                        const vd = villageDetailSheets[(col * 7 + row * 11) % villageDetailSheets.length];
+                        ctx.drawImage(vd, 0, 0, 16, 16, col * ts, row * ts, ts, ts);
                     }
                 }
+            }
+
+            // Real tree objects queued during the pass above, painted here (sorted
+            // by row for correct front-to-back overlap) instead of drawn inline -
+            // same painter's-algorithm approach as the world map's canopy trees.
+            if (townBigTreeQueue.length && villageTreeSheet.loaded) {
+                townBigTreeQueue.sort((a, b) => a.row - b.row);
+                const drawSize = ts * 1.5;
+                townBigTreeQueue.forEach(t => {
+                    const dx = t.screenX + ts / 2 - drawSize / 2;
+                    const dy = t.screenY + ts - drawSize * 0.92;
+                    ctx.drawImage(villageTreeSheet, 0, 0, VILLAGE_TREE_W, VILLAGE_TREE_H, dx, dy, drawSize, drawSize);
+                });
             }
 
             // Decorative centerpiece (well/reeds/oasis palm)
@@ -10365,12 +10843,41 @@
                     ctx.fillStyle = 'rgba(0,0,0,0.35)';
                     ctx.fillRect(bx + bw / 2 - ts * 0.35, by + bh - ts * 0.9, ts * 0.7, ts * 0.9);
                 }
-                ctx.font = `${Math.floor(Math.min(bw, bh) * 0.42)}px "Courier New", monospace`;
-                ctx.fillStyle = '#ffffff';
-                ctx.shadowColor = '#000';
-                ctx.shadowBlur = 4;
-                ctx.fillText(b.icon, bx + bw / 2, by + bh / 2 - 4);
-                ctx.shadowBlur = 0;
+                // Shop-type icon moved off the building face entirely onto a small
+                // signpost planted just outside the door, instead of a giant emoji
+                // floating over the building art (per request: "put the icons on a
+                // sign in front of the building").
+                const signCol = Math.floor(b.w / 2) + (b.w >= 5 ? 2 : 1);
+                const signX = bx + Math.min(signCol, b.w - 1) * ts + ts / 2;
+                drawShopSignpost(ctx, signX, by + bh, ts, b.icon);
+                // Fence line tracing the building's footprint (bottom + sides), using
+                // the real fence post art - matching the reference town art's every-
+                // house-has-a-fence look, with pieces at full tile width so they
+                // connect edge-to-edge into a continuous line instead of leaving gaps
+                // between posts. Skipped along the door-facing bottom-center so the
+                // entrance stays clear, and along the top (the building's own wall
+                // already closes that side).
+                if (villageFenceSheet.loaded) {
+                    const doorColFence = Math.floor(b.w / 2);
+                    const fenceH = ts * 0.45;
+                    for (let c = 0; c < b.w; c++) {
+                        if (c === doorColFence) continue; // leave the door approach open
+                        ctx.drawImage(villageFenceSheet, bx + c * ts, by + bh - fenceH * 0.5, ts, fenceH);
+                    }
+                    const sideFenceW = ts * 0.45;
+                    for (let r = 0; r < b.h; r++) {
+                        ctx.save();
+                        ctx.translate(bx - sideFenceW * 0.5, by + r * ts + ts / 2);
+                        ctx.rotate(-Math.PI / 2);
+                        ctx.drawImage(villageFenceSheet, -ts / 2, -sideFenceW / 2, ts, sideFenceW);
+                        ctx.restore();
+                        ctx.save();
+                        ctx.translate(bx + b.w * ts + sideFenceW * 0.5, by + r * ts + ts / 2);
+                        ctx.rotate(Math.PI / 2);
+                        ctx.drawImage(villageFenceSheet, -ts / 2, -sideFenceW / 2, ts, sideFenceW);
+                        ctx.restore();
+                    }
+                }
                 ctx.font = `bold ${Math.max(10, Math.floor(ts * 0.22))}px Courier New`;
                 // Black text reads far better than the town's accent color against
                 // busy grass/road art - a light halo (stroke, plus a soft white
@@ -11604,60 +12111,8 @@
                                 break;
                             case CONFIG.TERRAIN.WATER: {
                                 if (beachA1Sheet.loaded) {
-                                    // Real shoreline autotile: look at the 4 orthogonal
-                                    // neighbors to decide fill / straight edge / corner,
-                                    // then flip the single edge and single corner source
-                                    // piece to cover all 8 facings instead of needing 8
-                                    // separate sprites.
                                     const isWater = (cc, rr) => cc >= 0 && cc < worldMap.width && rr >= 0 && rr < worldMap.height && worldMap.tiles[rr][cc] === CONFIG.TERRAIN.WATER;
-                                    const landN = !isWater(col, row - 1);
-                                    const landS = !isWater(col, row + 1);
-                                    const landE = !isWater(col + 1, row);
-                                    const landW = !isWater(col - 1, row);
-                                    let piece = WATER_AUTOTILE.fill, flipX = false, flipY = false, bandDraws = null;
-                                    const landCount = (landN?1:0) + (landS?1:0) + (landE?1:0) + (landW?1:0);
-                                    if (landN && landW && !landS && !landE) { piece = WATER_AUTOTILE.corner; }
-                                    else if (landN && landE && !landS && !landW) { piece = WATER_AUTOTILE.corner; flipX = true; }
-                                    else if (landS && landW && !landN && !landE) { piece = WATER_AUTOTILE.corner; flipY = true; }
-                                    else if (landS && landE && !landN && !landW) { piece = WATER_AUTOTILE.corner; flipX = true; flipY = true; }
-                                    else if (landN && !landS && !landE && !landW) { piece = WATER_AUTOTILE.edgeH; }
-                                    else if (landS && !landN && !landE && !landW) { piece = WATER_AUTOTILE.edgeH; flipY = true; }
-                                    else if (landW && !landN && !landS && !landE) { piece = WATER_AUTOTILE.edgeV; }
-                                    else if (landE && !landN && !landS && !landW) { piece = WATER_AUTOTILE.edgeV; flipX = true; }
-                                    else if (landCount >= 2) {
-                                        // Everything else - opposite-side channels, 3-land
-                                        // corners, and fully-isolated single water tiles (land
-                                        // on all 4 sides) - generalized instead of one-off
-                                        // cases: blend in a half-clipped edge for every land
-                                        // side actually present, any combination. A single edge
-                                        // piece only textures one bank, which is exactly what
-                                        // was leaving these harder cases as a plain hard-edged
-                                        // fill tile before.
-                                        bandDraws = [];
-                                        if (landN) bandDraws.push({ piece: WATER_AUTOTILE.edgeH, flipY: false, clip: [0, 0, ts, ts / 2] });
-                                        if (landS) bandDraws.push({ piece: WATER_AUTOTILE.edgeH, flipY: true, clip: [0, ts / 2, ts, ts / 2] });
-                                        if (landW) bandDraws.push({ piece: WATER_AUTOTILE.edgeV, flipX: false, clip: [0, 0, ts / 2, ts] });
-                                        if (landE) bandDraws.push({ piece: WATER_AUTOTILE.edgeV, flipX: true, clip: [ts / 2, 0, ts / 2, ts] });
-                                    }
-                                    if (bandDraws) {
-                                        ctx.drawImage(beachA1Sheet, WATER_AUTOTILE.fill[0] * BEACH_TILE, WATER_AUTOTILE.fill[1] * BEACH_TILE, BEACH_TILE, BEACH_TILE, screenX, screenY, ts, ts);
-                                        bandDraws.forEach(b => {
-                                            ctx.save();
-                                            ctx.beginPath();
-                                            ctx.rect(screenX + b.clip[0], screenY + b.clip[1], b.clip[2], b.clip[3]);
-                                            ctx.clip();
-                                            ctx.translate(screenX + ts / 2, screenY + ts / 2);
-                                            ctx.scale(b.flipX ? -1 : 1, b.flipY ? -1 : 1);
-                                            ctx.drawImage(beachA1Sheet, b.piece[0] * BEACH_TILE, b.piece[1] * BEACH_TILE, BEACH_TILE, BEACH_TILE, -ts / 2, -ts / 2, ts, ts);
-                                            ctx.restore();
-                                        });
-                                    } else {
-                                        ctx.save();
-                                        ctx.translate(screenX + ts / 2, screenY + ts / 2);
-                                        ctx.scale(flipX ? -1 : 1, flipY ? -1 : 1);
-                                        ctx.drawImage(beachA1Sheet, piece[0] * BEACH_TILE, piece[1] * BEACH_TILE, BEACH_TILE, BEACH_TILE, -ts / 2, -ts / 2, ts, ts);
-                                        ctx.restore();
-                                    }
+                                    drawWaterAutotileTile(ctx, screenX, screenY, ts, !isWater(col, row - 1), !isWater(col, row + 1), !isWater(col + 1, row), !isWater(col - 1, row));
                                 } else {
                                     ctx.fillStyle = '#4a90a4';
                                     ctx.fillRect(screenX, screenY, ts, ts);
@@ -17067,7 +17522,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v86]');
+            console.log('Game starting... [build v101]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
