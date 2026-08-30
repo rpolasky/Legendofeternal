@@ -3057,6 +3057,97 @@
             display: flex;
         }
 
+        /* Full-screen ending credits crawl (see Game.triggerGameEnding()) -
+           reuses .popup-overlay's fixed full-viewport sizing and .active
+           toggle, but overrides the background/blur since this wants a
+           true black backdrop like a classic RPG ending, not the purple
+           blurred-panel look every other popup uses. */
+        .ending-overlay {
+            background: #000;
+            backdrop-filter: none;
+            flex-direction: column;
+        }
+
+        .ending-scroll-viewport {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .ending-scroll-content {
+            position: absolute;
+            left: 50%;
+            width: 90%;
+            max-width: 600px;
+            transform: translate(-50%, 100%);
+            animation: endingCrawl 55s linear forwards;
+            text-align: center;
+            color: #e8d9ff;
+            padding-bottom: 220px;
+        }
+
+        .ending-title {
+            font-size: 26px;
+            color: var(--gold-color);
+            letter-spacing: 4px;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px rgba(255,170,0,0.5);
+        }
+
+        .ending-subtitle {
+            font-size: 17px;
+            color: var(--highlight);
+            margin-bottom: 30px;
+            font-style: italic;
+        }
+
+        .ending-scroll-content p {
+            line-height: 1.9;
+            margin-bottom: 18px;
+            font-size: 15px;
+        }
+
+        .ending-divider {
+            margin: 30px 0;
+            color: var(--gold-color);
+            letter-spacing: 10px;
+        }
+
+        .ending-heroes {
+            line-height: 2.2;
+            font-size: 16px;
+            color: #cbb8ff;
+        }
+
+        .ending-thanks {
+            margin-top: 40px;
+            font-style: italic;
+            color: #aaa;
+        }
+
+        .ending-the-end {
+            margin-top: 50px;
+            font-size: 38px;
+            letter-spacing: 8px;
+            color: var(--gold-color);
+            text-shadow: 0 0 30px rgba(255,170,0,0.6);
+        }
+
+        .ending-skip-btn {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            z-index: 10;
+            width: auto;
+            padding: 8px 16px;
+        }
+
+        @keyframes endingCrawl {
+            0% { transform: translate(-50%, 100%); }
+            100% { transform: translate(-50%, -100%); }
+        }
+
         .popup-box {
             background: linear-gradient(145deg, var(--panel-bg), #1a0a2e);
             border: 3px solid var(--highlight);
@@ -4221,7 +4312,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v101</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v103</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -4621,6 +4712,7 @@
                         <div id="menu-hub-portrait"></div>
                         <div class="menu-hero-name" id="menu-hub-name"></div>
                         <div class="menu-hero-subline" id="menu-hub-subline"></div>
+                        <div class="menu-hero-subline" id="menu-hub-echo" style="color: var(--gold-color, #ffd700); font-size: 12px;"></div>
                     </div>
                     <div class="menu-hero-switcher-arrow" onclick="window.game.cycleMenuHero(1)">▶</div>
                 </div>
@@ -4683,10 +4775,12 @@
                     <button id="menu-items-tab-btn" class="menu-button" onclick="window.game.showMenuItemsTab('items')" style="padding: 5px 15px; font-size: 13px;">🎒 Items</button>
                     <button id="menu-materials-tab-btn" class="menu-button" onclick="window.game.showMenuItemsTab('materials')" style="padding: 5px 15px; font-size: 13px;">🧱 Materials</button>
                     <button id="menu-fragments-tab-btn" class="menu-button" onclick="window.game.showMenuItemsTab('fragments')" style="padding: 5px 15px; font-size: 13px;">💎 Fragments</button>
+                    <button id="menu-echoes-tab-btn" class="menu-button" onclick="window.game.showMenuItemsTab('echoes')" style="padding: 5px 15px; font-size: 13px;">🌟 Echoes</button>
                 </div>
                 <div id="menu-inventory-list" class="shop-inventory" style="height: 250px; margin-bottom: 12px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 4px; padding: 6px;"></div>
                 <div id="menu-materials-list" class="shop-inventory" style="height: 250px; margin-bottom: 12px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 4px; padding: 6px; display: none;"></div>
                 <div id="menu-fragments-list" class="shop-inventory" style="height: 250px; margin-bottom: 12px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 4px; padding: 6px; display: none;"></div>
+                <div id="menu-echoes-list" class="shop-inventory" style="height: 250px; margin-bottom: 12px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 4px; padding: 6px; display: none;"></div>
                 <div id="menu-item-details" style="padding: 10px; background: rgba(0,0,0,0.3); border-radius: 4px; min-height: 60px;"></div>
             </div>
 
@@ -4827,6 +4921,17 @@
                 <div class="message" id="lore-content" style="overflow-y: auto; text-align: left; flex: 1; padding-right: 6px;"></div>
                 <button class="menu-button" onclick="window.game.closeLoreJournal()" style="flex-shrink: 0;">Close</button>
             </div>
+        </div>
+        <!-- Full-screen ending credits crawl, shown once when Voraxis falls
+             (see Game.triggerGameEnding()) instead of the normal lore-journal
+             popup every other story boss gets. Scrolls bottom-to-top over
+             the "ending" music track and finishes on "THE END" - skippable
+             at any point via the button in the corner. -->
+        <div class="popup-overlay ending-overlay" id="ending-overlay">
+            <div class="ending-scroll-viewport">
+                <div class="ending-scroll-content" id="ending-scroll-content"></div>
+            </div>
+            <button class="menu-button ending-skip-btn" onclick="window.game.closeEndingSequence()">Skip ➡️</button>
         </div>
         <div class="popup-overlay" id="legendary-overlay">
             <div class="popup-box lore-box" id="legendary-box" style="max-width: 640px; width: 90%; max-height: 80vh; display: flex; flex-direction: column;">
@@ -6163,7 +6268,7 @@
             ],
             riverPath: [[6, 6], [24, 18], [45, 10], [70, 20], [90, 10]],
             riverThickness: 3,
-            fishingSpots: [{ x: 45, y: 10 }],
+            fishingSpots: [{ x: 70, y: 15 }],
             npcSpots: [
                 { x: 14, y: 6, npcIndex: 0 },
                 { x: 80, y: 6, npcIndex: 1 },
@@ -7854,6 +7959,10 @@
             this.limitBreakCharge = 0;
             this.pendingAmplify = false;
             this.pendingConvergence = false;
+            // Monster Echo system - exactly one Echo can be attuned at a time.
+            // See ECHO_DATA / applyEcho() / removeEcho() below. Null means no
+            // Echo attuned yet.
+            this.echoSlot = null;
         }
 
         static get LIMIT_BREAK_MAX() { return 5; }
@@ -7923,6 +8032,21 @@
             // warrior or paladin wearing it exactly zero stat benefit. Only
             // mages were ever getting anything out of the entire jewelry slot.
             applyGearStats(this.equipment.jewelry);
+
+            // Monster Echo: a permanent, always-on flat stat bonus from
+            // whichever Echo is currently attuned (see applyEcho()). Applied
+            // the same way gear is - unconditionally, before buffs/archetype
+            // modifiers - since it's meant to feel like a permanent part of
+            // the hero, not a temporary effect.
+            if (this.echoSlot && this.echoSlot.effects) {
+                const echoFx = this.echoSlot.effects;
+                stats.attack += echoFx.attack || 0;
+                stats.defense += echoFx.defense || 0;
+                stats.magic += echoFx.magic || 0;
+                stats.speed += echoFx.speed || 0;
+                stats.maxHp += echoFx.maxHp || 0;
+                stats.maxMp += echoFx.maxMp || 0;
+            }
 
             this.buffs.forEach(buff => {
                 if (buff.stat === 'defense') stats.defense = Math.floor(stats.defense * buff.power);
@@ -8010,8 +8134,55 @@
          *  carries through however its wielder actually deals damage. */
         getWeaponFamilyBonus(target) {
             const weapon = this.equipment.weapon;
-            if (!weapon || !weapon.bonusVsFamily || !target || !target.family) return 0;
-            return weapon.bonusVsFamily[target.family] || 0;
+            let bonus = 0;
+            if (weapon && weapon.bonusVsFamily && target && target.family) {
+                bonus += weapon.bonusVsFamily[target.family] || 0;
+            }
+            // An attuned Echo's "bonus damage vs family" passive (see
+            // ECHO_DATA) stacks on top of a themed weapon's own bonus -
+            // read from the exact same call sites (executeAttack() and the
+            // single-target damage spell handler) so it applies identically
+            // to a weapon's bonusVsFamily rather than needing its own
+            // separate plumbing through the damage code.
+            if (this.echoSlot && this.echoSlot.passive && this.echoSlot.passive.type === 'familyDamage' &&
+                target && target.family === this.echoSlot.passive.family) {
+                bonus += this.echoSlot.passive.amount || 0;
+            }
+            return bonus;
+        }
+
+        /** Permanently attunes the given Echo option to this hero, replacing
+         *  (and destroying) whatever Echo was previously attuned. Returns
+         *  the destroyed Echo's { echoName, optionName } for the caller to
+         *  report to the player, or null if there was nothing to replace.
+         *  Does NOT touch inventory - the caller (Game.finalizeEchoAttunement)
+         *  is responsible for consuming the Echo item itself. */
+        applyEcho(echoName, optionId) {
+            const echoData = ECHO_DATA[echoName];
+            if (!echoData) return null;
+            const option = echoData.options.find(o => o.id === optionId);
+            if (!option) return null;
+            const replaced = this.echoSlot ? {
+                echoName: this.echoSlot.echoName,
+                optionName: this.echoSlot.optionName
+            } : null;
+            this.echoSlot = {
+                echoName: echoName,
+                optionId: optionId,
+                icon: echoData.icon,
+                optionName: option.name,
+                effects: { ...(option.effects || {}) },
+                passive: option.passive ? { ...option.passive } : null
+            };
+            return replaced;
+        }
+
+        /** Clears this hero's Echo slot entirely (no replacement). Not
+         *  currently wired to any UI - Echoes are meant to persist until
+         *  replaced - but kept available for future use (e.g. a future
+         *  "unattune" item). */
+        removeEcho() {
+            this.echoSlot = null;
         }
 
         canEquip(item) {
@@ -8221,6 +8392,12 @@
                 const item = this.equipment[slot];
                 if (item && item.evadeChance) chance += item.evadeChance;
             });
+            // An attuned Echo's "evasion" passive (see ECHO_DATA) stacks
+            // with gear-granted evasion the same way it stacks with
+            // familyDamage above.
+            if (this.echoSlot && this.echoSlot.passive && this.echoSlot.passive.type === 'evasion') {
+                chance += this.echoSlot.passive.amount || 0;
+            }
             return Math.min(0.35, chance);
         }
     }
@@ -8263,6 +8440,18 @@
             // Hero.getWeaponFamilyBonus()), and by weaponDrop below to gate
             // themed weapon drops to their own family's monsters.
             this.family = template.family || null;
+            // Templates that are authored as elite (Elite Goblin, Shadow
+            // Stalker, Elite Orc, Dread Wraith, Fire Elemental, Ancient
+            // Dragon, etc.) never actually copied that flag onto the
+            // instance - only the SEPARATE "boost a random pull into an
+            // Elite X" path (see generateMonsters()) ever set .isElite,
+            // so a monster pulled directly from the elite template pool
+            // read as a plain non-elite instance everywhere .isElite is
+            // checked (wasEliteFight, cave_elite quest tracking, and now
+            // Echo drop-rate tiers below). Copying it here means any
+            // monster authored as elite reads as elite consistently,
+            // regardless of which path constructed it.
+            this.isElite = template.isElite || false;
             // Monster AI ability: a per-template chance to do something
             // other than melee on its turn (heal, self-buff, or cast a
             // damage spell) - see Battle.resolveMonsterAbility(). Absent on
@@ -8611,6 +8800,160 @@
         return list;
     })();
 
+    // =====================================================================
+    //                    MONSTER ECHO SYSTEM - DATA
+    // =====================================================================
+    // A Monster Echo is a rare drop tied to a monster "family" (the same
+    // coarse family tag weapon.bonusVsFamily already uses - see
+    // Hero.getWeaponFamilyBonus()). Each hero has exactly one Echo slot
+    // (hero.echoSlot); attuning a new Echo permanently destroys whatever
+    // was attuned before. Every Echo offers 3 permanent attunement options -
+    // two flat stat bundles and one passive (bonus damage vs that Echo's
+    // family, or a flat evasion bonus). No active/once-per-battle abilities -
+    // this is intentionally a simple, permanent, always-on bonus, applied in
+    // Hero.getEffectiveStats()/getWeaponFamilyBonus()/getEvadeChance().
+    //
+    // dropRate.common/elite is the chance a matching-family monster of that
+    // tier drops its Echo on death (rolled in Battle.grantMonsterEchoes()).
+    // Three Echoes (Goblin/Knight/Undead) are also tied to a specific story
+    // boss via signatureBoss (must match Monster.name exactly) - defeating
+    // that boss guarantees its Echo the FIRST time only (see
+    // party.echoesUnlocked), on top of its normal rarer chance from that
+    // family's regular monsters. Voraxis deliberately has no Echo of its
+    // own - the game ends there, so nothing would ever get a chance to use it.
+    const ECHO_DATA = {
+        'Echo of the Goblin King': {
+            icon: '👺', family: 'goblin', signatureBoss: 'Goblin King',
+            desc: 'A faint, mocking echo of the mountain pass\'s fallen tyrant.',
+            dropRate: { common: 0.03, elite: 0.20 },
+            options: [
+                { id: 'edge', name: 'Cruel Edge', description: '+5 Attack, +2 Speed', effects: { attack: 5, speed: 2 } },
+                { id: 'crown', name: 'Iron Crown', description: '+6 Defense, +40 Max HP', effects: { defense: 6, maxHp: 40 } },
+                { id: 'hatred', name: 'Goblinbane', description: 'Passive: +12% damage vs goblins', passive: { type: 'familyDamage', family: 'goblin', amount: 0.12 } }
+            ]
+        },
+        'Echo of the Dread Knight': {
+            icon: '⚔️', family: 'knight', signatureBoss: 'Dread Knight',
+            desc: 'The cold, disciplined resolve of a champion who never yielded.',
+            dropRate: { common: 0.03, elite: 0.20 },
+            options: [
+                { id: 'onslaught', name: 'Onslaught', description: '+6 Attack, +4 Defense', effects: { attack: 6, defense: 4 } },
+                { id: 'bulwark', name: 'Bulwark', description: '+80 Max HP, +8 Defense', effects: { maxHp: 80, defense: 8 } },
+                { id: 'bane', name: 'Knightsbane', description: 'Passive: +12% damage vs knights', passive: { type: 'familyDamage', family: 'knight', amount: 0.12 } }
+            ]
+        },
+        'Echo of the Mummy Lord': {
+            icon: '💀', family: 'undead', signatureBoss: 'Ancient Mummy Lord',
+            desc: 'A whisper of forbidden rites, older than the temple that held it.',
+            dropRate: { common: 0.03, elite: 0.20 },
+            options: [
+                { id: 'curse', name: 'Curse-Touched', description: '+5 Magic, +3 Speed', effects: { magic: 5, speed: 3 } },
+                { id: 'tomb', name: "Tomb's Vigor", description: '+60 Max HP, +30 Max MP', effects: { maxHp: 60, maxMp: 30 } },
+                { id: 'bane', name: 'Gravebane', description: 'Passive: +15% damage vs undead', passive: { type: 'familyDamage', family: 'undead', amount: 0.15 } }
+            ]
+        },
+        'Echo of the Demon': {
+            icon: '👹', family: 'demon',
+            desc: 'A guttering ember of something that was never meant to burn here.',
+            dropRate: { common: 0.03, elite: 0.20 },
+            options: [
+                { id: 'wrath', name: 'Wrath', description: '+5 Attack, +4 Magic', effects: { attack: 5, magic: 4 } },
+                { id: 'hellfire', name: 'Hellfire Vigor', description: '+50 Max HP, +25 Max MP', effects: { maxHp: 50, maxMp: 25 } },
+                { id: 'bane', name: 'Demonbane', description: 'Passive: +12% damage vs demons', passive: { type: 'familyDamage', family: 'demon', amount: 0.12 } }
+            ]
+        },
+        'Echo of the Orc': {
+            icon: '🪓', family: 'orc',
+            desc: 'The blunt, battering-ram will of a warband that never retreated.',
+            dropRate: { common: 0.03, elite: 0.20 },
+            options: [
+                { id: 'brute', name: 'Brute Force', description: '+4 Attack', effects: { attack: 4 } },
+                { id: 'hide', name: 'Thick Hide', description: '+5 Defense, +20 Max HP', effects: { defense: 5, maxHp: 20 } },
+                { id: 'bane', name: 'Orcbane', description: 'Passive: +10% damage vs orcs', passive: { type: 'familyDamage', family: 'orc', amount: 0.10 } }
+            ]
+        },
+        'Echo of the Shade': {
+            icon: '👻', family: 'shade',
+            desc: 'A sliver of something that was never fully there to begin with.',
+            dropRate: { common: 0.03, elite: 0.20 },
+            options: [
+                { id: 'quicken', name: 'Quicken', description: '+3 Attack, +3 Speed', effects: { attack: 3, speed: 3 } },
+                { id: 'veil', name: 'Veil', description: '+15 Max MP, +2 Defense', effects: { maxMp: 15, defense: 2 } },
+                { id: 'flicker', name: 'Flicker-Step', description: 'Passive: +8% evasion', passive: { type: 'evasion', amount: 0.08 } }
+            ]
+        },
+        'Echo of the Beast': {
+            icon: '🐺', family: 'beast',
+            desc: 'A low, steady growl that never quite fades.',
+            dropRate: { common: 0.03, elite: 0.20 },
+            options: [
+                { id: 'fang', name: 'Bared Fang', description: '+3 Attack, +2 Speed', effects: { attack: 3, speed: 2 } },
+                { id: 'hide', name: 'Wild Hide', description: '+25 Max HP', effects: { maxHp: 25 } },
+                { id: 'bane', name: 'Beastbane', description: 'Passive: +10% damage vs beasts', passive: { type: 'familyDamage', family: 'beast', amount: 0.10 } }
+            ]
+        },
+        'Echo of the Elemental': {
+            icon: '🔥', family: 'elemental',
+            desc: 'A restless flicker of raw, unbound force.',
+            dropRate: { common: 0.03, elite: 0.20 },
+            options: [
+                { id: 'surge', name: 'Surge', description: '+4 Magic', effects: { magic: 4 } },
+                { id: 'core', name: 'Stable Core', description: '+20 Max MP, +2 Defense', effects: { maxMp: 20, defense: 2 } },
+                { id: 'bane', name: 'Elementalbane', description: 'Passive: +10% damage vs elementals', passive: { type: 'familyDamage', family: 'elemental', amount: 0.10 } }
+            ]
+        },
+        'Echo of the Dragon': {
+            icon: '🐉', family: 'dragon',
+            desc: 'A deep, ancient rumble that seems to remember the sky.',
+            dropRate: { common: 0.03, elite: 0.20 },
+            options: [
+                { id: 'claw', name: "Dragon's Claw", description: '+6 Attack, +4 Magic', effects: { attack: 6, magic: 4 } },
+                { id: 'scale', name: "Dragon's Scale", description: '+50 Max HP', effects: { maxHp: 50 } },
+                { id: 'bane', name: 'Dragonbane', description: 'Passive: +15% damage vs dragons', passive: { type: 'familyDamage', family: 'dragon', amount: 0.15 } }
+            ]
+        },
+        'Echo of the Venomous': {
+            icon: '🦂', family: 'venomous',
+            desc: 'A faint, cold sting that lingers just under the skin.',
+            dropRate: { common: 0.03, elite: 0.20 },
+            options: [
+                { id: 'strike', name: 'Quickstrike', description: '+2 Attack, +3 Speed', effects: { attack: 2, speed: 3 } },
+                { id: 'carapace', name: 'Carapace', description: '+3 Defense, +15 Max HP', effects: { defense: 3, maxHp: 15 } },
+                { id: 'slip', name: 'Venomous Slip', description: 'Passive: +6% evasion', passive: { type: 'evasion', amount: 0.06 } }
+            ]
+        },
+        'Echo of the Raider': {
+            icon: '🏹', family: 'raider',
+            desc: 'The restless, opportunistic instinct of a road that was never safe.',
+            dropRate: { common: 0.03, elite: 0.20 },
+            options: [
+                { id: 'ambush', name: 'Ambush', description: '+4 Attack, +1 Speed', effects: { attack: 4, speed: 1 } },
+                { id: 'grit', name: 'Grit', description: '+20 Max HP, +2 Defense', effects: { maxHp: 20, defense: 2 } },
+                { id: 'bane', name: 'Raiderbane', description: 'Passive: +8% damage vs raiders', passive: { type: 'familyDamage', family: 'raider', amount: 0.08 } }
+            ]
+        },
+        'Echo of the Plant': {
+            icon: '🌿', family: 'plant',
+            desc: 'A slow, patient pulse, like something still quietly growing.',
+            dropRate: { common: 0.03, elite: 0.20 },
+            options: [
+                { id: 'bloom', name: 'Bloom', description: '+3 Magic', effects: { magic: 3 } },
+                { id: 'root', name: 'Deep Root', description: '+30 Max HP', effects: { maxHp: 30 } },
+                { id: 'bane', name: 'Bloombane', description: 'Passive: +10% damage vs plant creatures', passive: { type: 'familyDamage', family: 'plant', amount: 0.10 } }
+            ]
+        },
+        'Echo of the Construct': {
+            icon: '⚙️', family: 'construct',
+            desc: 'A steady, mechanical hum that keeps its own quiet rhythm.',
+            dropRate: { common: 0.03, elite: 0.20 },
+            options: [
+                { id: 'plating', name: 'Plating', description: '+3 Defense, +2 Attack', effects: { defense: 3, attack: 2 } },
+                { id: 'frame', name: 'Reinforced Frame', description: '+35 Max HP', effects: { maxHp: 35 } },
+                { id: 'bane', name: 'Constructbane', description: 'Passive: +10% damage vs constructs', passive: { type: 'familyDamage', family: 'construct', amount: 0.10 } }
+            ]
+        }
+    };
+
     // A large, unmissable pop-up fired the moment a specific story boss
     // falls, on top of (not instead of) the normal victory popup - see the
     // wasBossFight hook in Battle.endBattle(). Each entry's `id` is added to
@@ -8660,6 +9003,11 @@
             // Incense reuses the existing encounterModifier/encounterStepsRemaining
             // fields above instead of a new counter.
             this.activeCharms = { loot: 0, gold: 0, xp: 0 };
+            // Tracks which "signature" Echoes (the ones tied to a specific
+            // story boss - see ECHO_DATA's signatureBoss field) have already
+            // been granted, so that guaranteed one-time drop only ever fires
+            // once per save even if somehow re-checked. Keyed by Echo name.
+            this.echoesUnlocked = {};
         }
 
         addHero(hero) {
@@ -8787,6 +9135,21 @@
                     existing.quantity = (existing.quantity || 1) + 1;
                 } else {
                     this.inventory.items.push(spellBook);
+                }
+                return;
+            }
+
+            // 'echo' items (Monster Echoes - see ECHO_DATA) stack by name
+            // like consumables/spell_tomes do, rather than one row per
+            // pickup, since a duplicate Echo of the same name is identical
+            // in every way (same 3 attunement options) to the one already owned.
+            if (newItem.type === 'echo') {
+                const existing = this.inventory.items.find(i => i.type === 'echo' && i.name === newItem.name);
+                if (existing) {
+                    existing.quantity = (existing.quantity || 1) + (newItem.quantity || 1);
+                } else {
+                    newItem.quantity = newItem.quantity || 1;
+                    this.inventory.items.push(newItem);
                 }
                 return;
             }
@@ -14658,6 +15021,9 @@
                         this.showDropSparkles('#ffd700');
                     }
                 }
+                // Monster Echo drop: another independent roll, gated on the
+                // monster's family (see ECHO_DATA / Battle.grantMonsterEchoes()).
+                this.grantMonsterEchoes(monster);
             });
             // Use dungeonMap.locationName rather than state.currentScreen, which is
             // unreliable during battle (it always reads 'battle' there).
@@ -14997,7 +15363,15 @@
                 // instead of re-triggering the same boss fight every time it's stepped on.
                 if (wasBossFight && window.game.dungeonMap && window.game.dungeonMap.floor && window.game.dungeonMap.floor.exitType === 'boss') {
                     window.game.dungeonMap.floor.bossDefeated = true;
-                    if (window.game.unlockLoreChapter) {
+                    // Voraxis is the final boss - instead of the normal
+                    // "unlock a chapter, reopen the journal" beat every
+                    // other story boss gets, this is the actual ending of
+                    // the game, so it gets its own full-screen credits
+                    // sequence (see triggerGameEnding()) rather than being
+                    // just one more journal chapter.
+                    if (window.game.dungeonMap.locationName === 'Ashveil Spire' && window.game.triggerGameEnding) {
+                        window.game.triggerGameEnding();
+                    } else if (window.game.unlockLoreChapter) {
                         window.game.unlockLoreChapter(window.game.dungeonMap.locationName);
                     }
                     if (window.game.triggerStoryBeat) {
@@ -15528,6 +15902,42 @@
                     battleScreen.appendChild(sparkle);
                     setTimeout(() => sparkle.remove(), 1000);
                 }, i * 50);
+            }
+        }
+
+        /** Monster Echo drops (see ECHO_DATA). Called once per defeated
+         *  monster from the victory loop in endBattle(), alongside the
+         *  material/fragment/weaponDrop rolls it sits next to. Two paths:
+         *    1. A "signature" Echo (Goblin King / Dread Knight / Mummy Lord)
+         *       is guaranteed the FIRST time its exact boss falls - tracked
+         *       in party.echoesUnlocked so it never re-grants on a later,
+         *       impossible "refight" (story bosses are one-time anyway).
+         *    2. Otherwise, any monster whose family matches an Echo's family
+         *       rolls that Echo's common/elite drop chance.
+         *  A monster can only ever trigger one of the two paths per kill. */
+        grantMonsterEchoes(monster) {
+            if (!monster || !monster.family) return;
+            if (monster.isBoss) {
+                const signatureEntry = Object.entries(ECHO_DATA).find(([, def]) => def.signatureBoss === monster.name);
+                if (signatureEntry) {
+                    const [echoName] = signatureEntry;
+                    if (!this.party.echoesUnlocked[echoName]) {
+                        this.party.echoesUnlocked[echoName] = true;
+                        this.party.addItem({ name: echoName, type: 'echo', quantity: 1 });
+                        this.log(`🌟 A lingering Echo resonates from the fallen foe... obtained ${echoName}!`);
+                        this.showDropSparkles('#ffe066');
+                    }
+                    return;
+                }
+            }
+            const echoEntry = Object.entries(ECHO_DATA).find(([, def]) => def.family === monster.family);
+            if (!echoEntry) return;
+            const [echoName, def] = echoEntry;
+            const rate = monster.isElite ? def.dropRate.elite : def.dropRate.common;
+            if (Math.random() < rate) {
+                this.party.addItem({ name: echoName, type: 'echo', quantity: 1 });
+                this.log(`🌟 ${monster.name} left behind an Echo: ${echoName}!`);
+                this.showDropSparkles('#ffe066');
             }
         }
     }
@@ -16825,6 +17235,32 @@
                     this.music.push(osc);
                 }
                 this.musicTimer = setTimeout(() => { this.playMusic('castle'); }, 5200);
+            } else if (type === 'ending') {
+                // Triumphant closing fanfare - a rising major-key melody
+                // (triangle) over a slow, warm bass pad (sine), looping
+                // gently rather than driving hard like a battle track,
+                // since this plays under the ending credits scroll.
+                const melodyNotes = [392, 494, 587, 784, 698, 587, 494, 587, 659, 784, 880, 784, 659, 587, 494, 392];
+                const melodyTimes = [0.0, 0.5, 1.0, 1.5, 2.2, 2.7, 3.2, 3.7, 4.4, 4.9, 5.4, 6.1, 6.6, 7.1, 7.6, 8.3];
+                const melodyDurs = [0.45, 0.45, 0.45, 0.65, 0.45, 0.45, 0.45, 0.65, 0.45, 0.45, 0.45, 0.45, 0.45, 0.45, 0.45, 0.9];
+                this._scheduleNotes(melodyNotes, melodyTimes, melodyDurs, 'triangle', 0.16, startTime);
+                const bassNotes = [196, 262, 220, 175, 196, 294, 262, 196];
+                const bassTimes = [0.0, 1.5, 3.2, 4.4, 5.4, 6.6, 7.6, 9.2];
+                for (let i = 0; i < bassNotes.length; i++) {
+                    const osc = this.context.createOscillator();
+                    const gain = this.context.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.value = bassNotes[i];
+                    osc.connect(gain);
+                    gain.connect(this.musicGain);
+                    gain.gain.setValueAtTime(0.09, startTime + bassTimes[i]);
+                    gain.gain.linearRampToValueAtTime(0.13, startTime + bassTimes[i] + 1);
+                    gain.gain.linearRampToValueAtTime(0.02, startTime + bassTimes[i] + 2.2);
+                    osc.start(startTime + bassTimes[i]);
+                    osc.stop(startTime + bassTimes[i] + 2.6);
+                    this.music.push(osc);
+                }
+                this.musicTimer = setTimeout(() => { this.playMusic('ending'); }, 10500);
             }
         }
 
@@ -17522,7 +17958,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v101]');
+            console.log('Game starting... [build v102]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
@@ -17612,6 +18048,59 @@
             // before popping the journal open, rather than fighting the
             // battle-exit transition for the player's attention.
             setTimeout(() => this.openLoreJournal(), 500);
+        }
+
+        /** The actual ending of the game - called once, the moment Voraxis
+         *  falls (see the wasBossFight hook in Battle.endBattle()), instead
+         *  of the normal unlockLoreChapter() journal popup. Unlocks the
+         *  final chapter (so it's still there in the journal afterward),
+         *  swaps to the "ending" music track, and shows a full-screen
+         *  bottom-to-top credits crawl ending on "THE END". Guarded by
+         *  gameCompleted so it can never double-fire or replay on load. */
+        triggerGameEnding() {
+            if (this.gameCompleted) return;
+            this.gameCompleted = true;
+            if (!this.unlockedLore) this.unlockedLore = ['intro'];
+            if (!this.unlockedLore.includes('chapter_final')) this.unlockedLore.push('chapter_final');
+            if (this.state) this.state.pause();
+            if (this.audio) this.audio.playMusic('ending');
+            const finalChapter = LORE_CHAPTERS.find(c => c.id === 'chapter_final');
+            const heroLines = this.party.heroes.map(h => {
+                const className = h.heroClass.charAt(0).toUpperCase() + h.heroClass.slice(1);
+                return `${h.name} the ${className} — Level ${h.level}`;
+            }).join('<br>');
+            const content = document.getElementById('ending-scroll-content');
+            if (content) {
+                content.innerHTML = `
+                    <div class="ending-title">LEGEND OF ETERNAL</div>
+                    <div class="ending-subtitle">${finalChapter ? finalChapter.title : 'What Was Asked of You'}</div>
+                    ${finalChapter ? finalChapter.text.map(p => `<p>${p}</p>`).join('') : ''}
+                    <div class="ending-divider">✦ ✦ ✦</div>
+                    <div class="ending-heroes">${heroLines}</div>
+                    <div class="ending-divider">✦ ✦ ✦</div>
+                    <p class="ending-thanks">Thank you for playing.</p>
+                    <div class="ending-the-end">THE END</div>
+                `;
+                // Restart the crawl animation cleanly (relevant if this is
+                // ever re-triggered, e.g. during testing) by forcing a reflow
+                // between removing and restoring the animation property.
+                content.style.animation = 'none';
+                void content.offsetHeight;
+                content.style.animation = '';
+            }
+            const overlay = document.getElementById('ending-overlay');
+            if (overlay) overlay.classList.add('active');
+            if (this.achievements) this.achievements.report('game_completed', {});
+        }
+
+        /** Closes the ending crawl (via the Skip button) and hands control
+         *  back to the player for post-game free roam - the world/town/etc.
+         *  screen underneath is untouched, so this just resumes it. */
+        closeEndingSequence() {
+            const overlay = document.getElementById('ending-overlay');
+            if (overlay) overlay.classList.remove('active');
+            if (this.state) this.state.resume();
+            if (this.audio) this.audio.playMusic('overworld', getBattleEnvironment('world').scene);
         }
 
         /** Everything the Legendary journal needs to know about a hero's
@@ -19506,6 +19995,12 @@
             if (nameEl) nameEl.textContent = `${hero.name} (Lv ${hero.level})${hero.isDead ? ' (KO)' : ''}`;
             const sublineEl = document.getElementById('menu-hub-subline');
             if (sublineEl) sublineEl.textContent = hero.heroClass;
+            const echoEl = document.getElementById('menu-hub-echo');
+            if (echoEl) {
+                echoEl.textContent = hero.echoSlot
+                    ? `${hero.echoSlot.icon || '🌟'} ${hero.echoSlot.echoName} - ${hero.echoSlot.optionName}`
+                    : '';
+            }
             this.renderMenuStatBreakdown(hero);
         }
 
@@ -19628,17 +20123,19 @@
             this.ui.showPopup(quest.name, html, true);
         }
 
-        /** Switches between the Items, Materials, and Fragments sub-tabs of the item menu. */
+        /** Switches between the Items, Materials, Fragments, and Echoes sub-tabs of the item menu. */
         showMenuItemsTab(tab) {
             const itemsList = document.getElementById('menu-inventory-list');
             const materialsList = document.getElementById('menu-materials-list');
             const fragmentsList = document.getElementById('menu-fragments-list');
+            const echoesList = document.getElementById('menu-echoes-list');
             const itemsBtn = document.getElementById('menu-items-tab-btn');
             const materialsBtn = document.getElementById('menu-materials-tab-btn');
             const fragmentsBtn = document.getElementById('menu-fragments-tab-btn');
+            const echoesBtn = document.getElementById('menu-echoes-tab-btn');
             const details = document.getElementById('menu-item-details');
-            [itemsList, materialsList, fragmentsList].forEach(el => { if (el) el.style.display = 'none'; });
-            [itemsBtn, materialsBtn, fragmentsBtn].forEach(el => { if (el) { el.style.background = ''; el.style.color = ''; } });
+            [itemsList, materialsList, fragmentsList, echoesList].forEach(el => { if (el) el.style.display = 'none'; });
+            [itemsBtn, materialsBtn, fragmentsBtn, echoesBtn].forEach(el => { if (el) { el.style.background = ''; el.style.color = ''; } });
             if (tab === 'materials') {
                 materialsList.style.display = 'block';
                 materialsBtn.style.background = 'var(--highlight)';
@@ -19651,6 +20148,12 @@
                 fragmentsBtn.style.color = '#000';
                 details.innerHTML = '<p>Gem Fragments - combine these at the Gem Crafter into socket gems.</p>';
                 this.renderMenuFragments();
+            } else if (tab === 'echoes') {
+                echoesList.style.display = 'block';
+                echoesBtn.style.background = 'var(--highlight)';
+                echoesBtn.style.color = '#000';
+                details.innerHTML = '<p>Select an Echo to permanently attune it to a hero.</p>';
+                this.renderMenuEchoes();
             } else {
                 itemsList.style.display = 'block';
                 itemsBtn.style.background = 'var(--highlight)';
@@ -19699,6 +20202,117 @@
                 div.innerHTML = `<span>${(GEM_FRAGMENT_INFO[color] && GEM_FRAGMENT_INFO[color].icon) || '💎'} ${color} Fragment</span><span style="color: #888;">x${quantity}</span>`;
                 container.appendChild(div);
             });
+        }
+
+        /** Renders the list of Monster Echoes the party has collected (see
+         *  ECHO_DATA). Clicking one starts the attunement flow in
+         *  #menu-item-details - selectMenuEcho() -> selectEchoOption() ->
+         *  confirmEchoAttunement() -> finalizeEchoAttunement() - mirroring
+         *  the shrine's pick -> confirm -> finalize archetype flow, since
+         *  attunement is just as permanent. */
+        renderMenuEchoes() {
+            const container = document.getElementById('menu-echoes-list');
+            if (!container) return;
+            container.innerHTML = '';
+            const echoItems = (this.party.inventory.items || []).filter(i => i.type === 'echo' && i.quantity > 0);
+            if (echoItems.length === 0) {
+                container.innerHTML = '<p style="color: #888; text-align: center; padding: 20px;">No Echoes yet. Rare monster drops - elites and certain bosses have a much better chance.</p>';
+                return;
+            }
+            echoItems.forEach((item) => {
+                const def = ECHO_DATA[item.name];
+                if (!def) return;
+                const div = document.createElement('div');
+                div.className = 'shop-item';
+                div.innerHTML = `<span>${def.icon} ${item.name} x${item.quantity}</span><span style="color: #888;">Tap to attune</span>`;
+                div.onclick = () => this.selectMenuEcho(item.name);
+                container.appendChild(div);
+            });
+        }
+
+        /** Step 1 of attunement: show the Echo's flavor + its 3 permanent
+         *  options to choose from. */
+        selectMenuEcho(echoName) {
+            const def = ECHO_DATA[echoName];
+            const item = (this.party.inventory.items || []).find(i => i.type === 'echo' && i.name === echoName);
+            const details = document.getElementById('menu-item-details');
+            if (!def || !item || !details) return;
+            details.innerHTML = `<h4 style="color: var(--highlight);">${def.icon} ${echoName}</h4>` +
+                `<p style="font-style: italic; color: #bbb;">${def.desc}</p>` +
+                `<p style="color: #888;">Quantity: ${item.quantity}</p>` +
+                `<p style="color: var(--highlight); margin-top: 10px;">Choose how to attune this Echo (permanent):</p>` +
+                `<div style="display: flex; flex-direction: column; gap: 5px; margin-top: 10px;">` +
+                    def.options.map(opt => `<button class="shop-item" onclick="window.game.selectEchoOption('${echoName}', '${opt.id}')" style="display: flex; justify-content: space-between; width: 100%;">` +
+                        `<span>${opt.name}</span><span style="color: #aaa;">${opt.description}</span>` +
+                    `</button>`).join('') +
+                `</div>` +
+                `<button class="menu-button" onclick="window.game.renderMenuEchoes(); document.getElementById('menu-item-details').innerHTML = '<p>Select an Echo to permanently attune it to a hero.</p>';" style="margin-top: 15px; width: 100%; padding: 5px;">⬅️ Back to Echoes</button>`;
+        }
+
+        /** Step 2: with an option chosen, show every party member so the
+         *  player can pick who receives it - flagging anyone who already
+         *  has an Echo attuned, since picking them destroys it. */
+        selectEchoOption(echoName, optionId) {
+            const def = ECHO_DATA[echoName];
+            const option = def && def.options.find(o => o.id === optionId);
+            const details = document.getElementById('menu-item-details');
+            if (!def || !option || !details) return;
+            details.innerHTML = `<h4 style="color: var(--highlight);">${def.icon} ${echoName} - ${option.name}</h4>` +
+                `<p>${option.description}</p>` +
+                `<p style="color: var(--highlight); margin-top: 10px;">Attune to which hero?</p>` +
+                `<div style="display: flex; flex-direction: column; gap: 5px; margin-top: 10px;">` +
+                    this.party.heroes.map((h, i) => {
+                        const current = h.echoSlot ? `${h.echoSlot.icon || '🌟'} ${h.echoSlot.echoName} (${h.echoSlot.optionName})` : 'None';
+                        const willReplace = h.echoSlot ? `<div style="color: #ff8888; font-size: 12px;">Will destroy: ${current}</div>` : `<div style="color: #888; font-size: 12px;">Current Echo: None</div>`;
+                        return `<button class="shop-item" onclick="window.game.confirmEchoAttunement('${echoName}', '${optionId}', ${i})" style="display: flex; flex-direction: column; align-items: flex-start; width: 100%;">` +
+                            `<span>${h.name} (${h.heroClass})</span>${willReplace}` +
+                        `</button>`;
+                    }).join('') +
+                `</div>` +
+                `<button class="menu-button" onclick="window.game.selectMenuEcho('${echoName}')" style="margin-top: 15px; width: 100%; padding: 5px;">⬅️ Back</button>`;
+        }
+
+        /** Step 3: explicit, unambiguous confirmation before the permanent
+         *  attunement happens - mirrors confirmArchetypeSelection()'s "a tap
+         *  is not itself the commitment" pattern. */
+        confirmEchoAttunement(echoName, optionId, heroIndex) {
+            const def = ECHO_DATA[echoName];
+            const option = def && def.options.find(o => o.id === optionId);
+            const hero = this.party.heroes[heroIndex];
+            const details = document.getElementById('menu-item-details');
+            if (!def || !option || !hero || !details) return;
+            const current = hero.echoSlot ? `${hero.echoSlot.icon || '🌟'} ${hero.echoSlot.echoName} (${hero.echoSlot.optionName})` : null;
+            details.innerHTML = `<h4 style="color: var(--highlight);">${def.icon} Attune ${option.name} to ${hero.name}?</h4>` +
+                `<p>${option.description}</p>` +
+                (current ? `<p style="color: #ff8888;">This will permanently destroy ${hero.name}'s current Echo: ${current}</p>` : '') +
+                `<p style="color: #888;">This cannot be undone.</p>` +
+                `<button class="menu-button" onclick="window.game.finalizeEchoAttunement('${echoName}', '${optionId}', ${heroIndex})" style="margin-top: 15px; width: 100%;">Confirm Attunement</button>` +
+                `<button class="menu-button" onclick="window.game.selectEchoOption('${echoName}', '${optionId}')" style="margin-top: 8px; width: 100%; background: transparent; border: 1px solid #6a4a99;">Go Back</button>`;
+        }
+
+        /** Commits the attunement: consumes one copy of the Echo item,
+         *  applies it to the hero (destroying whatever was attuned before),
+         *  and refreshes both the Echoes tab and (if open) the hero hub so
+         *  the new bonus shows up immediately. */
+        finalizeEchoAttunement(echoName, optionId, heroIndex) {
+            const hero = this.party.heroes[heroIndex];
+            const item = (this.party.inventory.items || []).find(i => i.type === 'echo' && i.name === echoName);
+            if (!hero || !item || item.quantity <= 0) {
+                this.ui.showPopup('Error', 'Echo no longer available!');
+                this.renderMenuEchoes();
+                return;
+            }
+            item.quantity--;
+            if (item.quantity <= 0) {
+                this.party.inventory.items = this.party.inventory.items.filter(i => !(i.type === 'echo' && i.name === echoName));
+            }
+            const replaced = hero.applyEcho(echoName, optionId);
+            if (this.audio) this.audio.play('levelup');
+            this.ui.showPopup('Echo Attuned!', replaced
+                ? `${hero.name} attuned ${echoName}, replacing ${replaced.echoName} (${replaced.optionName}).`
+                : `${hero.name} attuned ${echoName}!`);
+            this.showMenuItemsTab('echoes');
+            if (this.renderMenuHubHero) this.renderMenuHubHero();
         }
 
         talkToTownsfolk(townName) {
@@ -22042,6 +22656,7 @@
                     fragments: this.party.fragments || {},
                     activeCharms: this.party.activeCharms || { loot: 0, gold: 0, xp: 0 },
                     elementalWardBattles: this.party.elementalWardBattles || 0,
+                    echoesUnlocked: this.party.echoesUnlocked || {},
                     heroes: this.party.heroes.map(h => ({
                         name: h.name,
                         heroClass: h.heroClass,
@@ -22058,7 +22673,8 @@
                         buffs: h.buffs || [],
                         limitBreakCharge: h.limitBreakCharge || 0,
                         pendingAmplify: !!h.pendingAmplify,
-                        pendingConvergence: !!h.pendingConvergence
+                        pendingConvergence: !!h.pendingConvergence,
+                        echoSlot: h.echoSlot || null
                     }))
                 },
                 world: {
@@ -22081,6 +22697,7 @@
                 monsterCodex: this.monsterCodex ? this.monsterCodex.toSaveData() : null,
                 unlockedLore: this.unlockedLore || ['intro'],
                 trackedQuestId: this.trackedQuestId || null,
+                gameCompleted: !!this.gameCompleted,
                 state: {
                     flags: this.state.flags || {},
                     currentScreen: this.state.currentScreen
@@ -22149,6 +22766,7 @@
                 this.party.fragments = saveData.party.fragments || {};
                 this.party.activeCharms = saveData.party.activeCharms || { loot: 0, gold: 0, xp: 0 };
                 this.party.elementalWardBattles = saveData.party.elementalWardBattles || 0;
+                this.party.echoesUnlocked = saveData.party.echoesUnlocked || {};
                 if (saveData.party.positions) {
                     this.party.positions = saveData.party.positions;
                     if (!this.party.worldPositions) {
@@ -22186,6 +22804,7 @@
                         hero.limitBreakCharge = heroData.limitBreakCharge || 0;
                         hero.pendingAmplify = !!heroData.pendingAmplify;
                         hero.pendingConvergence = !!heroData.pendingConvergence;
+                        hero.echoSlot = heroData.echoSlot || null;
                         this.party.addHero(hero);
                     });
                 }
@@ -22270,6 +22889,7 @@
                 // the intro chapter rather than an empty journal.
                 this.unlockedLore = saveData.unlockedLore || ['intro'];
                 this.trackedQuestId = saveData.trackedQuestId || null;
+                this.gameCompleted = !!saveData.gameCompleted;
                 if (!this.achievements) this.achievements = new AchievementManager();
                 this.achievements.loadSaveData(saveData.achievements);
                 if (!this.monsterCodex) this.monsterCodex = new MonsterCodex();
