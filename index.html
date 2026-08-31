@@ -2733,6 +2733,14 @@
         .monster-portrait.dread-knight img {
             filter: drop-shadow(0 6px 4px rgba(0,0,0,0.45)) brightness(0.55) saturate(1.6) sepia(0.4) hue-rotate(-30deg);
         }
+        /* Ember Knight / Flame Knight (v105) - same base Knight portrait as
+           Dread Knight above, but tinted a bright fiery orange instead of a
+           dark sepia-red, so the two "reskinned knight" archetypes still
+           read as visually distinct from each other, not just from the
+           plain Dark Knight. */
+        .monster-portrait.ember-knight img {
+            filter: drop-shadow(0 6px 4px rgba(0,0,0,0.45)) brightness(1.1) saturate(2.2) sepia(0.6) hue-rotate(-40deg);
+        }
 
         /* Attack-limb rig: mirrors the hero's weapon-arm swing pattern.
            Every monster archetype's jaw/claw/arm/weapon group carries a
@@ -4312,7 +4320,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v103</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v105</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -25826,7 +25834,17 @@ const QUEST_DATA = [
         knight: 'knight', beast: 'beast', worm: 'worm', scorpion: 'scorpion',
         undead: 'undead', spirit: 'spirit', elemental: 'elemental', dragon: 'dragon',
         human: 'human', wolf: 'wolf', ice_elemental: 'ice_elemental',
-        goblin_king: 'goblin_king', mummy_lord: 'mummy_lord', chaos_lord: 'chaos_lord'
+        goblin_king: 'goblin_king', mummy_lord: 'mummy_lord', chaos_lord: 'chaos_lord',
+        // Per-species art (v105) - see MONSTER_NAME_IMAGE_OVERRIDE below. Added
+        // instead of relying on the generic family images above, which forced
+        // completely different creatures (a Goblin and an Orc, a Skeleton and
+        // a Zombie, a Wolf and a Giant Rat) to all share one picture.
+        goblin_scout: 'goblin_scout', goblin_warrior: 'goblin_warrior',
+        orc_basic: 'orc_basic', orc_shaman: 'orc_shaman',
+        bandit: 'bandit', camel_rider: 'camel_rider', giant_rat: 'giant_rat',
+        skeleton_new: 'skeleton_new', zombie_new: 'zombie_new', ghoul_new: 'ghoul_new',
+        mummy_mob: 'mummy_mob', wraith: 'wraith', shadow_stalker: 'shadow_stalker',
+        djinn: 'djinn', sand_golem: 'sand_golem'
     };
     const MONSTER_IMAGES = {};
     Object.keys(MONSTER_IMAGE_FILES).forEach(key => {
@@ -25838,17 +25856,45 @@ const QUEST_DATA = [
     });
     /** Dread Knight reuses the 'knight' portrait (no separate dark-knight art
      *  in the pack) but gets a CSS filter class to read as its own, darker
-     *  boss rather than a reskinned mook - see .monster-portrait.dread-knight. */
-    const MONSTER_IMAGE_FILTER_CLASS = { dread_knight: 'dread-knight' };
-    const MONSTER_IMAGE_ARCHETYPE_ALIAS = { dread_knight: 'knight' };
+     *  boss rather than a reskinned mook - see .monster-portrait.dread-knight.
+     *  Ember Knight/Flame Knight (v105) reuse the same trick - same base
+     *  'knight' art, tinted fiery orange instead of Dread Knight's sickly red,
+     *  since neither has (or really needs) its own fully separate sprite. */
+    const MONSTER_IMAGE_FILTER_CLASS = { dread_knight: 'dread-knight', ember_knight: 'ember-knight' };
+    const MONSTER_IMAGE_ARCHETYPE_ALIAS = { dread_knight: 'knight', ember_knight: 'knight' };
     /** A few specific monster names get their own dedicated image instead of
      *  sharing their whole archetype's generic look - Wolf gets a genuine
      *  four-legged wolf instead of the generic fanged 'beast' art, and Ice
      *  Demon (previously lumped into the fire-toned 'elemental' image, which
      *  actively looked wrong for something icy) gets real ice/crystal art.
      *  Checked by exact (Elite-prefix-stripped) monster name, before the
-     *  archetype-level lookup. */
-    const MONSTER_NAME_IMAGE_OVERRIDE = { 'Wolf': 'wolf', 'Ice Demon': 'ice_elemental' };
+     *  archetype-level lookup.
+     *
+     *  v105: extended well beyond Wolf/Ice Demon - previously ~20 distinct
+     *  monster species across the roster were squeezed down to sharing just
+     *  a handful of generic per-family images (every goblin-family monster,
+     *  from a base Goblin to an Orc Shaman, rendered as the exact same
+     *  'goblinoid' picture; Skeleton/Zombie/Ghoul/Mummy all rendered as the
+     *  same 'undead' picture; etc). Each of the names below now gets real,
+     *  species-specific art. Anything NOT listed here still falls back to
+     *  its family's generic image via getMonsterArchetype()'s map - several
+     *  of those generic images were also replaced outright (see the
+     *  MONSTER_IMAGE_FILES comment above / asset changelog) so even the
+     *  fallback case no longer looks actively wrong for its family.
+     *  Elite-prefixed names intentionally aren't listed separately here -
+     *  strippedName above already collapses "Elite Goblin" to "Goblin" etc.,
+     *  so an elite automatically inherits its base species' art (elites are
+     *  already visually distinguished by the larger CSS scale/glow). */
+    const MONSTER_NAME_IMAGE_OVERRIDE = {
+        'Wolf': 'wolf', 'Ice Demon': 'ice_elemental',
+        'Goblin': 'goblinoid', 'Goblin Scout': 'goblin_scout', 'Goblin Warrior': 'goblin_warrior',
+        'Orc': 'orc_basic', 'Orc Shaman': 'orc_shaman',
+        'Bandit': 'bandit', 'Camel Rider': 'camel_rider',
+        'Giant Rat': 'giant_rat',
+        'Skeleton': 'skeleton_new', 'Zombie': 'zombie_new', 'Ghoul': 'ghoul_new', 'Mummy': 'mummy_mob',
+        'Wraith': 'wraith', 'Dread Wraith': 'wraith', 'Shadow Stalker': 'shadow_stalker', 'Djinn': 'djinn',
+        'Sand Golem': 'sand_golem'
+    };
 
     /** Builds the sprite markup for one monster: a real image wrapped in the
      *  same .attack-limb group the SVG archetypes use (so the existing
@@ -25904,7 +25950,7 @@ const QUEST_DATA = [
             'Elite Goblin': 'goblinoid', 'Orc': 'goblinoid',
             'Orc Shaman': 'goblinoid', 'Elite Orc': 'goblinoid', 'Goblin King': 'goblinoid',
             'Bandit': 'human', 'Camel Rider': 'human',
-            'Dark Knight': 'knight', 'Ember Knight': 'knight', 'Dread Knight': 'knight',
+            'Dark Knight': 'knight', 'Ember Knight': 'ember_knight', 'Dread Knight': 'knight',
             'Wolf': 'beast', 'Wild Boar': 'beast', 'Giant Rat': 'beast',
             'Sand Worm': 'worm', 'Forest Spider': 'spider', 'Desert Scorpion': 'scorpion',
             'Skeleton': 'undead', 'Zombie': 'undead', 'Ghoul': 'undead',
@@ -25912,7 +25958,7 @@ const QUEST_DATA = [
             'Wraith': 'spirit', 'Dread Wraith': 'spirit', 'Shadow Stalker': 'spirit',
             'Sand Spirit': 'spirit', 'Djinn': 'spirit',
             'Lesser Fire Elemental': 'elemental', 'Fire Elemental': 'elemental',
-            'Ice Demon': 'elemental', 'Lava Beast': 'elemental', 'Flame Knight': 'elemental',
+            'Ice Demon': 'elemental', 'Lava Beast': 'elemental', 'Flame Knight': 'ember_knight',
             'Demon': 'demon', 'Voraxis': 'demon', 'Abyssal Demon': 'demon',
             'Dragon': 'dragon', 'Ancient Dragon': 'dragon',
             'Sand Golem': 'construct', 'Swamp Thing': 'construct'

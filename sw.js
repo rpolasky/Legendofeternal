@@ -5,7 +5,7 @@
 // shell (manifest + icons). Bump CACHE_VERSION any time you ship an
 // updated index.html so installed devices pick up the new build instead
 // of continuing to serve the stale cached copy.
-const CACHE_VERSION = 'legend-of-eternal-v103';
+const CACHE_VERSION = 'legend-of-eternal-v105';
 const CORE_ASSETS = [
     './',
     './index.html',
@@ -58,6 +58,21 @@ const CORE_ASSETS = [
     './assets/monsters/human.png',
     './assets/monsters/wolf.png',
     './assets/monsters/ice_elemental.png',
+    './assets/monsters/goblin_scout.png',
+    './assets/monsters/goblin_warrior.png',
+    './assets/monsters/orc_basic.png',
+    './assets/monsters/orc_shaman.png',
+    './assets/monsters/bandit.png',
+    './assets/monsters/camel_rider.png',
+    './assets/monsters/giant_rat.png',
+    './assets/monsters/skeleton_new.png',
+    './assets/monsters/zombie_new.png',
+    './assets/monsters/ghoul_new.png',
+    './assets/monsters/mummy_mob.png',
+    './assets/monsters/wraith.png',
+    './assets/monsters/shadow_stalker.png',
+    './assets/monsters/djinn.png',
+    './assets/monsters/sand_golem.png',
     './assets/heroes/warrior.png',
     './assets/heroes/mage.png',
     './assets/heroes/paladin.png',
