@@ -4320,7 +4320,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v105</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v106</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -9265,6 +9265,7 @@
             this.clearLocationAreas();
             this.createOasisLake();
             this.createFireGrottoIsland();
+            this.createRuinsCauseway();
         }
 
         // A real oasis: a ring of water around Oasis Spring with one deliberate
@@ -9339,6 +9340,36 @@
                         this.tiles[y][x] = CONFIG.TERRAIN.DESERT;
                     } else if (dist < effOuter) {
                         this.tiles[y][x] = CONFIG.TERRAIN.LAVA;
+                    }
+                }
+            }
+            // The per-tile angle formula above (onCauseway) tests each tile
+            // independently, with no guarantee that consecutive tiles along
+            // the spiral are actually 4-connected (the spiral can rotate
+            // fast enough per unit radius that adjacent radius "rings" only
+            // touch diagonally, or not at all, on this game's cardinal-only
+            // movement grid) - verified this was in fact happening: the pad
+            // was fully sealed, 0 tiles outside the ring reachable from it.
+            // This walks the same spiral as an explicit step-by-step path
+            // (the same technique drawRoad() uses successfully elsewhere)
+            // and stamps a solid disc of desert at each step, which close
+            // enough together always overlap - guaranteeing an actual
+            // unbroken walkable corridor from the pad out past the ring,
+            // regardless of what the formula above did or didn't connect.
+            const causewaySteps = 240;
+            for (let i = 0; i <= causewaySteps; i++) {
+                const s = (outerR + 4) * (i / causewaySteps);
+                const t = Math.max(0, Math.min(1, (s - innerR) / (outerR - innerR)));
+                const angle = entryAngle + t * spiralTurns * Math.PI * 2;
+                const px = cx + Math.cos(angle) * s;
+                const py = cy + Math.sin(angle) * s;
+                for (let wy = -1; wy <= 1; wy++) {
+                    for (let wx = -1; wx <= 1; wx++) {
+                        const nx = Math.round(px) + wx;
+                        const ny = Math.round(py) + wy;
+                        if (nx < 0 || nx >= this.width || ny < 0 || ny >= this.height) continue;
+                        if (this.tiles[ny][nx] === CONFIG.TERRAIN.WATER) continue;
+                        this.tiles[ny][nx] = CONFIG.TERRAIN.DESERT;
                     }
                 }
             }
@@ -9476,6 +9507,32 @@
             }
         }
 
+        // Ancient Ruins (200,200) and Mysterious Ruins (200,198) sit in a
+        // real pocket of land north of the central lake - but that pocket
+        // turned out to be fully cut off: createRoadNetwork() already has a
+        // drawRoad(200,230, 200,200) trying to reach them, but roads never
+        // overwrite water (by design, so they don't look like they cross
+        // lakes on foot), so that attempt just dies at the shoreline around
+        // y=223 and never actually reaches the pocket at y<=209. Both secret
+        // locations were verified 100% unreachable by simulating the real
+        // generated map. This carves an explicit causeway (same walked-path
+        // technique as createFireGrottoIsland's fix above) straight across
+        // the ~13-tile-wide water gap, and unlike drawRoad it's allowed to
+        // convert water to grass since that's the whole point here. Runs
+        // last, same as the other location-specific terrain fixups, so nothing
+        // later overwrites it.
+        createRuinsCauseway() {
+            const steps = 60;
+            for (let i = 0; i <= steps; i++) {
+                const y = 231 - Math.floor((231 - 206) * (i / steps));
+                for (let wx = -1; wx <= 1; wx++) {
+                    const nx = 200 + wx;
+                    if (nx < 0 || nx >= this.width || y < 0 || y >= this.height) continue;
+                    this.tiles[y][nx] = CONFIG.TERRAIN.GRASS;
+                }
+            }
+        }
+
         addLavaArea(centerX, centerY, radius, density = 0.7, opening = null) {
             for (let y = centerY - radius; y < centerY + radius; y++) {
                 for (let x = centerX - radius; x < centerX + radius; x++) {
@@ -9598,7 +9655,14 @@
                 (x > 190 && x < 230 && y > 310 && y < 350) ||
                 (x > 50 && x < 90 && y > 340 && y < 380) ||
                 (x > 50 && x < 90 && y > 50 && y < 90) ||
-                (x > 330 && x < 370 && y > 30 && y < 70)
+                (x > 330 && x < 370 && y > 30 && y < 70) ||
+                // Mystic Cave (380,320) sits directly on the eastern border
+                // wall's centerline (that wall runs the full height of the
+                // map at x~380 - see createMountainBorderWithPasses()'s last
+                // loop). Every other location on the border got a dedicated
+                // gap here except this one, which is why it generated fully
+                // sealed in solid mountain with no way in or out.
+                (x > 355 && x < 400 && y > 295 && y < 345)
             );
         }
 
@@ -9821,7 +9885,15 @@
             this.drawRoad(220, 160, 258, 172, false);
             this.drawRoad(320, 330, 320, 300, false);
             this.drawRoad(320, 300, 320, 280, false);
-            this.drawRoad(360, 340, 380, 320, false);
+            // Mystic Cave spur previously started at (360,340) - a point no
+            // other road segment ever touched, so this spur was a dangling
+            // fragment disconnected from the rest of the network regardless
+            // of what it carved on its own. Starting it at Brighthollow
+            // (360,360, the player's own spawn point - guaranteed connected)
+            // and treating it as a main road (guaranteed non-zero width,
+            // rather than a minor road's occasional zero-width pinch points)
+            // fixes both problems at once.
+            this.drawRoad(360, 360, 380, 320, true);
             this.drawRoad(80, 250, 60, 280, false);
             this.drawRoad(60, 280, 50, 300, false);
             this.drawRoad(100, 250, 90, 280, false);
@@ -9834,7 +9906,17 @@
             this.drawRoad(90, 120, 110, 120, false);
             this.drawRoad(110, 120, 140, 110, false);
             this.drawRoad(310, 110, 330, 100, false);
-            this.drawRoad(330, 100, 370, 90, false);
+            // Dragon's Lair sits inside the single densest terrain hazard
+            // stack on the map (a 25-radius/70%-density mountain range, an
+            // 18-radius/60%-density lava field, AND a near-solid ring of
+            // 90%-density lava blobs at radius 22 - all centered right on
+            // top of it). A minor road's occasional zero-width pinch points
+            // survive fine everywhere else because the surrounding terrain
+            // is mild, but here there's zero margin - any gap just gets
+            // swallowed by mountain/lava with nothing walkable to fall back
+            // on. Main-road treatment guarantees at least 1 tile of width
+            // the whole way through instead of pinching to 0.
+            this.drawRoad(330, 100, 370, 90, true);
             this.drawRoad(280, 150, 290, 130, false);
             this.drawRoad(290, 130, 300, 110, false);
             this.drawRoad(260, 170, 260, 140, false);
