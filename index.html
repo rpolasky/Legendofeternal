@@ -4231,12 +4231,14 @@
         .menu2-panelwrap {
             flex: 1; position: relative; overflow: hidden;
             background-size: cover; background-position: center;
+            background-color: #1a1030;
+            background-image: linear-gradient(160deg, #1a1030, #0a0714);
         }
         .menu2-panelwrap::after { content: ''; position: absolute; inset: 0; background: rgba(5,5,10,0.42); pointer-events: none; z-index: 0; }
-        .menu2-panelwrap.menu2-partybg { background-image: url('assets/hero_hub/party_bg.jpg'); background-size: 100% 100%; }
+        .menu2-panelwrap.menu2-partybg { background-image: url('assets/equipment/party_bg.jpg'); background-size: 100% 100%; }
         .menu2-panelwrap.menu2-partybg::after { background: rgba(5,5,10,0.1); }
         .menu2-panelwrap.menu2-scrollbg { background-image: url('assets/equipment/scroll.jpg'); background-position: center 40%; }
-        .menu2-panelwrap.menu2-silbg { background-image: url('assets/hero_hub/party_bg.jpg'); background-size: 100% 100%; }
+        .menu2-panelwrap.menu2-silbg { background-image: url('assets/equipment/party_bg.jpg'); background-size: 100% 100%; }
         .menu2-panelwrap.menu2-equipbg.equip-warrior { background-image: url('assets/equipment/warrior.jpg'); background-position: center 20%; }
         .menu2-panelwrap.menu2-equipbg.equip-mage { background-image: url('assets/equipment/mage.jpg'); background-position: center 20%; }
         .menu2-panelwrap.menu2-equipbg.equip-paladin { background-image: url('assets/equipment/paladin.jpg'); background-position: center 20%; }
@@ -4589,7 +4591,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v119</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v120</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -17159,37 +17161,44 @@
             this.setupMenuHeroSwipe();
         }
 
-        /** Lets the hub's hero portrait be swiped left/right to cycle
-         *  heroes (swipe left = next, swipe right = previous), matching
-         *  cycleMenuHero() but as a touch-first gesture instead of only the
-         *  small arrow buttons - the whole game is built and tested for
-         *  touchscreen play. Attached once at startup since the portrait
-         *  block is static HTML that's just shown/hidden, never rebuilt. */
+        /** Lets the Equipment and Spells panels be swiped left/right to
+         *  cycle between party members (swipe left = next, swipe right =
+         *  previous) without having to back out to the party view first.
+         *  Re-renders whichever of the two panels is currently visible
+         *  after the swipe, so the new hero's gear/spells show immediately. */
         setupMenuHeroSwipe() {
-            const block = document.getElementById('menu-hero-portrait-block');
-            if (!block) return;
-            let startX = 0, startY = 0, tracking = false;
-            block.addEventListener('touchstart', (e) => {
-                if (!e.touches || e.touches.length !== 1) return;
-                startX = e.touches[0].clientX;
-                startY = e.touches[0].clientY;
-                tracking = true;
-            }, { passive: true });
-            block.addEventListener('touchend', (e) => {
-                if (!tracking) return;
-                tracking = false;
-                const touch = e.changedTouches && e.changedTouches[0];
-                if (!touch) return;
-                const dx = touch.clientX - startX;
-                const dy = touch.clientY - startY;
-                // Requires a clearly horizontal swipe past a minimum
-                // distance, so a plain tap (handled separately by the
-                // element's onclick) doesn't also fire a cycle, and an
-                // accidental vertical scroll attempt doesn't either.
-                if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-                    if (window.game) window.game.cycleMenuHero(dx < 0 ? 1 : -1);
-                }
-            }, { passive: true });
+            const panels = [
+                { id: 'menu-equipment-panel', render: () => window.game && window.game.renderMenuEquipmentPanel && window.game.renderMenuEquipmentPanel() },
+                { id: 'menu-spells-panel', render: () => window.game && window.game.renderMenuSpellsPanel && window.game.renderMenuSpellsPanel() }
+            ];
+            panels.forEach(({ id, render }) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                let startX = 0, startY = 0, tracking = false;
+                el.addEventListener('touchstart', (e) => {
+                    if (!e.touches || e.touches.length !== 1) return;
+                    startX = e.touches[0].clientX;
+                    startY = e.touches[0].clientY;
+                    tracking = true;
+                }, { passive: true });
+                el.addEventListener('touchend', (e) => {
+                    if (!tracking) return;
+                    tracking = false;
+                    const touch = e.changedTouches && e.changedTouches[0];
+                    if (!touch) return;
+                    const dx = touch.clientX - startX;
+                    const dy = touch.clientY - startY;
+                    // Requires a clearly horizontal swipe past a minimum
+                    // distance, so tapping a slot/spell row (or scrolling a
+                    // long list) doesn't also trigger a hero switch.
+                    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+                        if (window.game) {
+                            window.game.cycleMenuHero(dx < 0 ? 1 : -1);
+                            render();
+                        }
+                    }
+                }, { passive: true });
+            });
         }
 
         showPopup(title, message, useHTML = false) {
@@ -18447,7 +18456,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v119]');
+            console.log('Game starting... [build v120]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
