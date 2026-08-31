@@ -4042,6 +4042,149 @@
             border-radius: 6px;
         }
 
+        /* ===================================================================
+           SHOP SCREEN v2 - backdrop art + full-height left rail + popup
+           detail card, replacing the old two-column flat-list layout above.
+           New classes throughout (shop2-*) so the old .shop-item/.shop-details
+           rules above stay untouched for anything else still using them. */
+        #shop-screen.shop2 {
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+            background-size: cover;
+            background-position: center 30%;
+        }
+        #shop-screen.shop2::before {
+            content: '';
+            position: absolute; inset: 0;
+            background: rgba(5,5,15,0.30);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .shop2-hdr {
+            position: relative; z-index: 2;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 9px 14px;
+            border-bottom: 2px solid rgba(106,74,138,0.8);
+            background: linear-gradient(rgba(5,5,15,0.55), rgba(5,5,15,0.25));
+            gap: 12px;
+            flex-shrink: 0;
+        }
+        .shop2-hdr .shop2-title { color: #ffd700; font-size: 17px; font-weight: bold; line-height: 1.15; text-shadow: 0 1px 3px rgba(0,0,0,0.9); }
+        .shop2-hdr .shop2-desc { color: #d8c8f5; font-size: 10px; text-shadow: 0 1px 3px rgba(0,0,0,0.9); }
+        .shop2-tabs { display: flex; gap: 6px; }
+        .shop2-right { display: flex; align-items: center; gap: 8px; }
+        .shop2-btn {
+            border: 1px solid rgba(160,130,220,0.7);
+            background: rgba(10,10,20,0.45);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            border-radius: 6px; padding: 5px 12px; font-size: 12px; color: #e8dcff;
+            white-space: nowrap; cursor: pointer;
+        }
+        .shop2-btn.active { background: rgba(255,215,0,0.22); border-color: #ffd700; color: #ffd700; }
+        .shop2-btn.leave { border-color: rgba(200,110,110,0.8); color: #ff9a9a; background: rgba(30,10,10,0.45); }
+        .shop2-gold {
+            background: rgba(10,10,20,0.55);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            border: 2px solid #ffaa00;
+            color: #ffd257;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+        .shop2-body { position: relative; flex: 1; z-index: 1; overflow: hidden; }
+        .shop2-rail {
+            position: absolute; left: 0; top: 0; bottom: 0;
+            width: 260px;
+            background: rgba(10,8,20,0.42);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border-right: 1px solid rgba(160,130,220,0.5);
+            padding: 6px;
+            overflow-y: auto;
+            z-index: 2;
+        }
+        .shop2-row {
+            display: flex; align-items: center; gap: 8px;
+            padding: 7px 6px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            border-left: 3px solid #999;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .shop2-row:last-child { border-bottom: none; }
+        .shop2-row:hover { background: rgba(255,255,255,0.06); }
+        .shop2-row.selected { background: rgba(255,215,0,0.12); }
+        .shop2-row.r-uncommon { border-left-color: #44ff88; }
+        .shop2-row.r-rare { border-left-color: #4488ff; }
+        .shop2-row.r-legendary { border-left-color: #ffd700; }
+        .shop2-icon {
+            width: 26px; height: 26px; border-radius: 5px;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.15);
+            flex-shrink: 0; overflow: hidden;
+        }
+        .shop2-icon img { width: 18px; height: 18px; image-rendering: pixelated; }
+        .shop2-name { flex: 1; font-size: 11px; min-width: 0; color: #d8d8d8; }
+        .shop2-row.r-uncommon .shop2-name { color: #66ffa2; }
+        .shop2-row.r-rare .shop2-name { color: #66a2ff; }
+        .shop2-row.r-legendary .shop2-name { color: #ffd700; }
+        .shop2-tag {
+            font-size: 8px; background: rgba(68,255,136,0.18); color: #66ffa2;
+            border: 1px solid #44ff88; border-radius: 3px; padding: 1px 4px; margin-left: 5px;
+        }
+        .shop2-price { color: #ffc35c; font-size: 11px; flex-shrink: 0; }
+        .shop2-popup {
+            position: absolute; right: 20px; top: 20px; bottom: 20px;
+            width: 260px;
+            background: rgba(10,8,20,0.6);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,215,0,0.55);
+            border-radius: 10px;
+            padding: 14px;
+            font-size: 11px;
+            display: none;
+            flex-direction: column;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+            z-index: 3;
+        }
+        .shop2-popup.open { display: flex; }
+        .shop2-popup .shop2-close {
+            position: absolute; top: 8px; right: 10px; font-size: 12px; color: #d8c8f5; cursor: pointer;
+        }
+        .shop2-artbox {
+            height: 110px;
+            background: rgba(255,255,255,0.05);
+            border: 1px dashed rgba(255,215,0,0.4);
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            margin-bottom: 10px;
+        }
+        .shop2-artbox img { max-width: 64px; max-height: 64px; image-rendering: pixelated; }
+        .shop2-popup h4 { color: #ffd700; margin: 0 0 5px; font-size: 13px; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
+        .shop2-popup .shop2-pdesc { color: #d3c6ee; font-size: 9.5px; margin-bottom: 8px; line-height: 1.35; }
+        .shop2-stat-line { display: flex; justify-content: space-between; font-size: 10.5px; margin: 3px 0; color: #e5dcff; }
+        .shop2-stat-up { color: #66ffa2; }
+        .shop2-stat-down { color: #ff8888; }
+        .shop2-divider { border-top: 1px solid rgba(255,255,255,0.12); margin: 6px 0; }
+        .shop2-actionbtn {
+            margin-top: auto; text-align: center; border: 1px solid rgba(255,215,0,0.6);
+            background: rgba(255,215,0,0.12); border-radius: 6px; padding: 7px; font-size: 11px;
+            color: #ffd700; cursor: pointer;
+        }
+        .shop2-actionbtn.disabled { opacity: 0.45; cursor: not-allowed; }
+        .shop2-empty { color: #776a99; font-size: 10px; text-align: center; padding: 20px 8px; }
+        .shop2-row.stacked { align-items: flex-start; }
+        .shop2-row.stacked .shop2-icon { margin-top: 1px; }
+        .shop2-row.stacked .shop2-namecol { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+        .shop2-row.stacked .shop2-namecol .shop2-cost2 { font-size: 9px; color: #ffc35c; line-height: 1.3; }
+
         /* Audio Controls - Enhanced */
         .audio-controls {
             margin-top: 8px;
@@ -4320,7 +4463,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v116</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v117</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -4638,24 +4781,44 @@
                 </div>
             </div>
         </div>
-        <div id="shop-screen" class="screen menu-screen viewport-overlay" style="display: none;">
-            <div class="gold-display" id="shop-gold" style="position: absolute; top: 15px; right: 20px; background: rgba(0,0,0,0.8); border: 2px solid var(--gold-color); padding: 8px 20px; color: var(--gold-color); font-size: 18px; font-weight: bold; z-index: 50; border-radius: 6px;">G: 0</div>
-            
-            <div class="menu-header" style="text-align: center; padding: 15px; border-bottom: 2px solid var(--border-color); background: rgba(0,0,0,0.2);">
-                <h2 id="shop-name" style="color: var(--highlight); font-size: 24px;">Weapon Shop</h2>
-                <p id="shop-description" style="color: #8888bb;">Welcome, brave adventurer!</p>
-                <div style="display: flex; gap: 10px; justify-content: center; margin-top: 8px; flex-wrap: wrap;">
-                    <button class="menu-button" onclick="window.game.shop.showBuyTab()" style="padding: 4px 15px; font-size: 13px;">🛒 Buy</button>
-                    <button class="menu-button" onclick="window.game.shop.showSellTab()" style="padding: 4px 15px; font-size: 13px;">💰 Sell</button>
+        <div id="shop-screen" class="screen menu-screen viewport-overlay shop2" style="display: none;">
+            <div class="shop2-hdr">
+                <div class="shop2-left">
+                    <div class="shop2-title" id="shop-name">Weapon Shop</div>
+                    <div class="shop2-desc" id="shop-description">Welcome, brave adventurer!</div>
+                </div>
+                <div class="shop2-tabs" id="shop-buysell-tabs">
+                    <div class="shop2-btn active" onclick="window.game.shop.showBuyTab()">&#128722; Buy</div>
+                    <div class="shop2-btn" onclick="window.game.shop.showSellTab()">&#128176; Sell</div>
+                </div>
+                <div class="shop2-right">
+                    <span class="shop2-gold" id="shop-gold">G: 0</span>
+                    <div class="shop2-btn leave" onclick="window.game.exitShop()">&#128682; Leave</div>
                 </div>
             </div>
-            
-            <div class="shop-container" style="display: flex; flex: 1; gap: 20px; padding: 15px 20px; overflow: hidden;">
-                <div class="shop-inventory" id="shop-items" style="flex: 1; background: rgba(0,0,0,0.5); border: 2px solid var(--border-color); padding: 12px; overflow-y: auto; border-radius: 6px;"></div>
-                <div class="shop-details" id="shop-details" style="width: 280px; background: rgba(0,0,0,0.5); border: 2px solid var(--border-color); padding: 15px; overflow-y: auto; border-radius: 6px;"><p style="color: #8888bb;">Select an item to view details</p></div>
+            <div class="shop2-body">
+                <div class="shop2-rail" id="shop-items"></div>
+                <div class="shop2-popup" id="shop-details">
+                    <div class="shop2-close" onclick="window.game.shop.closeDetails()">&#10005;</div>
+                </div>
             </div>
-            
-            <button class="menu-button" onclick="window.game.exitShop()" style="margin: 10px auto; padding: 8px 30px; display: block;">🚪 Leave Shop</button>
+        </div>
+        <div id="spellweaver-screen" class="screen menu-screen viewport-overlay shop2" style="display: none; background-image: url('assets/shops/combine_shop.jpg');">
+            <div class="shop2-hdr">
+                <div class="shop2-left">
+                    <div class="shop2-title">Spell Weaver</div>
+                    <div class="shop2-desc">Combine two spells into something new</div>
+                </div>
+                <div class="shop2-right">
+                    <span class="shop2-gold" id="spellweaver-gold">G: 0</span>
+                    <div class="shop2-btn leave" onclick="window.game.exitShop()">&#128682; Leave</div>
+                </div>
+            </div>
+            <div class="shop2-body">
+                <div class="shop2-rail" id="spellweaver-rail-a" style="left:0; right:auto; border-right:1px solid rgba(160,130,220,0.5); border-left:none;"></div>
+                <div class="shop2-rail" id="spellweaver-rail-b" style="right:0; left:auto; border-left:1px solid rgba(160,130,220,0.5); border-right:none;"></div>
+                <div class="shop2-popup" id="spellweaver-result" style="left:50%; right:auto; top:20px; bottom:20px; width:250px; transform:translateX(-50%);"></div>
+            </div>
         </div>
         <div id="guild-screen" class="screen menu-screen viewport-overlay" style="display: none; flex-direction: column; height: 100%; overflow: hidden;">
             <div class="menu-header" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; border-bottom: 2px solid var(--border-color); background: rgba(0,0,0,0.2);">
@@ -6265,9 +6428,9 @@
                 // grid footprints never touched. Keeping same-cluster houses
                 // in one row instead of stacking columns sidesteps needing to
                 // calculate that overhang margin for every pair by hand.
-                { id: 'house12', x: 8, y: 25, w: 5, h: 4, icon: '🏠', label: 'Manor', action: null },
-                { id: 'house7', x: 16, y: 25, w: 6, h: 4, icon: '🏠', label: 'Row House', action: null },
-                { id: 'house14', x: 25, y: 25, w: 5, h: 4, icon: '🏠', label: 'Farmhouse', action: null }
+                { id: 'house12', x: 8, y: 25, w: 5, h: 4, icon: '💎', label: 'Gem Crafter', action: 'gemcrafter' },
+                { id: 'house7', x: 16, y: 25, w: 6, h: 4, icon: '🔮', label: 'Spell Weaver', action: 'spellweaver' },
+                { id: 'house14', x: 25, y: 25, w: 5, h: 4, icon: '🧪', label: 'Apothecary', action: 'apothecary' }
             ],
             roadSegments: [
                 [[48,9],[48,58]], [[45,22],[51,22]], [[43,24],[53,24]], [[41,26],[55,26]], [[39,28],[57,28]], [[41,32],[55,32]], [[43,34],[53,34]], [[45,36],[51,36]], [[48,19],[48,22]], [[10,10],[86,10]], [[10,10],[10,50]], [[86,10],[86,50]], [[10,50],[86,50]], [[45,10],[45,10]], [[11,22],[11,22]], [[28,16],[28,10]], [[58,16],[58,10]], [[75,22],[75,22]], [[14,41],[14,36]], [[31,46],[31,50]], [[55,41],[55,36]], [[72,44],[72,50]], [[20,10],[20,10]], [[19,52],[19,50]], [[89,53],[89,50]], [[63,45],[63,50]], [[26,52],[26,50]], [[42,17],[42,22]], [[19,30],[19,36]], [[43,49],[43,50]], [[11,50],[11,50]], [[88,31],[88,36]], [[88,13],[88,10]], [[10,29],[10,22]], [[69,34],[69,36]], [[23,40],[23,36]],
@@ -16241,6 +16404,71 @@
         return `<img src="${path}" class="item-icon" width="${size}" height="${size}" style="vertical-align:middle;margin-right:6px;image-rendering:pixelated;" onerror="this.style.display='none'">`;
     }
 
+    /** Lazily-built name -> 'uncommon'|'rare'|'legendary' lookup, scanned once
+     *  from LOOT_TABLES (every quadrant + chaos). Buy-tab shop items are
+     *  always standard/common (LOOT_TABLES only covers drop tiers, not the
+     *  town shop catalogs), so this is only consulted for the Sell tab and
+     *  inventory/echo-adjacent screens where a name might match a drop
+     *  tier. Falls back to 'common' (no color) for anything unmatched. */
+    let _itemRarityLookup = null;
+    function getItemRarity(item) {
+        if (!item || !item.name) return 'common';
+        if (!_itemRarityLookup) {
+            _itemRarityLookup = {};
+            Object.values(LOOT_TABLES).forEach(region => {
+                ['uncommon', 'rare', 'legendary'].forEach(tier => {
+                    (region[tier] || []).forEach(entry => {
+                        // Don't downgrade if a name already matched a higher
+                        // tier in another region's table.
+                        const rank = { uncommon: 1, rare: 2, legendary: 3 };
+                        if (!_itemRarityLookup[entry.name] || rank[tier] > rank[_itemRarityLookup[entry.name]]) {
+                            _itemRarityLookup[entry.name] = tier;
+                        }
+                    });
+                });
+            });
+        }
+        return _itemRarityLookup[item.name] || 'common';
+    }
+
+    /** For the shop "vs equipped" comparison line: finds the first hero in
+     *  the party who could plausibly use this item (respecting class-only
+     *  restrictions) so a delta can be shown against their currently
+     *  equipped gear in the same slot. Returns null if no relevant hero. */
+    function findComparisonHero(party, item) {
+        if (!party || !party.heroes) return null;
+        return party.heroes.find(hero => {
+            if (hero.isDead && party.heroes.length > 1) return false;
+            if (item.warriorOnly && hero.heroClass !== 'warrior') return false;
+            if (item.mageOnly && hero.heroClass !== 'mage') return false;
+            if (item.paladinOnly && hero.heroClass !== 'paladin') return false;
+            return true;
+        }) || party.heroes[0] || null;
+    }
+
+    /** Builds the { label, stat, delta } comparison shown under an item's
+     *  stats in the shop detail popup, comparing the item's raw stat against
+     *  whatever the comparison hero currently has equipped in that slot. */
+    function getShopComparison(item, party) {
+        if (!item || !item.type) return null;
+        const slotMap = { weapon: 'weapon', armor: 'armor', shield: 'shield', jewelry: 'jewelry' };
+        const slot = slotMap[item.type];
+        if (!slot) return null;
+        const hero = findComparisonHero(party, item);
+        if (!hero || !hero.equipment) return null;
+        const equipped = hero.equipment[slot];
+        const statKey = item.type === 'weapon' ? 'attack' : (item.magic && !item.defense ? 'magic' : 'defense');
+        const newVal = item[statKey] || 0;
+        const oldVal = equipped ? (equipped[statKey] || 0) : 0;
+        const delta = newVal - oldVal;
+        return {
+            heroName: hero.name,
+            equippedName: equipped ? equipped.name : 'nothing',
+            statKey: statKey,
+            delta: delta
+        };
+    }
+
     class ShopSystem {
         constructor() {
             this.currentShop = null;
@@ -16249,13 +16477,25 @@
             this.isSelling = false;
         }
 
+        updateTabHighlight() {
+            const tabs = document.getElementById('shop-buysell-tabs');
+            if (!tabs) return;
+            const btns = tabs.querySelectorAll('.shop2-btn');
+            if (btns[0]) btns[0].classList.toggle('active', !this.isSelling);
+            if (btns[1]) btns[1].classList.toggle('active', this.isSelling);
+        }
+
         showBuyTab() {
             this.isSelling = false;
+            this.closeDetails();
+            this.updateTabHighlight();
             this.render();
         }
 
         showSellTab() {
             this.isSelling = true;
+            this.closeDetails();
+            this.updateTabHighlight();
             this.renderSellInventory();
         }
 
@@ -16300,18 +16540,24 @@
                 }
             }
             if (sellableItems.length === 0) {
-                container.innerHTML = '<p style="color: #888; text-align: center; padding: 20px;">Nothing to sell</p>';
+                container.innerHTML = '<div class="shop2-empty">Nothing to sell</div>';
                 return;
             }
             sellableItems.forEach((item) => {
                 const div = document.createElement('div');
-                div.className = 'shop-item';
                 let sellPrice = 0;
                 if (item.source === 'materials') sellPrice = 15;
                 else if (item.source === 'fragments') sellPrice = 10;
                 else if (item.source === 'gems') sellPrice = this.gemSellValue(item);
                 else sellPrice = Math.floor((item.price || 50) / 2);
-                div.innerHTML = `<span>${itemIconHTML(item, 20)}${item.displayName || item.name}</span><span class="item-price">${sellPrice} G</span>`;
+                const rarity = (item.source === 'gems' || item.source === 'materials' || item.source === 'fragments') ? 'common' : getItemRarity(item);
+                div.className = `shop2-row r-${rarity}`;
+                const iconPath = getItemIconPath(item);
+                div.innerHTML = `
+                    <div class="shop2-icon">${iconPath ? `<img src="${iconPath}" onerror="this.parentElement.style.display='none'">` : ''}</div>
+                    <div class="shop2-name">${item.displayName || item.name}</div>
+                    <span class="shop2-price">${sellPrice} G</span>
+                `;
                 div.onclick = () => this.selectSellItem(item, div);
                 container.appendChild(div);
             });
@@ -16376,8 +16622,8 @@
         }
 
         selectSellItem(item, element) {
-            document.querySelectorAll('.shop-item').forEach(el => el.classList.remove('selected'));
-            element.classList.add('selected');
+            document.querySelectorAll('#shop-items .shop2-row').forEach(el => el.classList.remove('selected'));
+            if (element) element.classList.add('selected');
             this.selectedItem = item;
             const details = document.getElementById('shop-details');
             let sellPrice = 0;
@@ -16385,28 +16631,33 @@
             let specialInfo = '';
             if (item.source === 'materials') {
                 sellPrice = 15;
-                specialInfo = '<p style="color: #888;">Crafting material used by the Apothecary.</p>';
+                specialInfo = '<div class="shop2-pdesc">Crafting material used by the Apothecary.</div>';
             } else if (item.source === 'fragments') {
                 sellPrice = 10;
-                specialInfo = `<p style="color: #888;">Gem fragment - combine at the Gem Crafter to make socket gems.</p>`;
+                specialInfo = '<div class="shop2-pdesc">Gem fragment - combine at the Gem Crafter to make socket gems.</div>';
             } else if (item.source === 'gems') {
                 sellPrice = this.gemSellValue(item);
-                stats = Object.entries(item.bonus || {}).map(([k, v]) => `${k.slice(0, 3).toUpperCase()} +${v} `).join('');
-                if (item.element) specialInfo = `<p style="color: #ffaa00;">Element: ${item.element}</p>`;
+                stats = Object.entries(item.bonus || {}).map(([k, v]) => `<div class="shop2-stat-line"><span>${k.slice(0, 3).toUpperCase()}</span><span class="shop2-stat-up">+${v}</span></div>`).join('');
+                if (item.element) specialInfo = `<div class="shop2-pdesc">Element: ${item.element}</div>`;
             } else {
                 sellPrice = Math.floor((item.price || 50) / 2);
-                if (item.attack) stats += `ATK +${item.attack} `;
-                if (item.defense) stats += `DEF +${item.defense} `;
-                if (item.magic) stats += `MAG +${item.magic} `;
+                if (item.attack) stats += `<div class="shop2-stat-line"><span>ATK</span><span class="shop2-stat-up">+${item.attack}</span></div>`;
+                if (item.defense) stats += `<div class="shop2-stat-line"><span>DEF</span><span class="shop2-stat-up">+${item.defense}</span></div>`;
+                if (item.magic) stats += `<div class="shop2-stat-line"><span>MAG</span><span class="shop2-stat-up">+${item.magic}</span></div>`;
             }
+            const iconPath = getItemIconPath(item);
             details.innerHTML = `
-                <h3>${item.name}</h3>
-                <p>${item.desc || 'A sellable item'}</p>
+                <div class="shop2-close" onclick="window.game.shop.closeDetails()">&#10005;</div>
+                <div class="shop2-artbox">${iconPath ? `<img src="${iconPath}" onerror="this.parentElement.style.display='flex';this.style.display='none'">` : ''}</div>
+                <h4>${item.name}</h4>
+                <div class="shop2-pdesc">${item.desc || 'A sellable item'}</div>
                 ${specialInfo}
-                <p style="color: #888; margin-top: 10px;">${stats}</p>
-                <p style="color: #ff4444; margin-top: 10px;">Sell Price: ${sellPrice} G</p>
-                <button class="menu-button" onclick="window.game.shop.confirmSell()" style="margin-top: 20px; width: 100%;">Confirm Sale</button>
+                ${stats}
+                <div class="shop2-divider"></div>
+                <div class="shop2-stat-line"><span>Sell price</span><span class="shop2-stat-down">${sellPrice} G</span></div>
+                <div class="shop2-actionbtn" onclick="window.game.shop.confirmSell()">Confirm sale</div>
             `;
+            details.classList.add('open');
         }
 
         confirmSell() {
@@ -16414,7 +16665,7 @@
             const item = this.selectedItem;
             const isFromInventory = (item.source === 'inventory');
             this.sellItem(item, isFromInventory);
-            this.selectedItem = null;
+            this.closeDetails();
             this.renderSellInventory();
         }
 
@@ -16422,58 +16673,79 @@
             document.getElementById('shop-name').textContent = this.currentShop.name;
             document.getElementById('shop-description').textContent = this.currentShop.description;
             document.getElementById('shop-gold').textContent = `G: ${this.party.gold}`;
+            this.updateTabHighlight();
             if (this.isSelling) {
                 this.renderSellInventory();
                 return;
             }
             const container = document.getElementById('shop-items');
             container.innerHTML = '';
-            this.currentShop.items.forEach((item, index) => {
+            if (!this.currentShop.items || this.currentShop.items.length === 0) {
+                container.innerHTML = '<div class="shop2-empty">Nothing in stock right now.</div>';
+                return;
+            }
+            this.currentShop.items.forEach((item) => {
                 const div = document.createElement('div');
-                div.className = 'shop-item';
-                div.innerHTML = `<span>${itemIconHTML(item, 20)}${item.name}</span><span class="item-price">${item.price} G</span>`;
+                // Buy-tab catalog items are always standard/common stock -
+                // rarity coloring is reserved for the Sell tab and
+                // inventory, where it actually distinguishes drop quality.
+                div.className = 'shop2-row';
+                const iconPath = getItemIconPath(item);
+                div.innerHTML = `
+                    <div class="shop2-icon">${iconPath ? `<img src="${iconPath}" onerror="this.parentElement.style.display='none'">` : ''}</div>
+                    <div class="shop2-name">${item.name}</div>
+                    <span class="shop2-price">${item.price} G</span>
+                `;
                 div.onclick = () => this.selectItem(item, div);
                 container.appendChild(div);
             });
-            document.getElementById('shop-details').innerHTML = '<p>Select an item to view details</p>';
         }
 
         selectItem(item, element) {
-            document.querySelectorAll('.shop-item').forEach(el => el.classList.remove('selected'));
-            element.classList.add('selected');
+            document.querySelectorAll('#shop-items .shop2-row').forEach(el => el.classList.remove('selected'));
+            if (element) element.classList.add('selected');
             this.selectedItem = item;
             const details = document.getElementById('shop-details');
             let stats = '';
-            if (item.attack) stats += `⚔️ ATK +${item.attack} `;
-            if (item.defense) stats += `🛡️ DEF +${item.defense} `;
-            if (item.magic) stats += `🔮 MAG +${item.magic} `;
+            if (item.attack) stats += `<div class="shop2-stat-line"><span>ATK</span><span class="shop2-stat-up">+${item.attack}</span></div>`;
+            if (item.defense) stats += `<div class="shop2-stat-line"><span>DEF</span><span class="shop2-stat-up">+${item.defense}</span></div>`;
+            if (item.magic) stats += `<div class="shop2-stat-line"><span>MAG</span><span class="shop2-stat-up">+${item.magic}</span></div>`;
             let classRestriction = '';
-            if (item.mageOnly) classRestriction = ' (Mage Only)';
-            if (item.warriorOnly) classRestriction = ' (Warrior Only)';
-            if (item.paladinOnly) classRestriction = ' (Paladin Only)';
+            if (item.mageOnly) classRestriction = ' (Mage only)';
+            if (item.warriorOnly) classRestriction = ' (Warrior only)';
+            if (item.paladinOnly) classRestriction = ' (Paladin only)';
             let spellInfo = '';
             if (item.type === 'spell' && item.spell) {
-                spellInfo = `
-                    <p style="color: #88ff88; margin-top: 10px;">
-                        MP Cost: ${item.spell.cost} | 
-                        Power: ${item.spell.power || 'N/A'} | 
-                        Type: ${item.spell.type}
-                    </p>
+                spellInfo = `<div class="shop2-stat-line"><span>MP cost</span><span>${item.spell.cost}</span></div>
+                    <div class="shop2-stat-line"><span>Power</span><span>${item.spell.power || 'N/A'}</span></div>`;
+            }
+            let comparisonHTML = '';
+            const comparison = getShopComparison(item, this.party);
+            if (comparison) {
+                const sign = comparison.delta > 0 ? '&#9650; +' : (comparison.delta < 0 ? '&#9660; ' : '');
+                const cls = comparison.delta > 0 ? 'shop2-stat-up' : (comparison.delta < 0 ? 'shop2-stat-down' : '');
+                comparisonHTML = `
+                    <div class="shop2-divider"></div>
+                    <div class="shop2-stat-line"><span>vs equipped (${comparison.equippedName})</span><span class="${cls}">${sign}${comparison.delta}</span></div>
                 `;
             }
+            const canAfford = this.party.gold >= item.price;
+            const iconPath = getItemIconPath(item);
             details.innerHTML = `
-                <h3 style="color: var(--highlight);">${itemIconHTML(item, 28)}${item.name}${classRestriction}</h3>
-                <p>${item.desc || 'A standard item'}</p>
-                ${stats ? `<p style="color: #88ff88; margin-top: 10px;">${stats}</p>` : ''}
+                <div class="shop2-close" onclick="window.game.shop.closeDetails()">&#10005;</div>
+                <div class="shop2-artbox">${iconPath ? `<img src="${iconPath}" onerror="this.parentElement.style.display='flex';this.style.display='none'">` : ''}</div>
+                <h4>${item.name}${classRestriction}</h4>
+                <div class="shop2-pdesc">${item.desc || 'A standard item'}</div>
+                ${stats}
                 ${spellInfo}
-                <p style="color: var(--gold-color); font-size: 18px; margin-top: 15px;">Price: ${item.price} G</p>
-                <p style="color: #888; font-size: 12px;">Your Gold: ${this.party.gold} G</p>
-                <button class="menu-button" onclick="window.game.shop.buy()" 
-                        style="margin-top: 20px; width: 100%; ${this.party.gold < item.price ? 'opacity:0.5;' : ''}"
-                        ${this.party.gold < item.price ? 'disabled' : ''}>
-                    ${this.party.gold < item.price ? 'Not Enough Gold' : 'Buy Now'}
-                </button>
+                ${comparisonHTML}
+                <div class="shop2-divider"></div>
+                <div class="shop2-stat-line"><span>Price</span><span style="color:#ffc35c;">${item.price} G</span></div>
+                <div class="shop2-actionbtn${canAfford ? '' : ' disabled'}" onclick="${canAfford ? 'window.game.shop.buy()' : ''}">
+                    ${canAfford ? 'Buy now' : 'Not enough gold'}
+                </div>
             `;
+            details.classList.add('open');
         }
 
         buy() {
@@ -16504,6 +16776,7 @@
                 }
                 document.getElementById('shop-gold').textContent = 'G: ' + this.party.gold;
                 window.game.ui.showPopup('Spell Book Purchased!', spellBook.name + ' added to your inventory.\nUse it from the Menu to teach a party member.');
+                this.closeDetails();
                 this.render();
                 return;
             }
@@ -16528,6 +16801,7 @@
             }
             document.getElementById('shop-gold').textContent = 'G: ' + this.party.gold;
             window.game.ui.showPopup('Purchase Complete', 'You bought ' + itemCopy.name + '!');
+            this.closeDetails();
             this.render();
             if (window.game.achievements) window.game.achievements.report('item_purchased', { item: itemCopy });
         }
@@ -16555,8 +16829,28 @@
             };
             this.currentShop = shops[shopType];
             if (this.currentShop) {
+                const backdrops = {
+                    weapon: 'assets/shops/shop.jpg',
+                    armor: 'assets/shops/shop.jpg',
+                    shield: 'assets/shops/shop.jpg',
+                    magic: 'assets/shops/shop.jpg',
+                    item: 'assets/shops/shop.jpg',
+                    jewelry: 'assets/shops/shop.jpg'
+                };
+                const screenEl = document.getElementById('shop-screen');
+                if (screenEl) screenEl.style.backgroundImage = `url('${backdrops[shopType] || backdrops.weapon}')`;
+                this.isSelling = false;
+                this.closeDetails();
                 this.render();
                 window.game.state.switchScreen('shop');
+            }
+        }
+
+        closeDetails() {
+            this.selectedItem = null;
+            const details = document.getElementById('shop-details');
+            if (details) {
+                details.classList.remove('open');
             }
         }
 
@@ -18061,7 +18355,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v102]');
+            console.log('Game starting... [build v117]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
@@ -19584,6 +19878,9 @@
                 case 'guild': this.openGuild(); break;
                 case 'king': this.talkToKing(); break;
                 case 'exit': this.exitLocation(); break;
+                case 'gemcrafter': this.enterGemCrafterShop(); break;
+                case 'spellweaver': this.enterSpellWeaverShop(); break;
+                case 'apothecary': this.enterApothecaryShop(); break;
             }
         }
 
@@ -20678,6 +20975,18 @@
             targetHero.spells.push(combination.result);
             this.updateSpellCollectionQuest();
             this.ui.showPopup('Spell Crafted!', `${targetHero.name} learned ${combination.result.name}!`);
+            if (this.state.currentScreen === 'spellweaver') {
+                const availableSpells = [];
+                this.party.heroes.forEach((hero, heroIndex) => {
+                    hero.spells.forEach(spell => {
+                        availableSpells.push({ ...spell, heroIndex: heroIndex, heroName: hero.name });
+                    });
+                });
+                this.spellcraftSpells = availableSpells;
+                this.spellWeaverPickA = null;
+                this.spellWeaverPickB = null;
+                this.renderSpellWeaver();
+            }
         }
 
         showMapSecrets() {
@@ -20751,12 +21060,14 @@
         }
 
         showCraftingTab() {
+            this.craftUIMode = 'guild';
             let menuHTML = this.gemCrafterTabBar('craft');
             menuHTML += this.getCraftingTabHTML();
             this.ui.showPopup('Gem Crafter', menuHTML, true);
         }
 
         showApplyGemTab() {
+            this.craftUIMode = 'guild';
             let menuHTML = this.gemCrafterTabBar('apply');
             menuHTML += this.getApplyGemTabHTML();
             this.ui.showPopup('Gem Crafter', menuHTML, true);
@@ -20988,7 +21299,8 @@
                 desc: tierDef.desc, fragmentCost: { [color]: tierDef.cost }
             });
             this.ui.showPopup('Gem Crafted!', `You crafted a ${tierDef.name}!`);
-            this.showCraftingTab();
+            this.shop.closeDetails();
+            if (this.craftUIMode === 'shop2') { this.renderGemCrafterRail(); } else { this.showCraftingTab(); }
         }
 
         craftHybridGem(recipeIndex) {
@@ -21007,7 +21319,8 @@
                 desc: recipe.desc, fragmentCost: { ...recipe.cost }
             });
             this.ui.showPopup('Gem Crafted!', `You crafted a ${recipe.name}!`);
-            this.showCraftingTab();
+            this.shop.closeDetails();
+            if (this.craftUIMode === 'shop2') { this.renderGemCrafterRail(); } else { this.showCraftingTab(); }
         }
 
         // =================================================================
@@ -21015,6 +21328,7 @@
         // =================================================================
 
         showApothecaryMenu() {
+            this.craftUIMode = 'guild';
             const materials = this.party.materials || {};
             // Single scroll region now: this used to wrap everything in its
             // own max-height:420px;overflow-y:auto div NESTED inside
@@ -21106,7 +21420,8 @@
             }
             this.party.addItem({ ...recipe.result });
             this.ui.showPopup('Potion Brewed!', `You brewed a ${recipe.name}!`);
-            this.showApothecaryMenu();
+            this.shop.closeDetails();
+            if (this.craftUIMode === 'shop2') { this.renderApothecaryRail(); } else { this.showApothecaryMenu(); }
         }
 
         /** The Shrine handles all 3 forge-side steps of the legendary weapon
@@ -21891,6 +22206,266 @@
 
         exitShop() {
             this.state.switchScreen('town');
+        }
+
+        // =================================================================
+        //     INDEPENDENT CRAFTING SHOPS (Gem Crafter / Apothecary /
+        //     Spell Weaver) - moved out of the Guild Hall popup into their
+        //     own town buildings, reusing the general shop2 template. Gem
+        //     Crafter and Apothecary reuse the #shop-screen DOM (just with
+        //     the Buy/Sell tabs hidden and a different backdrop); the
+        //     recipe-craft logic itself (craftPureGem/craftHybridGem/
+        //     brewPotion) is untouched and shared with the old Guild Hall
+        //     path via the craftUIMode flag. Spell Weaver gets its own
+        //     dedicated two-rail screen since "pick A, pick B" doesn't fit
+        //     the single-rail template.
+        // =================================================================
+
+        enterGemCrafterShop() {
+            this.craftUIMode = 'shop2';
+            const colors = Object.keys(GEM_FRAGMENT_INFO);
+            this.selectedGemColorTab = this.selectedGemColorTab || colors[0];
+            this.gemRecipeBookOpen = false;
+            document.getElementById('shop-name').textContent = 'Gem Crafter';
+            document.getElementById('shop-description').textContent = 'Fuse fragments into socket gems';
+            document.getElementById('shop-gold').textContent = `G: ${this.party.gold}`;
+            const tabs = document.getElementById('shop-buysell-tabs');
+            if (tabs) tabs.style.display = 'none';
+            const screenEl = document.getElementById('shop-screen');
+            if (screenEl) screenEl.style.backgroundImage = "url('assets/shops/combine_shop.jpg')";
+            this.shop.closeDetails();
+            this.renderGemCrafterRail();
+            this.state.switchScreen('shop');
+        }
+
+        renderGemCrafterRail() {
+            const container = document.getElementById('shop-items');
+            if (!container) return;
+            container.innerHTML = '';
+            const colors = Object.keys(GEM_FRAGMENT_INFO);
+            const frags = this.party.fragments || {};
+            const activeColor = this.selectedGemColorTab || colors[0];
+
+            const tabRow = document.createElement('div');
+            tabRow.style.cssText = 'position:sticky;top:0;display:flex;gap:4px;flex-wrap:wrap;padding:4px 2px 8px;background:rgba(10,8,20,0.65);z-index:2;';
+            colors.forEach(color => {
+                const b = document.createElement('div');
+                b.className = 'shop2-btn' + (activeColor === color && !this.gemRecipeBookOpen ? ' active' : '');
+                b.style.cssText = 'padding:3px 8px;font-size:10px;';
+                b.textContent = `${GEM_FRAGMENT_INFO[color].icon} ${color} (${frags[color] || 0})`;
+                b.onclick = () => { this.selectedGemColorTab = color; this.renderGemCrafterRail(); };
+                tabRow.appendChild(b);
+            });
+            const hb = document.createElement('div');
+            hb.className = 'shop2-btn' + (activeColor === 'Hybrid' ? ' active' : '');
+            hb.style.cssText = 'padding:3px 8px;font-size:10px;';
+            hb.textContent = '\u{1F500} Hybrid';
+            hb.onclick = () => { this.selectedGemColorTab = 'Hybrid'; this.renderGemCrafterRail(); };
+            tabRow.appendChild(hb);
+            const bookBtn = document.createElement('div');
+            bookBtn.className = 'shop2-btn' + (this.gemRecipeBookOpen ? ' active' : '');
+            bookBtn.style.cssText = 'padding:3px 8px;font-size:10px;margin-left:auto;';
+            bookBtn.textContent = '\u{1F4D6}';
+            bookBtn.title = 'View all combinations';
+            bookBtn.onclick = () => { this.gemRecipeBookOpen = !this.gemRecipeBookOpen; this.renderGemCrafterRail(); };
+            tabRow.appendChild(bookBtn);
+            container.appendChild(tabRow);
+
+            const rows = [];
+            if (activeColor === 'Hybrid') {
+                HYBRID_GEM_RECIPES.forEach((recipe, index) => {
+                    const canCraft = Object.entries(recipe.cost).every(([c, q]) => (frags[c] || 0) >= q);
+                    const costText = Object.entries(recipe.cost).map(([c, q]) => `${q} ${c}`).join(' + ');
+                    const row = document.createElement('div');
+                    row.className = 'shop2-row stacked';
+                    row.style.opacity = (this.gemRecipeBookOpen || canCraft) ? '1' : '0.5';
+                    row.innerHTML = `<div class="shop2-icon">\u{1F538}</div><div class="shop2-namecol"><div class="shop2-name" style="line-height:1.3;">${recipe.name}</div><div class="shop2-cost2">${costText}</div></div>`;
+                    if (!this.gemRecipeBookOpen) row.onclick = () => this.selectGemCrafterRecipe(recipe, true, index, canCraft);
+                    rows.push(row);
+                });
+            } else {
+                (SOCKET_GEM_TIERS[activeColor] || []).forEach((tierDef) => {
+                    const have = frags[activeColor] || 0;
+                    const canCraft = have >= tierDef.cost;
+                    const row = document.createElement('div');
+                    row.className = 'shop2-row';
+                    row.style.opacity = (this.gemRecipeBookOpen || canCraft) ? '1' : '0.5';
+                    row.innerHTML = `<div class="shop2-icon">${GEM_FRAGMENT_INFO[activeColor].icon}</div><div class="shop2-name">${tierDef.name}</div><span class="shop2-price" style="font-size:9px;">${tierDef.cost} ${activeColor}</span>`;
+                    if (!this.gemRecipeBookOpen) row.onclick = () => this.selectGemCrafterRecipe(tierDef, false, tierDef.tier, canCraft);
+                    rows.push(row);
+                });
+            }
+            if (rows.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'shop2-empty';
+                empty.textContent = 'No fragments of this color yet.';
+                container.appendChild(empty);
+            } else {
+                rows.forEach(r => container.appendChild(r));
+            }
+        }
+
+        selectGemCrafterRecipe(recipe, isHybrid, key, canCraft) {
+            const details = document.getElementById('shop-details');
+            if (!details) return;
+            const costText = isHybrid
+                ? Object.entries(recipe.cost).map(([c, q]) => `${q} ${c}`).join(' + ')
+                : `${recipe.cost} ${this.selectedGemColorTab}`;
+            const craftCall = isHybrid ? `window.game.craftHybridGem(${key})` : `window.game.craftPureGem('${this.selectedGemColorTab}', ${key})`;
+            details.innerHTML = `
+                <div class="shop2-close" onclick="window.game.shop.closeDetails()">&#10005;</div>
+                <div class="shop2-artbox">\u{1F538}</div>
+                <h4>${recipe.name}</h4>
+                <div class="shop2-pdesc">${recipe.desc || ''}</div>
+                <div class="shop2-stat-line"><span>Bonus</span><span class="shop2-stat-up">${this.formatGemBonus(recipe)}</span></div>
+                <div class="shop2-divider"></div>
+                <div class="shop2-stat-line"><span>Cost</span><span style="color:#ffc35c;">${costText}</span></div>
+                <div class="shop2-actionbtn${canCraft ? '' : ' disabled'}" onclick="${canCraft ? craftCall : ''}">
+                    ${canCraft ? 'Combine' : 'Not enough fragments'}
+                </div>
+            `;
+            details.classList.add('open');
+        }
+
+        enterApothecaryShop() {
+            this.craftUIMode = 'shop2';
+            document.getElementById('shop-name').textContent = 'Apothecary';
+            document.getElementById('shop-description').textContent = 'Brew potions from monster trophies';
+            document.getElementById('shop-gold').textContent = `G: ${this.party.gold}`;
+            const tabs = document.getElementById('shop-buysell-tabs');
+            if (tabs) tabs.style.display = 'none';
+            const screenEl = document.getElementById('shop-screen');
+            if (screenEl) screenEl.style.backgroundImage = "url('assets/shops/combine_shop.jpg')";
+            this.shop.closeDetails();
+            this.renderApothecaryRail();
+            this.state.switchScreen('shop');
+        }
+
+        renderApothecaryRail() {
+            const container = document.getElementById('shop-items');
+            if (!container) return;
+            container.innerHTML = '';
+            if (!APOTHECARY_RECIPES || APOTHECARY_RECIPES.length === 0) {
+                container.innerHTML = '<div class="shop2-empty">No recipes available.</div>';
+                return;
+            }
+            APOTHECARY_RECIPES.forEach(recipe => {
+                const hasMaterials = this.party.hasMaterials(recipe.materials);
+                const hasExtras = !recipe.consumesItems || Object.entries(recipe.consumesItems).every(([n, q]) => {
+                    const invItem = this.party.inventory.items.find(i => i.name === n);
+                    return invItem && invItem.quantity >= q;
+                });
+                const canBrew = hasMaterials && hasExtras;
+                const costParts = [
+                    ...Object.entries(recipe.materials).map(([m, q]) => `${q} ${m}`),
+                    ...(recipe.consumesItems ? Object.entries(recipe.consumesItems).map(([n, q]) => `${q} ${n}`) : [])
+                ];
+                const row = document.createElement('div');
+                row.className = 'shop2-row stacked';
+                row.style.opacity = canBrew ? '1' : '0.5';
+                row.innerHTML = `<div class="shop2-icon">${recipe.icon || '\u{1F9EA}'}</div><div class="shop2-namecol"><div class="shop2-name" style="line-height:1.3;">${recipe.name}</div><div class="shop2-cost2">${costParts.join(', ')}</div></div>`;
+                row.onclick = () => this.selectApothecaryRecipe(recipe, canBrew, costParts);
+                container.appendChild(row);
+            });
+        }
+
+        selectApothecaryRecipe(recipe, canBrew, costParts) {
+            const details = document.getElementById('shop-details');
+            if (!details) return;
+            details.innerHTML = `
+                <div class="shop2-close" onclick="window.game.shop.closeDetails()">&#10005;</div>
+                <div class="shop2-artbox">${recipe.icon || '\u{1F9EA}'}</div>
+                <h4>${recipe.name}</h4>
+                <div class="shop2-pdesc">${recipe.desc || ''}</div>
+                <div class="shop2-divider"></div>
+                <div class="shop2-stat-line"><span>Requires</span><span style="color:#ffc35c;">${costParts.join(', ')}</span></div>
+                <div class="shop2-actionbtn${canBrew ? '' : ' disabled'}" onclick="${canBrew ? `window.game.brewPotion('${recipe.id}')` : ''}">
+                    ${canBrew ? 'Brew' : 'Missing ingredients'}
+                </div>
+            `;
+            details.classList.add('open');
+        }
+
+        enterSpellWeaverShop() {
+            const availableSpells = [];
+            this.party.heroes.forEach((hero, heroIndex) => {
+                hero.spells.forEach(spell => {
+                    availableSpells.push({ ...spell, heroIndex: heroIndex, heroName: hero.name });
+                });
+            });
+            if (availableSpells.length < 2) {
+                this.ui.showPopup('Spell Weaver', "You need at least 2 spells to combine them!");
+                return;
+            }
+            this.spellcraftSpells = availableSpells;
+            this.spellWeaverPickA = null;
+            this.spellWeaverPickB = null;
+            const goldEl = document.getElementById('spellweaver-gold');
+            if (goldEl) goldEl.textContent = `G: ${this.party.gold}`;
+            this.renderSpellWeaver();
+            this.state.switchScreen('spellweaver');
+        }
+
+        renderSpellWeaver() {
+            const railA = document.getElementById('spellweaver-rail-a');
+            const railB = document.getElementById('spellweaver-rail-b');
+            const result = document.getElementById('spellweaver-result');
+            if (!railA || !railB || !result) return;
+            railA.innerHTML = '';
+            railB.innerHTML = '';
+            (this.spellcraftSpells || []).forEach((spell, idx) => {
+                const rowA = document.createElement('div');
+                rowA.className = 'shop2-row' + (this.spellWeaverPickA === idx ? ' selected' : '');
+                rowA.innerHTML = `<div class="shop2-icon">\u2728</div><div class="shop2-name">${spell.name}</div><span class="shop2-price" style="font-size:9px;">${spell.heroName}</span>`;
+                rowA.onclick = () => { this.spellWeaverPickA = idx; this.renderSpellWeaver(); };
+                railA.appendChild(rowA);
+
+                if (idx === this.spellWeaverPickA) return;
+                const rowB = document.createElement('div');
+                rowB.className = 'shop2-row' + (this.spellWeaverPickB === idx ? ' selected' : '');
+                rowB.innerHTML = `<div class="shop2-icon">\u2728</div><div class="shop2-name">${spell.name}</div><span class="shop2-price" style="font-size:9px;">${spell.heroName}</span>`;
+                rowB.onclick = () => { this.spellWeaverPickB = idx; this.renderSpellWeaver(); };
+                railB.appendChild(rowB);
+            });
+
+            if (this.spellWeaverPickA === null || this.spellWeaverPickB === null) {
+                result.classList.remove('open');
+                result.innerHTML = '';
+                return;
+            }
+            const spellA = this.spellcraftSpells[this.spellWeaverPickA];
+            const spellB = this.spellcraftSpells[this.spellWeaverPickB];
+            const combination = SPELL_COMBINATIONS.find(combo =>
+                (combo.spell1 === spellA.name && combo.spell2 === spellB.name) ||
+                (combo.spell1 === spellB.name && combo.spell2 === spellA.name)
+            );
+            result.classList.add('open');
+            if (!combination) {
+                result.innerHTML = `
+                    <div class="shop2-close" onclick="window.game.clearSpellWeaverPicks()">&#10005;</div>
+                    <div class="shop2-empty">These two spells don't combine.</div>
+                `;
+                return;
+            }
+            result.innerHTML = `
+                <div class="shop2-close" onclick="window.game.clearSpellWeaverPicks()">&#10005;</div>
+                <div style="text-align:center;color:#ffd700;font-size:16px;">&#8595;</div>
+                <div class="shop2-artbox">\u{1F52E}</div>
+                <h4 style="text-align:center;">${combination.result.name}</h4>
+                <div class="shop2-pdesc" style="text-align:center;">${combination.result.type || ''} spell</div>
+                <div class="shop2-actionbtn" onclick="window.game.confirmSpellWeaverCombine()">Combine</div>
+            `;
+        }
+
+        clearSpellWeaverPicks() {
+            this.spellWeaverPickA = null;
+            this.spellWeaverPickB = null;
+            this.renderSpellWeaver();
+        }
+
+        confirmSpellWeaverCombine() {
+            if (this.spellWeaverPickA === null || this.spellWeaverPickB === null) return;
+            this.combineSpells(this.spellWeaverPickA, this.spellWeaverPickB);
         }
 
         exitLocation() {
