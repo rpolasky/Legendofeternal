@@ -1249,15 +1249,15 @@
            been removed - a fixed px there would just fight this fluid
            behavior, so this is the one rule in effect now. */
         .monster-sprite {
-            width: 120px;
-            max-width: 30vw;
+            width: 98px;
+            max-width: 24vw;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: flex-start;
             font-size: clamp(20px, 7vw, 30px);
             cursor: pointer;
-            transition: filter 0.3s ease, transform 0.3s ease, left 0.4s ease, top 0.4s ease;
+            transition: filter 0.3s ease, transform 0.3s ease, left 0.4s ease, bottom 0.4s ease;
             filter: drop-shadow(0 8px 6px rgba(0,0,0,0.5));
             /* Static now, not animated - the float/bob was a placeholder-era
                "something's alive here" cue for the old flat-color boxes.
@@ -4320,7 +4320,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v106</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v116</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -4564,7 +4564,6 @@
         <div id="battle-screen" class="screen battle-viewport" style="display: none;">
             <div class="battle-window" id="battle-window">
                 <div class="battle-shake-wrapper" id="battle-shake-wrapper">
-                    <div id="battle-gold" style="position: absolute; bottom: 14px; left: 14px; background: rgba(0,0,0,0.85); border: 2px solid var(--gold-color); padding: 5px 18px; color: var(--gold-color); font-size: 16px; font-weight: bold; z-index: 10; border-radius: 6px;">💰 G: 0</div>
 
                     <button type="button" class="battle-log-toggle-btn" id="battle-log-toggle-btn" title="Combat Log" onclick="toggleBattleLog()">📜</button>
                     <div class="battle-log" id="battle-log"></div>
@@ -13050,12 +13049,26 @@
                 div.id = `monster-${index}`;
                 const slot = slotAssignments[index];
                 div.style.left = slot.x + '%';
-                div.style.top = slot.y + '%';
+                // Anchored by BOTTOM (the monster's "foot" position on the
+                // floor), not top. Positioning by top let the card - sprite
+                // art plus the name/HP-bar box below it - grow straight
+                // downward off the bottom of the screen, since slot.y for
+                // the closest/largest monster sits quite low already (near
+                // the floor line) with no headroom left for the card's own
+                // height beneath it. Anchoring by bottom instead means the
+                // HP bar's bottom edge is always exactly at slot.y, and only
+                // the sprite art (which has plenty of open sky above it)
+                // grows upward - the actual bug the closest monster's
+                // clipped-off nameplate/HP-bar was coming from.
+                div.style.bottom = (100 - slot.y) + '%';
                 div.style.setProperty('--mscale', slot.scale);
-                // Later slots (further "back" on the floor) render behind
-                // earlier/closer ones so overlapping sprites layer correctly
-                // front-to-back instead of in DOM order.
-                div.style.zIndex = String(100 - Math.round(slot.y));
+                // Larger slot.y = further down/closer to the camera = should
+                // draw on TOP of anything further back (smaller slot.y) that
+                // it overlaps - the inverted version of this (100 - y) had
+                // the closer, bigger front-row monsters rendering BEHIND the
+                // smaller back-row ones, which read as broken layering once
+                // the two rows actually overlapped in the new formation.
+                div.style.zIndex = String(Math.round(slot.y));
                 let badgesHTML = '<div class="monster-elemental-badge">';
                 const icons = { fire: '🔥', ice: '❄️', lightning: '⚡' };
                 if (monster.elementalWeakness && Object.keys(monster.elementalWeakness).length > 0) {
@@ -26392,19 +26405,32 @@ const QUEST_DATA = [
      *  position in the array. Positions are the top-anchor point (not center)
      *  since centering is handled by translateX(-50%) in the CSS animation.
      */
-    /** Clean bottom-left -> top-right diagonal staircase: monster 1 stands
-     *  closest/lowest-left, each additional one steps up and to the right by
-     *  a consistent amount instead of jumping across to a far slot (which is
-     *  what the old 2-monster case did - straight from bottom-left to "all
-     *  the way over by the heroes"). Scale steps down to match (further back
-     *  = smaller), and sizes overall are a further ~10% down from before. */
+    /** Every slot uses the SAME scale - earlier versions made front-row
+     *  monsters bigger than back-row ones as a depth cue (matching
+     *  HERO_SLOTS), but for a same-species group (e.g. 5 Goblins) that read
+     *  as "why are these identical monsters different sizes?" rather than
+     *  depth. Row position (y) alone carries the front/back read now.
+     *
+     *  1-4 are a generic two-row layout (back row of 3 fills first, then a
+     *  front row of up to 2 more). 5 is the person's own exact hand-placed
+     *  reference positions - extracted via each card's HP-bar bounding box
+     *  from a mockup that included the full battle UI (hero panels, command
+     *  bar) this time, not just the background art, so it accounts for real
+     *  on-screen constraints rather than an idealized empty floor.
+     *  MONSTER_SCALE (0.41) matches that reference's card proportions and
+     *  keeps every slot's LVL badge/nameplate clear of its neighbors', since
+     *  there's deliberately no card border to visually separate them. */
+    const MONSTER_SCALE = 0.66;
     const MONSTER_SLOTS = {
-        1: [{ x: 28, y: 52, scale: 0.86 }],
-        2: [{ x: 14, y: 58, scale: 0.80 }, { x: 32, y: 47, scale: 0.72 }],
-        3: [{ x: 10, y: 60, scale: 0.78 }, { x: 26, y: 51, scale: 0.70 }, { x: 42, y: 42, scale: 0.62 }],
-        4: [{ x: 7, y: 62, scale: 0.76 }, { x: 21, y: 54, scale: 0.69 }, { x: 35, y: 46, scale: 0.62 }, { x: 49, y: 38, scale: 0.55 }],
-        5: [{ x: 5, y: 63, scale: 0.74 }, { x: 17, y: 56, scale: 0.68 }, { x: 29, y: 49, scale: 0.61 }, { x: 41, y: 42, scale: 0.55 }, { x: 53, y: 35, scale: 0.49 }],
-        6: [{ x: 4, y: 64, scale: 0.72 }, { x: 14, y: 58, scale: 0.67 }, { x: 24, y: 52, scale: 0.61 }, { x: 34, y: 46, scale: 0.56 }, { x: 44, y: 40, scale: 0.50 }, { x: 54, y: 34, scale: 0.45 }]
+        1: [{ x: 22, y: 70, scale: MONSTER_SCALE }],
+        2: [{ x: 16, y: 74, scale: MONSTER_SCALE }, { x: 38, y: 71, scale: MONSTER_SCALE }],
+        3: [{ x: 12, y: 62, scale: MONSTER_SCALE }, { x: 32, y: 66, scale: MONSTER_SCALE },
+            { x: 52, y: 64, scale: MONSTER_SCALE }],
+        4: [{ x: 12, y: 62, scale: MONSTER_SCALE }, { x: 32, y: 66, scale: MONSTER_SCALE },
+            { x: 52, y: 64, scale: MONSTER_SCALE }, { x: 22, y: 79, scale: MONSTER_SCALE }],
+        5: [{ x: 33, y: 64, scale: MONSTER_SCALE }, { x: 20, y: 81, scale: MONSTER_SCALE },
+            { x: 45, y: 67, scale: MONSTER_SCALE }, { x: 8, y: 95, scale: MONSTER_SCALE },
+            { x: 33, y: 97, scale: MONSTER_SCALE }]
     };
     const BOSS_SLOT = { x: 22, y: 46, scale: 0.95 };
 
@@ -26424,8 +26450,8 @@ const QUEST_DATA = [
      *  (if any) always takes the prominent BOSS_SLOT, other monsters fill the
      *  remaining slots for that count in their existing array order. */
     function assignMonsterSlots(monsters) {
-        const count = Math.min(monsters.length, 6) || 1;
-        const baseSlots = (MONSTER_SLOTS[count] || MONSTER_SLOTS[6]).slice();
+        const count = Math.min(monsters.length, 5) || 1;
+        const baseSlots = (MONSTER_SLOTS[count] || MONSTER_SLOTS[5]).slice();
         const bossIdx = monsters.findIndex(m => m.isBoss);
         const assignments = new Array(monsters.length);
         if (bossIdx >= 0) {
