@@ -4187,6 +4187,130 @@
         .shop2-row.stacked .shop2-namecol { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
         .shop2-row.stacked .shop2-namecol .shop2-cost2 { font-size: 9px; color: #ffc35c; line-height: 1.3; }
 
+        /* ===================================================================
+           MENU SCREEN v2 - character screen hub, per-hero equipment picker,
+           and backdrop art for the remaining sub-panels. New classes
+           (menu2-*) throughout; existing panel content divs (achievements-grid,
+           codex-grid, hero-spells-list, menu-inventory-list, etc.) are kept
+           and just wrapped/restyled, so their render logic is untouched. */
+        #menu-screen.menu2 { position: relative; }
+        .menu2-hdr {
+            position: relative; z-index: 5;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 9px 16px; border-bottom: 2px solid rgba(106,74,138,0.8);
+            background: linear-gradient(rgba(5,5,15,0.65), rgba(5,5,15,0.35));
+            flex-shrink: 0;
+        }
+        .menu2-hdr .menu2-left { display: flex; align-items: center; gap: 10px; }
+        .menu2-hdr .menu2-title { color: #ffd700; font-size: 15px; font-weight: bold; letter-spacing: 1px; text-shadow: 0 1px 3px #000; }
+        .menu2-hdr .menu2-right { display: flex; align-items: center; gap: 8px; }
+        .menu2-backbtn, .menu2-closebtn {
+            border: 1px solid rgba(160,130,220,0.7); background: rgba(10,10,20,0.6);
+            color: #e8dcff; padding: 4px 10px; border-radius: 6px; font-size: 11px; cursor: pointer;
+        }
+        .menu2-gold {
+            border: 2px solid #ffaa00; color: #ffd257; padding: 4px 12px; border-radius: 6px;
+            font-size: 12px; font-weight: bold; background: rgba(0,0,0,0.5);
+        }
+        .menu2-body { flex: 1; display: flex; overflow: hidden; position: relative; }
+        .menu2-sidebar {
+            width: 130px; flex-shrink: 0; background: rgba(0,0,0,0.5);
+            border-right: 1px solid rgba(106,74,138,0.6);
+            padding: 8px 0; display: flex; flex-direction: column; gap: 2px;
+            z-index: 5; overflow-y: auto; transition: width 0.15s;
+        }
+        .menu2-sidebar.collapsed { width: 44px; }
+        .menu2-sidebar .item {
+            padding: 8px 14px; font-size: 11px; color: #b8a8d8; cursor: pointer;
+            display: flex; align-items: center; gap: 8px; border-left: 3px solid transparent;
+            white-space: nowrap; overflow: hidden;
+        }
+        .menu2-sidebar.collapsed .item { padding: 8px 0; justify-content: center; }
+        .menu2-sidebar.collapsed .item .label { display: none; }
+        .menu2-sidebar .item.active { background: rgba(255,215,0,0.1); border-left-color: #ffd700; color: #ffd700; }
+        .menu2-panelwrap {
+            flex: 1; position: relative; overflow: hidden;
+            background-size: cover; background-position: center;
+        }
+        .menu2-panelwrap::after { content: ''; position: absolute; inset: 0; background: rgba(5,5,10,0.42); pointer-events: none; z-index: 0; }
+        .menu2-panelwrap.menu2-partybg { background-image: url('assets/hero_hub/party_bg.jpg'); background-size: 100% 100%; }
+        .menu2-panelwrap.menu2-partybg::after { background: rgba(5,5,10,0.1); }
+        .menu2-panelwrap.menu2-scrollbg { background-image: url('assets/equipment/scroll.jpg'); background-position: center 40%; }
+        .menu2-panelwrap.menu2-silbg { background-image: url('assets/hero_hub/party_bg.jpg'); background-size: 100% 100%; }
+        .menu2-panelwrap.menu2-equipbg.equip-warrior { background-image: url('assets/equipment/warrior.jpg'); background-position: center 20%; }
+        .menu2-panelwrap.menu2-equipbg.equip-mage { background-image: url('assets/equipment/mage.jpg'); background-position: center 20%; }
+        .menu2-panelwrap.menu2-equipbg.equip-paladin { background-image: url('assets/equipment/paladin.jpg'); background-position: center 20%; }
+        .menu2-panelinner { position: relative; z-index: 2; height: 100%; overflow-y: auto; padding: 14px; }
+        .menu2-panelinner.menu2-noscroll { overflow: hidden; display: flex; flex-direction: column; }
+
+        /* Party view: 3 hero cards */
+        .menu2-cards { flex: 1; display: flex; gap: 0; height: 100%; }
+        .menu2-cardslot { position: relative; flex: 1; display: flex; flex-direction: column; justify-content: flex-end; }
+        .menu2-heroname { position: absolute; top: 4px; left: 8px; right: 8px; display: flex; align-items: center; justify-content: space-between; font-size: 12px; font-weight: bold; color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,0.9); }
+        .menu2-heroname .menu2-role { display: block; font-size: 8px; font-weight: normal; color: #d8c8f0; }
+        .menu2-pixelhero { width: 30px; height: 30px; image-rendering: pixelated; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.8)); flex-shrink: 0; background: rgba(0,0,0,0.35); border-radius: 5px; border: 1px solid rgba(255,255,255,0.15); cursor: pointer; }
+        .menu2-statsblock { background: rgba(0,0,0,0.55); padding: 6px 10px 8px; margin: 0 6px 6px; border-radius: 6px; cursor: pointer; }
+        .menu2-lvrow { display: flex; justify-content: space-between; font-size: 9px; color: #c9b8e8; margin-bottom: 2px; }
+        .menu2-lvrow b { font-size: 14px; color: #fff; }
+        .menu2-bar { height: 4px; border-radius: 2px; background: rgba(255,255,255,0.1); margin-bottom: 4px; overflow: hidden; }
+        .menu2-bar-fill { height: 100%; }
+        .menu2-hp-fill { background: linear-gradient(90deg,#ff6b6b,#c0392b); }
+        .menu2-mp-fill { background: linear-gradient(90deg,#6bb3ff,#2a6fc9); }
+        .menu2-statline { display: flex; justify-content: space-between; font-size: 8px; color: #d8c8f0; margin-bottom: 2px; }
+        .menu2-statline b { color: #fff; }
+        .menu2-statgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px 8px; margin-top: 3px; font-size: 8px; color: #a898c8; }
+        .menu2-statgrid span { color: #e8dcff; }
+
+        /* Equipment slot frames */
+        .menu2-slots { position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; display: flex; gap: 10px; padding: 14px; justify-content: center; flex-wrap: wrap; }
+        .menu2-slot { width: 190px; background: rgba(10,8,20,0.55); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid rgba(160,130,220,0.5); border-radius: 8px; padding: 8px; position: relative; cursor: pointer; }
+        .menu2-slot .menu2-slotlabel { font-size: 9px; color: #9d8bc9; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+        .menu2-slot .menu2-itemrow { display: flex; align-items: center; gap: 8px; }
+        .menu2-slot .menu2-icon { width: 30px; height: 30px; border-radius: 5px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; overflow: hidden; }
+        .menu2-slot .menu2-icon img { width: 22px; height: 22px; image-rendering: pixelated; }
+        .menu2-slot .menu2-iname { font-size: 11px; color: #f0e6ff; }
+        .menu2-slot .menu2-iname.empty { color: #776a99; font-style: italic; }
+        .menu2-slot .menu2-istat { font-size: 9px; color: #66ffa2; }
+        .menu2-plusbtn {
+            position: absolute; top: -8px; right: -8px; width: 24px; height: 24px; border-radius: 50%;
+            background: #ffd700; color: #1a1a2e; font-weight: bold; font-size: 15px;
+            display: flex; align-items: center; justify-content: center;
+            border: 2px solid #0a0a12; box-shadow: 0 2px 6px rgba(0,0,0,0.6); cursor: pointer;
+        }
+        .menu2-eqpopup {
+            position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+            width: 420px; max-height: 320px; background: rgba(10,8,20,0.9); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,215,0,0.6); border-radius: 10px; padding: 14px;
+            z-index: 8; box-shadow: 0 10px 40px rgba(0,0,0,0.7); display: none; flex-direction: column;
+        }
+        .menu2-eqpopup.open { display: flex; }
+        .menu2-eqpopup h4 { color: #ffd700; margin: 0 0 8px; font-size: 14px; }
+        .menu2-eqpopup .menu2-close { position: absolute; top: 8px; right: 12px; color: #d8c8f5; font-size: 13px; cursor: pointer; }
+        .menu2-eqpopup .menu2-poplist { overflow-y: auto; flex: 1; }
+        .menu2-poprow { display: flex; align-items: center; gap: 10px; padding: 7px 6px; border-bottom: 1px solid rgba(255,255,255,0.06); border-left: 3px solid #999; cursor: pointer; }
+        .menu2-poprow:hover { background: rgba(255,255,255,0.05); }
+        .menu2-poprow.r-uncommon { border-left-color: #44ff88; }
+        .menu2-poprow.r-rare { border-left-color: #4488ff; }
+        .menu2-poprow.r-legendary { border-left-color: #ffd700; }
+        .menu2-poprow .menu2-icon { width: 26px; height: 26px; border-radius: 5px; background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center; font-size: 13px; overflow: hidden; }
+        .menu2-poprow .menu2-icon img { width: 20px; height: 20px; image-rendering: pixelated; }
+        .menu2-poprow .menu2-pname { flex: 1; font-size: 11px; color: #d8d8d8; }
+        .menu2-poprow.r-uncommon .menu2-pname { color: #66ffa2; }
+        .menu2-poprow.r-rare .menu2-pname { color: #66a2ff; }
+        .menu2-poprow.r-legendary .menu2-pname { color: #ffd700; }
+        .menu2-poprow .menu2-pstat { font-size: 10px; color: #ffc35c; }
+        .menu2-poprow.equipped { background: rgba(255,215,0,0.08); }
+        .menu2-poprow .menu2-tag { font-size: 8px; background: rgba(68,255,136,0.15); color: #66ffa2; border: 1px solid #44ff88; border-radius: 3px; padding: 1px 4px; margin-left: 6px; }
+
+        /* Generic glass rows/grids reused by Spells/Items/Codex/Achievements */
+        .menu2-row { display: flex; align-items: center; gap: 10px; padding: 8px 6px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+        .menu2-row .menu2-icon { width: 26px; height: 26px; border-radius: 5px; background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center; font-size: 14px; overflow: hidden; flex-shrink: 0; }
+        .menu2-row .menu2-icon img { width: 20px; height: 20px; image-rendering: pixelated; }
+        .menu2-row .menu2-name { flex: 1; font-size: 11px; color: #f0e6ff; font-weight: bold; }
+        .menu2-row .menu2-meta { font-size: 9px; color: #b8a8d8; font-weight: normal; }
+        .menu2-glasspanel { background: rgba(10,8,20,0.55); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid rgba(160,130,220,0.5); border-radius: 8px; padding: 8px; }
+        .menu2-listrow { display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: rgba(10,8,20,0.55); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid rgba(160,130,220,0.5); border-radius: 8px; margin-bottom: 8px; }
+
         /* Audio Controls - Enhanced */
         .audio-controls {
             margin-top: 8px;
@@ -4465,7 +4589,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v118</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v119</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -4845,174 +4969,147 @@
                 </div>
             </div>
         </div>
-        <div id="menu-screen" class="screen menu-screen viewport-overlay" style="display: none; background: var(--panel-bg); flex-direction: column; height: 100%; overflow: hidden;">
-            <!-- Persistent header - shared by the hub and every sub-panel. Title
-                 and back-button visibility are updated by showMenuHub()/showMenuPanel(). -->
-            <div class="menu-header" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; border-bottom: 2px solid var(--border-color); background: rgba(0,0,0,0.3);">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <button id="menu-back-btn" class="menu-button" onclick="window.game.menuGoBack()" style="padding: 4px 12px; font-size: 13px; display: none;">◀ Back</button>
-                    <h2 id="menu-header-title" style="color: var(--highlight); font-size: 22px; margin: 0;">⚔️ PARTY STATUS</h2>
+        <div id="menu-screen" class="screen menu-screen viewport-overlay menu2" style="display: none; flex-direction: column; height: 100%; overflow: hidden;">
+            <div class="menu2-hdr">
+                <div class="menu2-left">
+                    <button id="menu-back-btn" class="menu2-backbtn" onclick="window.game.menuGoBack()" style="display: none;">&#9664; Back</button>
+                    <div class="menu2-title" id="menu-header-title">CHARACTER SCREEN</div>
                 </div>
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <div id="menu-gold-display" style="background: rgba(0,0,0,0.8); border: 2px solid var(--gold-color); padding: 5px 20px; color: var(--gold-color); font-size: 17px; font-weight: bold; border-radius: 6px;">💰 G: 0</div>
-                    <button class="menu-button" onclick="window.game.toggleMenu()" style="padding: 4px 15px; font-size: 13px;">✖ Close</button>
+                <div class="menu2-right">
+                    <div class="menu2-gold" id="menu-gold-display">G: 0</div>
+                    <button class="menu2-closebtn" onclick="window.game.toggleMenu()">&#10005; Close</button>
                 </div>
             </div>
-
-            <!-- HUB (default view): hero switcher + stat breakdown + icon nav -->
-            <div id="menu-hub-screen" class="menu-subpanel">
-                <div class="menu-icon-bar">
-                    <div class="menu-icon-btn" onclick="window.game.showMenuPanel('equipment')"><span class="menu-icon-emoji">⚔️</span>Equipment</div>
-                    <div class="menu-icon-btn" onclick="window.game.showMenuPanel('spells')"><span class="menu-icon-emoji">✨</span>Spells</div>
-                    <div class="menu-icon-btn" onclick="window.game.showMenuPanel('items')"><span class="menu-icon-emoji">🎒</span>Items</div>
-                    <div class="menu-icon-btn" onclick="window.game.showMenuPanel('quests')"><span class="menu-icon-emoji">📋</span>Quests</div>
-                    <div class="menu-icon-btn" onclick="window.game.showMenuPanel('achievements')"><span class="menu-icon-emoji">🏆</span>Achievements</div>
-                    <div class="menu-icon-btn" onclick="window.game.showMenuPanel('codex')"><span class="menu-icon-emoji">📖</span>Codex</div>
-                    <div class="menu-icon-btn" onclick="window.game.openWorldMap()"><span class="menu-icon-emoji">🗺️</span>Map</div>
-                    <div class="menu-icon-btn" onclick="window.game.openLoreJournal()"><span class="menu-icon-emoji">📜</span>Lore</div>
-                    <div class="menu-icon-btn" onclick="window.game.openLegendaryJournal()"><span class="menu-icon-emoji">🌟</span>Legendary</div>
-                    <div class="menu-icon-btn" onclick="window.game.showMenuPanel('settings')"><span class="menu-icon-emoji">⚙️</span>Settings</div>
+            <div class="menu2-body">
+                <div class="menu2-sidebar" id="menu2-sidebar">
+                    <div class="item" id="menu2-nav-equipment" onclick="window.game.showMenuPanel('equipment')"><span>&#9876;&#65039;</span><span class="label">Equipment</span></div>
+                    <div class="item" id="menu2-nav-spells" onclick="window.game.showMenuPanel('spells')"><span>&#10024;</span><span class="label">Spells</span></div>
+                    <div class="item" id="menu2-nav-items" onclick="window.game.showMenuPanel('items')"><span>&#127890;</span><span class="label">Items</span></div>
+                    <div class="item" id="menu2-nav-quests" onclick="window.game.showMenuPanel('quests')"><span>&#128203;</span><span class="label">Quests</span></div>
+                    <div class="item" id="menu2-nav-achievements" onclick="window.game.showMenuPanel('achievements')"><span>&#127942;</span><span class="label">Achievements</span></div>
+                    <div class="item" id="menu2-nav-codex" onclick="window.game.showMenuPanel('codex')"><span>&#128214;</span><span class="label">Codex</span></div>
+                    <div class="item" id="menu2-nav-map" onclick="window.game.openWorldMap()"><span>&#128506;&#65039;</span><span class="label">Map</span></div>
+                    <div class="item" id="menu2-nav-lore" onclick="window.game.openLoreJournal()"><span>&#128220;</span><span class="label">Lore</span></div>
+                    <div class="item" id="menu2-nav-legendary" onclick="window.game.openLegendaryJournal()"><span>&#127775;</span><span class="label">Legendary</span></div>
+                    <div class="item" id="menu2-nav-settings" onclick="window.game.showMenuPanel('settings')"><span>&#9881;&#65039;</span><span class="label">Settings</span></div>
                 </div>
 
-                <div class="menu-hero-switcher">
-                    <div class="menu-hero-switcher-arrow" onclick="window.game.cycleMenuHero(-1)">◀</div>
-                    <div class="menu-hero-portrait-block" id="menu-hero-portrait-block" onclick="window.game.cycleMenuHero(1)" title="Tap or swipe to switch hero">
-                        <div id="menu-hub-portrait"></div>
-                        <div class="menu-hero-name" id="menu-hub-name"></div>
-                        <div class="menu-hero-subline" id="menu-hub-subline"></div>
-                        <div class="menu-hero-subline" id="menu-hub-echo" style="color: var(--gold-color, #ffd700); font-size: 12px;"></div>
-                    </div>
-                    <div class="menu-hero-switcher-arrow" onclick="window.game.cycleMenuHero(1)">▶</div>
+                <!-- HUB (default view): 3 hero cards over the party silhouette art -->
+                <div id="menu-hub-screen" class="menu2-panelwrap menu2-partybg menu-subpanel">
+                    <div class="menu2-cards" id="menu2-hub-cards"></div>
                 </div>
 
-                <div id="menu-stat-breakdown"></div>
-            </div>
-
-            <!-- Equipment Panel -->
-            <div id="menu-equipment-panel" class="menu-subpanel" style="display: none;">
-                <div id="menu-equip-hero-header" style="display: flex; align-items: center; gap: 14px; margin-bottom: 14px;">
-                    <div id="menu-equip-portrait"></div>
-                    <div>
-                        <div id="menu-equip-name" style="color: var(--highlight); font-size: 18px; font-weight: bold;"></div>
-                        <div id="menu-equip-class" style="color: #aaa; font-size: 12px; text-transform: capitalize;"></div>
+                <!-- Equipment Panel: per-hero backdrop + slot frames + [+] popup picker -->
+                <div id="menu-equipment-panel" class="menu2-panelwrap menu2-equipbg menu-subpanel" style="display: none;">
+                    <div class="menu2-slots" id="menu2-equip-slots"></div>
+                    <div class="menu2-eqpopup" id="menu2-eqpopup">
+                        <div class="menu2-close" onclick="window.game.closeEquipPopup()">&#10005;</div>
+                        <h4 id="menu2-eqpopup-title">Choose an item</h4>
+                        <div class="menu2-poplist" id="menu2-eqpopup-list"></div>
                     </div>
                 </div>
 
-                <h3 style="color: var(--highlight); margin-bottom: 6px; border-bottom: 1px solid var(--border-color); font-size: 13px;">Equipment</h3>
-
-                <div class="equipment-row">
-                    <div class="equipment-column">
-                        <p class="equipment-label">Weapon: <span id="current-weapon" class="equipment-value">None</span></p>
-                        <div id="available-weapons" class="shop-inventory" style="height: 160px; margin-top: 4px; padding: 8px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 4px;"></div>
-                    </div>
-                    <div class="equipment-column">
-                        <p class="equipment-label">Armor: <span id="current-armor" class="equipment-value">None</span></p>
-                        <div id="available-armor" class="shop-inventory" style="height: 160px; margin-top: 4px; padding: 8px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 4px;"></div>
-                    </div>
-                </div>
-
-                <div class="equipment-row">
-                    <div class="equipment-column">
-                        <p class="equipment-label">Shield: <span id="current-shield" class="equipment-value">None</span></p>
-                        <div id="available-shields" class="shop-inventory" style="height: 160px; margin-top: 4px; padding: 8px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 4px;"></div>
-                    </div>
-                    <div class="equipment-column">
-                        <p class="equipment-label">Jewelry: <span id="current-jewelry" class="equipment-value">None</span></p>
-                        <div id="available-jewelry" class="shop-inventory" style="height: 160px; margin-top: 4px; padding: 8px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 4px;"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Spells Panel -->
-            <div id="menu-spells-panel" class="menu-subpanel" style="display: none;">
-                <div id="menu-spells-hero-header" style="display: flex; align-items: center; gap: 14px; margin-bottom: 14px;">
-                    <div id="menu-spells-portrait"></div>
-                    <div>
-                        <div id="menu-spells-name" style="color: var(--highlight); font-size: 18px; font-weight: bold;"></div>
-                        <div id="menu-spells-class" style="color: #aaa; font-size: 12px; text-transform: capitalize;"></div>
-                    </div>
-                </div>
-
-                <h3 style="color: var(--highlight); margin-bottom: 6px; border-bottom: 1px solid var(--border-color); font-size: 13px;">Spells Known</h3>
-                <div id="hero-spells-list" class="shop-inventory" style="padding: 6px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 4px;"></div>
-            </div>
-
-            <!-- Items Panel -->
-            <div id="menu-items-panel" class="menu-subpanel" style="display: none;">
-                <div style="display: flex; gap: 8px; margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
-                    <button id="menu-items-tab-btn" class="menu-button" onclick="window.game.showMenuItemsTab('items')" style="padding: 5px 15px; font-size: 13px;">🎒 Items</button>
-                    <button id="menu-materials-tab-btn" class="menu-button" onclick="window.game.showMenuItemsTab('materials')" style="padding: 5px 15px; font-size: 13px;">🧱 Materials</button>
-                    <button id="menu-fragments-tab-btn" class="menu-button" onclick="window.game.showMenuItemsTab('fragments')" style="padding: 5px 15px; font-size: 13px;">💎 Fragments</button>
-                    <button id="menu-echoes-tab-btn" class="menu-button" onclick="window.game.showMenuItemsTab('echoes')" style="padding: 5px 15px; font-size: 13px;">🌟 Echoes</button>
-                </div>
-                <div id="menu-inventory-list" class="shop-inventory" style="height: 250px; margin-bottom: 12px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 4px; padding: 6px;"></div>
-                <div id="menu-materials-list" class="shop-inventory" style="height: 250px; margin-bottom: 12px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 4px; padding: 6px; display: none;"></div>
-                <div id="menu-fragments-list" class="shop-inventory" style="height: 250px; margin-bottom: 12px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 4px; padding: 6px; display: none;"></div>
-                <div id="menu-echoes-list" class="shop-inventory" style="height: 250px; margin-bottom: 12px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 4px; padding: 6px; display: none;"></div>
-                <div id="menu-item-details" style="padding: 10px; background: rgba(0,0,0,0.3); border-radius: 4px; min-height: 60px;"></div>
-            </div>
-
-            <!-- Quest Tracker Panel - tapping a quest opens its details in the
-                 shared popup (ui.showPopup) instead of a description area you
-                 had to scroll down to, since quest lists can run long. -->
-            <div id="menu-quests-panel" class="menu-subpanel" style="display: none;">
-                <div id="menu-quest-list" class="shop-inventory" style="padding: 6px;"></div>
-            </div>
-
-            <!-- Achievements Panel -->
-            <div id="menu-achievements-panel" class="menu-subpanel" style="display: none;">
-                <div id="achievements-summary" style="display: flex; justify-content: space-between; align-items: center; gap: 14px; margin-bottom: 14px; background: rgba(0,0,0,0.3); border-radius: 6px; padding: 12px 16px;">
-                    <div>
-                        <div id="achievements-progress-text" style="color: #aaa; font-size: 12px;">0 / 30 unlocked (0%)</div>
-                        <div class="achievements-bar"><div class="achievements-bar-fill" id="achievements-progress-fill" style="width:0%;"></div></div>
-                    </div>
-                    <div style="text-align: center; flex-shrink: 0;">
-                        <div style="color: #888; font-size: 10px; text-transform: uppercase; letter-spacing: 1px;">Adventure Rating</div>
-                        <div id="achievements-rating-grade" style="font-size: 34px; font-weight: bold; color: var(--highlight); line-height: 1;">-</div>
-                    </div>
-                </div>
-                <div id="achievements-grid" class="achievements-grid"></div>
-            </div>
-
-            <!-- Monster Codex Panel -->
-            <div id="menu-codex-panel" class="menu-subpanel" style="display: none;">
-                <div style="margin-bottom: 14px; background: rgba(0,0,0,0.3); border-radius: 6px; padding: 12px 16px;">
-                    <div id="codex-progress-text" style="color: #aaa; font-size: 12px;">0 / 0 discovered (0%)</div>
-                    <div class="achievements-bar"><div class="achievements-bar-fill" id="codex-progress-fill" style="width:0%;"></div></div>
-                </div>
-                <div id="codex-grid" class="codex-grid"></div>
-            </div>
-
-            <!-- Settings Panel: audio, fullscreen, quest compass -->
-            <div id="menu-settings-panel" class="menu-subpanel" style="display: none;">
-                <button class="menu-button" onclick="window.game.showQuestCompassMenu()" style="padding: 8px; width: 100%; font-size: 13px; margin-bottom: 10px;">🧭 Track a Quest</button>
-                <button class="menu-button" onclick="toggleFullscreen()" style="padding: 8px; width: 100%; font-size: 13px; margin-bottom: 16px;">⛶ Fullscreen</button>
-
-                <div class="audio-controls">
-                    <h3 class="audio-title">🔊 Audio</h3>
-                    <div style="display: flex; gap: 5px; justify-content: center; margin-bottom: 6px;">
-                        <button class="menu-button" onclick="window.game.audio.mute()" style="padding: 3px 8px; font-size: 10px;">🔇 Mute</button>
-                        <button class="menu-button" onclick="window.game.audio.unmute()" style="padding: 3px 8px; font-size: 10px;">🔊 Unmute</button>
-                    </div>
-                    <div class="audio-slider-container">
-                        <div class="audio-slider-label">
-                            <span>🎵 Music</span>
-                            <span id="music-volume-value">25%</span>
+                <!-- Spells Panel -->
+                <div id="menu-spells-panel" class="menu2-panelwrap menu2-scrollbg menu-subpanel" style="display: none;">
+                    <div class="menu2-panelinner">
+                        <div id="menu-spells-hero-header" style="display: flex; align-items: center; gap: 14px; margin-bottom: 14px;">
+                            <div id="menu-spells-portrait"></div>
+                            <div>
+                                <div id="menu-spells-name" style="color: #ffd700; font-size: 15px; font-weight: bold;"></div>
+                                <div id="menu-spells-class" style="color: #b8a8d8; font-size: 11px; text-transform: capitalize;"></div>
+                            </div>
                         </div>
-                        <input type="range" min="0" max="1" step="0.05" value="0.25" class="audio-slider"
-                               onchange="window.game.audio.setMusicVolume(this.value); localStorage.setItem('legendOfEternal_musicVolume', this.value);"
-                               oninput="document.getElementById('music-volume-value').textContent = Math.round(this.value * 100) + '%'"
-                               id="music-volume-slider">
+                        <div id="hero-spells-list" class="menu2-glasspanel"></div>
                     </div>
-                    <div class="audio-slider-container">
-                        <div class="audio-slider-label">
-                            <span>🔊 SFX</span>
-                            <span id="sfx-volume-value">25%</span>
+                </div>
+
+                <!-- Items Panel -->
+                <div id="menu-items-panel" class="menu2-panelwrap menu2-scrollbg menu-subpanel" style="display: none;">
+                    <div class="menu2-panelinner">
+                        <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                            <button id="menu-items-tab-btn" class="menu2-backbtn" onclick="window.game.showMenuItemsTab('items')">&#127890; Items</button>
+                            <button id="menu-materials-tab-btn" class="menu2-backbtn" onclick="window.game.showMenuItemsTab('materials')">&#129521; Materials</button>
+                            <button id="menu-fragments-tab-btn" class="menu2-backbtn" onclick="window.game.showMenuItemsTab('fragments')">&#128142; Fragments</button>
+                            <button id="menu-echoes-tab-btn" class="menu2-backbtn" onclick="window.game.showMenuItemsTab('echoes')">&#127775; Echoes</button>
                         </div>
-                        <input type="range" min="0" max="1" step="0.05" value="0.25" class="audio-slider"
-                               onchange="window.game.audio.setSFXVolume(this.value); localStorage.setItem('legendOfEternal_sfxVolume', this.value);"
-                               oninput="document.getElementById('sfx-volume-value').textContent = Math.round(this.value * 100) + '%'"
-                               id="sfx-volume-slider">
+                        <div id="menu-inventory-list" class="menu2-glasspanel" style="margin-bottom: 12px;"></div>
+                        <div id="menu-materials-list" class="menu2-glasspanel" style="margin-bottom: 12px; display: none;"></div>
+                        <div id="menu-fragments-list" class="menu2-glasspanel" style="margin-bottom: 12px; display: none;"></div>
+                        <div id="menu-echoes-list" class="menu2-glasspanel" style="margin-bottom: 12px; display: none;"></div>
+                        <div id="menu-item-details" class="menu2-glasspanel" style="min-height: 60px;"></div>
+                    </div>
+                </div>
+
+                <!-- Quest Tracker Panel -->
+                <div id="menu-quests-panel" class="menu2-panelwrap menu2-silbg menu-subpanel" style="display: none;">
+                    <div class="menu2-panelinner">
+                        <div id="menu-quest-list" class="menu2-glasspanel"></div>
+                    </div>
+                </div>
+
+                <!-- Achievements Panel -->
+                <div id="menu-achievements-panel" class="menu2-panelwrap menu2-silbg menu-subpanel" style="display: none;">
+                    <div class="menu2-panelinner">
+                        <div id="achievements-summary" class="menu2-listrow" style="display: flex; justify-content: space-between; align-items: center; gap: 14px;">
+                            <div>
+                                <div id="achievements-progress-text" style="color: #b8a8d8; font-size: 12px;">0 / 30 unlocked (0%)</div>
+                                <div class="achievements-bar"><div class="achievements-bar-fill" id="achievements-progress-fill" style="width:0%;"></div></div>
+                            </div>
+                            <div style="text-align: center; flex-shrink: 0;">
+                                <div style="color: #9d8bc9; font-size: 10px; text-transform: uppercase; letter-spacing: 1px;">Adventure Rating</div>
+                                <div id="achievements-rating-grade" style="font-size: 34px; font-weight: bold; color: #ffd700; line-height: 1;">-</div>
+                            </div>
+                        </div>
+                        <div id="achievements-grid" class="achievements-grid"></div>
+                    </div>
+                </div>
+
+                <!-- Monster Codex Panel -->
+                <div id="menu-codex-panel" class="menu2-panelwrap menu2-silbg menu-subpanel" style="display: none;">
+                    <div class="menu2-panelinner">
+                        <div class="menu2-listrow">
+                            <div style="flex:1;">
+                                <div id="codex-progress-text" style="color: #b8a8d8; font-size: 12px;">0 / 0 discovered (0%)</div>
+                                <div class="achievements-bar"><div class="achievements-bar-fill" id="codex-progress-fill" style="width:0%;"></div></div>
+                            </div>
+                        </div>
+                        <div id="codex-grid" class="codex-grid"></div>
+                    </div>
+                </div>
+
+                <!-- Settings Panel: audio, fullscreen, quest compass -->
+                <div id="menu-settings-panel" class="menu2-panelwrap menu2-silbg menu-subpanel" style="display: none;">
+                    <div class="menu2-panelinner">
+                        <button class="menu2-backbtn" onclick="window.game.showQuestCompassMenu()" style="padding: 8px; width: 100%; font-size: 13px; margin-bottom: 10px;">&#129517; Track a Quest</button>
+                        <button class="menu2-backbtn" onclick="toggleFullscreen()" style="padding: 8px; width: 100%; font-size: 13px; margin-bottom: 16px;">&#9974; Fullscreen</button>
+
+                        <div class="audio-controls">
+                            <h3 class="audio-title">&#128266; Audio</h3>
+                            <div style="display: flex; gap: 5px; justify-content: center; margin-bottom: 6px;">
+                                <button class="menu2-backbtn" onclick="window.game.audio.mute()">&#128263; Mute</button>
+                                <button class="menu2-backbtn" onclick="window.game.audio.unmute()">&#128266; Unmute</button>
+                            </div>
+                            <div class="audio-slider-container">
+                                <div class="audio-slider-label">
+                                    <span>&#127925; Music</span>
+                                    <span id="music-volume-value">25%</span>
+                                </div>
+                                <input type="range" min="0" max="1" step="0.05" value="0.25" class="audio-slider"
+                                       onchange="window.game.audio.setMusicVolume(this.value); localStorage.setItem('legendOfEternal_musicVolume', this.value);"
+                                       oninput="document.getElementById('music-volume-value').textContent = Math.round(this.value * 100) + '%'"
+                                       id="music-volume-slider">
+                            </div>
+                            <div class="audio-slider-container">
+                                <div class="audio-slider-label">
+                                    <span>&#128266; SFX</span>
+                                    <span id="sfx-volume-value">25%</span>
+                                </div>
+                                <input type="range" min="0" max="1" step="0.05" value="0.25" class="audio-slider"
+                                       onchange="window.game.audio.setSFXVolume(this.value); localStorage.setItem('legendOfEternal_sfxVolume', this.value);"
+                                       oninput="document.getElementById('sfx-volume-value').textContent = Math.round(this.value * 100) + '%'"
+                                       id="sfx-volume-slider">
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -18350,7 +18447,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v118]');
+            console.log('Game starting... [build v119]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
@@ -20318,18 +20415,23 @@
          *  requested one, updates the shared header (title + back button),
          *  and calls that panel's own render function. menuGoBack() (wired
          *  to the header's Back button) always returns to the hub. */
-        showMenuPanel(name) {
+        showMenuPanel(name, fromBack) {
             const panels = {
-                equipment: { el: 'menu-equipment-panel', title: '⚔️ EQUIPMENT', render: () => this.renderMenuEquipmentPanel() },
-                spells: { el: 'menu-spells-panel', title: '✨ SPELLS', render: () => this.renderMenuSpellsPanel() },
-                items: { el: 'menu-items-panel', title: '🎒 ITEMS', render: () => this.showMenuItemsTab('items') },
-                quests: { el: 'menu-quests-panel', title: '📋 QUESTS', render: () => this.renderQuestList() },
-                achievements: { el: 'menu-achievements-panel', title: '🏆 ACHIEVEMENTS', render: () => { if (this.achievements) this.achievements.renderAchievementsPanel(); } },
-                codex: { el: 'menu-codex-panel', title: '📖 MONSTER CODEX', render: () => { if (this.monsterCodex) this.monsterCodex.renderCodexPanel(); } },
-                settings: { el: 'menu-settings-panel', title: '⚙️ SETTINGS', render: () => this.loadVolumeSettings() }
+                equipment: { el: 'menu-equipment-panel', title: 'EQUIPMENT', render: () => this.renderMenuEquipmentPanel() },
+                spells: { el: 'menu-spells-panel', title: 'SPELLS', render: () => this.renderMenuSpellsPanel() },
+                items: { el: 'menu-items-panel', title: 'ITEMS', render: () => this.showMenuItemsTab('items') },
+                quests: { el: 'menu-quests-panel', title: 'QUESTS', render: () => this.renderQuestList() },
+                achievements: { el: 'menu-achievements-panel', title: 'ACHIEVEMENTS', render: () => { if (this.achievements) this.achievements.renderAchievementsPanel(); } },
+                codex: { el: 'menu-codex-panel', title: 'MONSTER CODEX', render: () => { if (this.monsterCodex) this.monsterCodex.renderCodexPanel(); } },
+                settings: { el: 'menu-settings-panel', title: 'SETTINGS', render: () => this.loadVolumeSettings() }
             };
             const target = panels[name];
             if (!target) return;
+            if (!fromBack) {
+                this.menuHistory = this.menuHistory || [];
+                this.menuHistory.push(this.menuCurrentPanel || 'hub');
+            }
+            this.menuCurrentPanel = name;
             const hub = document.getElementById('menu-hub-screen');
             if (hub) hub.style.display = 'none';
             Object.values(panels).forEach(p => {
@@ -20342,62 +20444,106 @@
             if (titleEl) titleEl.textContent = target.title;
             const backBtn = document.getElementById('menu-back-btn');
             if (backBtn) backBtn.style.display = 'inline-block';
+            const sidebar = document.getElementById('menu2-sidebar');
+            if (sidebar) sidebar.classList.add('collapsed');
+            document.querySelectorAll('#menu2-sidebar .item').forEach(it => it.classList.remove('active'));
+            const navEl = document.getElementById('menu2-nav-' + name);
+            if (navEl) navEl.classList.add('active');
             this.updateMenuGold();
             target.render();
         }
 
-        /** Returns from any sub-panel to the hub (hero switcher + stat
-         *  breakdown + icon nav) - wired to the header's Back button. */
+        /** Returns to whatever panel was open before this one (a small
+         *  history stack, not always straight to the hub) - wired to the
+         *  header's Back button. Popping down to 'hub' (or an empty stack)
+         *  goes to the party view. */
         menuGoBack() {
-            this.showMenuHub();
+            this.menuHistory = this.menuHistory || [];
+            const prev = this.menuHistory.pop();
+            if (!prev || prev === 'hub') {
+                this.showMenuHub();
+            } else {
+                this.showMenuPanel(prev, true);
+            }
         }
 
         showMenuHub() {
+            this.menuHistory = [];
+            this.menuCurrentPanel = null;
             const hub = document.getElementById('menu-hub-screen');
-            ['menu-equipment-panel', 'menu-items-panel', 'menu-quests-panel', 'menu-achievements-panel', 'menu-codex-panel', 'menu-settings-panel'].forEach(id => {
+            ['menu-equipment-panel', 'menu-spells-panel', 'menu-items-panel', 'menu-quests-panel', 'menu-achievements-panel', 'menu-codex-panel', 'menu-settings-panel'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.style.display = 'none';
             });
             if (hub) hub.style.display = 'block';
             const titleEl = document.getElementById('menu-header-title');
-            if (titleEl) titleEl.textContent = '⚔️ PARTY STATUS';
+            if (titleEl) titleEl.textContent = 'CHARACTER SCREEN';
             const backBtn = document.getElementById('menu-back-btn');
             if (backBtn) backBtn.style.display = 'none';
+            const sidebar = document.getElementById('menu2-sidebar');
+            if (sidebar) sidebar.classList.remove('collapsed');
+            document.querySelectorAll('#menu2-sidebar .item').forEach(it => it.classList.remove('active'));
             this.updateMenuGold();
-            this.renderMenuHubHero();
+            this.renderMenuHubCards();
         }
 
-        /** Moves the hub's hero switcher forward/back through the party,
-         *  wrapping at either end - wired to the arrow buttons and to
-         *  tapping the portrait itself. */
+        /** Moves the hub's hero switcher forward/back through the party -
+         *  kept for any code path that still calls it (e.g. swipe gesture),
+         *  but the party view itself now shows all 3 heroes as cards rather
+         *  than cycling, so this just updates which hero Equipment/Spells
+         *  will open for next. */
         cycleMenuHero(direction) {
             if (!this.party || !this.party.heroes.length) return;
             const count = this.party.heroes.length;
             this.menuSelectedHeroIndex = ((this.menuSelectedHeroIndex ?? 0) + direction + count) % count;
-            this.renderMenuHubHero();
         }
 
         /** Renders the hub's portrait/name/class block and stat breakdown
          *  for whichever hero is currently selected. */
-        renderMenuHubHero() {
+        /** Builds the party-view hub: one card per hero over the silhouette
+         *  backdrop, each showing name/role, a small pixel portrait (tap to
+         *  jump straight to that hero's Equipment), and HP/MP/stat summary
+         *  (tap to the same place). Replaces the old single-hero cycling
+         *  switcher now that all 3 heroes render simultaneously. */
+        renderMenuHubCards() {
             if (!this.party || !this.party.heroes.length) return;
-            if (this.menuSelectedHeroIndex === undefined || this.menuSelectedHeroIndex >= this.party.heroes.length) {
-                this.menuSelectedHeroIndex = 0;
-            }
-            const hero = this.party.heroes[this.menuSelectedHeroIndex];
-            const portraitEl = document.getElementById('menu-hub-portrait');
-            if (portraitEl) portraitEl.innerHTML = heroPortraitHTML(hero, 'detail-size');
-            const nameEl = document.getElementById('menu-hub-name');
-            if (nameEl) nameEl.textContent = `${hero.name} (Lv ${hero.level})${hero.isDead ? ' (KO)' : ''}`;
-            const sublineEl = document.getElementById('menu-hub-subline');
-            if (sublineEl) sublineEl.textContent = hero.heroClass;
-            const echoEl = document.getElementById('menu-hub-echo');
-            if (echoEl) {
-                echoEl.textContent = hero.echoSlot
-                    ? `${hero.echoSlot.icon || '🌟'} ${hero.echoSlot.echoName} - ${hero.echoSlot.optionName}`
-                    : '';
-            }
-            this.renderMenuStatBreakdown(hero);
+            const container = document.getElementById('menu2-hub-cards');
+            if (!container) return;
+            container.innerHTML = '';
+            const roleMap = { warrior: 'Frontline Damage', mage: 'Magic Damage', paladin: 'Tank / Support' };
+            this.party.heroes.forEach((hero, idx) => {
+                const stats = hero.getEffectiveStats();
+                const hpPct = stats.maxHp > 0 ? Math.max(0, Math.min(100, (hero.currentHp / stats.maxHp) * 100)) : 0;
+                const mpPct = stats.maxMp > 0 ? Math.max(0, Math.min(100, (hero.currentMp / stats.maxMp) * 100)) : 0;
+                const critPct = Math.round(hero.getSpeedCritBonus() * 100);
+                const className = hero.heroClass.charAt(0).toUpperCase() + hero.heroClass.slice(1);
+                const fourthStat = hero.heroClass === 'mage'
+                    ? `<div>MAG <span>${stats.magic}</span></div>`
+                    : `<div>CRT <span>${critPct}%</span></div>`;
+                const slot = document.createElement('div');
+                slot.className = 'menu2-cardslot';
+                slot.innerHTML = `
+                    <div class="menu2-heroname">
+                        <div>${hero.name}${hero.isDead ? ' (KO)' : ''}<span class="menu2-role">${className} &middot; ${roleMap[hero.heroClass] || ''}</span></div>
+                        <div class="menu2-pixelhero">${buildHeroPortraitInner(hero.heroClass)}</div>
+                    </div>
+                    <div class="menu2-statsblock">
+                        <div class="menu2-lvrow"><span>Lv. <b>${hero.level}</b></span><span>${className}</span></div>
+                        <div class="menu2-bar"><div class="menu2-bar-fill menu2-hp-fill" style="width:${hpPct}%;"></div></div>
+                        <div class="menu2-statline"><span>HP</span><b>${hero.currentHp}/${stats.maxHp}</b></div>
+                        <div class="menu2-bar"><div class="menu2-bar-fill menu2-mp-fill" style="width:${mpPct}%;"></div></div>
+                        <div class="menu2-statline"><span>MP</span><b>${hero.currentMp}/${stats.maxMp}</b></div>
+                        <div class="menu2-statgrid">
+                            <div>ATK <span>${stats.attack}</span></div><div>DEF <span>${stats.defense}</span></div>
+                            <div>AGI <span>${stats.speed}</span></div>${fourthStat}
+                        </div>
+                    </div>
+                `;
+                const jumpToEquipment = () => { this.menuSelectedHeroIndex = idx; this.showMenuPanel('equipment'); };
+                slot.querySelector('.menu2-pixelhero').onclick = jumpToEquipment;
+                slot.querySelector('.menu2-statsblock').onclick = jumpToEquipment;
+                container.appendChild(slot);
+            });
         }
 
         /** Splits every gear-affected stat into Base / Gear Bonus / Gem
@@ -22624,21 +22770,146 @@
          *  selected on the hub (this.menuSelectedHeroIndex) - replaces the
          *  old showHeroDetails(index), which used to render both stats and
          *  equipment together in one shared panel. */
+        /** Builds the new Equipment tab: swaps the panel's backdrop to that
+         *  hero's class portrait, then draws 4 slot frames (Weapon/Armor/
+         *  Shield/Jewelry) along the bottom. Tapping a frame (or its [+]
+         *  badge) opens the color-coded picker popup - see
+         *  openEquipSlotPopup() below. Equip/unequip data logic (inventory
+         *  push/splice, hero.canEquip, achievement/quest hooks) is
+         *  unchanged from the old list-based panel, just re-triggered from
+         *  the popup instead of an inline row. */
         renderMenuEquipmentPanel() {
             const index = this.menuSelectedHeroIndex ?? 0;
-            var hero = this.party.heroes[index];
+            const hero = this.party.heroes[index];
             if (!hero) return;
-            document.getElementById('menu-equip-portrait').innerHTML = heroPortraitHTML(hero, 'detail-size');
-            document.getElementById('menu-equip-name').textContent = hero.name + ' (Lv ' + hero.level + ')' + (hero.isDead ? ' (KO)' : '');
-            document.getElementById('menu-equip-class').textContent = hero.heroClass;
-            document.getElementById('current-weapon').textContent = hero.equipment.weapon ? hero.equipment.weapon.name : 'None';
-            document.getElementById('current-armor').textContent = hero.equipment.armor ? hero.equipment.armor.name : 'None';
-            document.getElementById('current-shield').textContent = hero.equipment.shield ? hero.equipment.shield.name : 'None';
-            document.getElementById('current-jewelry').textContent = hero.equipment.jewelry ? hero.equipment.jewelry.name : 'None';
-            this.renderEquipmentList('weapons', hero, index);
-            this.renderEquipmentList('armor', hero, index);
-            this.renderEquipmentList('shields', hero, index);
-            this.renderEquipmentList('jewelry', hero, index);
+            const wrap = document.getElementById('menu-equipment-panel');
+            if (wrap) {
+                wrap.classList.remove('equip-warrior', 'equip-mage', 'equip-paladin');
+                wrap.classList.add('equip-' + hero.heroClass);
+            }
+            this.closeEquipPopup();
+            const slots = [
+                { type: 'weapon', label: 'Weapon', invKey: 'weapons', fallbackIcon: '&#9876;&#65039;' },
+                { type: 'armor', label: 'Armor', invKey: 'armor', fallbackIcon: '&#128737;&#65039;' },
+                { type: 'shield', label: 'Shield', invKey: 'shields', fallbackIcon: '&#128737;&#65039;' },
+                { type: 'jewelry', label: 'Jewelry', invKey: 'jewelry', fallbackIcon: '&#128142;' }
+            ];
+            const container = document.getElementById('menu2-equip-slots');
+            if (!container) return;
+            container.innerHTML = '';
+            slots.forEach(s => {
+                const item = hero.equipment[s.type];
+                const iconPath = item ? getItemIconPath(item) : null;
+                const statBits = [];
+                if (item) {
+                    if (item.attack) statBits.push('ATK +' + item.attack);
+                    if (item.defense) statBits.push('DEF +' + item.defense);
+                    if (item.magic) statBits.push('MAG +' + item.magic);
+                }
+                const div = document.createElement('div');
+                div.className = 'menu2-slot';
+                div.innerHTML = `
+                    <div class="menu2-plusbtn">+</div>
+                    <div class="menu2-slotlabel">${s.label}</div>
+                    <div class="menu2-itemrow">
+                        <div class="menu2-icon">${iconPath ? `<img src="${iconPath}" onerror="this.parentElement.innerHTML='${s.fallbackIcon}'">` : s.fallbackIcon}</div>
+                        <div>
+                            <div class="menu2-iname${item ? '' : ' empty'}">${item ? item.name : 'Empty'}</div>
+                            ${item ? `<div class="menu2-istat">${statBits.join(' &middot; ')}</div>` : ''}
+                        </div>
+                    </div>
+                `;
+                div.onclick = () => this.openEquipSlotPopup(s.type, s.invKey);
+                container.appendChild(div);
+            });
+        }
+
+        /** Opens the popup listing every item this hero could equip in the
+         *  given slot (plus the currently equipped one, with an Unequip
+         *  option), color-coded by rarity via getItemRarity() - same
+         *  rarity/icon helpers already used by the shop screens. */
+        openEquipSlotPopup(slotType, invKey) {
+            const index = this.menuSelectedHeroIndex ?? 0;
+            const hero = this.party.heroes[index];
+            if (!hero) return;
+            if (!this.party.inventory[invKey]) this.party.inventory[invKey] = [];
+            const inventoryArray = this.party.inventory[invKey];
+            const equippedItem = hero.equipment[slotType];
+            const popup = document.getElementById('menu2-eqpopup');
+            const list = document.getElementById('menu2-eqpopup-list');
+            const title = document.getElementById('menu2-eqpopup-title');
+            if (!popup || !list) return;
+            title.textContent = 'Choose a ' + slotType.charAt(0).toUpperCase() + slotType.slice(1);
+            list.innerHTML = '';
+            if (equippedItem) {
+                list.appendChild(this.buildEquipPopupRow(equippedItem, true, true, () => this.unequipMenuItem(hero, slotType, invKey)));
+            }
+            inventoryArray.forEach((item, idx) => {
+                const canEquip = hero.canEquip(item);
+                list.appendChild(this.buildEquipPopupRow(item, false, canEquip, canEquip ? () => this.equipMenuItem(hero, slotType, invKey, idx) : null));
+            });
+            if (!equippedItem && inventoryArray.length === 0) {
+                list.innerHTML = '<div class="shop2-empty">Nothing available to equip here yet.</div>';
+            }
+            popup.classList.add('open');
+        }
+
+        buildEquipPopupRow(item, isEquipped, canEquip, onClick) {
+            const row = document.createElement('div');
+            const rarity = getItemRarity(item);
+            row.className = `menu2-poprow r-${rarity}` + (isEquipped ? ' equipped' : '');
+            row.style.opacity = canEquip ? '1' : '0.5';
+            const iconPath = getItemIconPath(item);
+            const statBits = [];
+            if (item.attack) statBits.push('ATK ' + item.attack);
+            if (item.defense) statBits.push('DEF ' + item.defense);
+            if (item.magic) statBits.push('MAG ' + item.magic);
+            let restriction = '';
+            if (!canEquip) {
+                if (item.type === 'shield') restriction = ' (Warrior/Paladin only)';
+                else if (item.mageOnly) restriction = ' (Mage only)';
+                else if (item.warriorOnly) restriction = ' (Warrior only)';
+                else if (item.paladinOnly) restriction = ' (Paladin only)';
+            }
+            row.innerHTML = `
+                <div class="menu2-icon">${iconPath ? `<img src="${iconPath}" onerror="this.parentElement.style.display='none'">` : ''}</div>
+                <div class="menu2-pname">${item.name}${restriction}${isEquipped ? '<span class="menu2-tag">EQUIPPED</span>' : ''}</div>
+                <div class="menu2-pstat">${isEquipped ? 'Unequip' : (canEquip ? statBits.join(' ') : '&#128274;')}</div>
+            `;
+            if (onClick) row.onclick = onClick;
+            return row;
+        }
+
+        closeEquipPopup() {
+            const popup = document.getElementById('menu2-eqpopup');
+            if (popup) popup.classList.remove('open');
+        }
+
+        unequipMenuItem(hero, slotType, invKey) {
+            const item = hero.equipment[slotType];
+            if (!item) return;
+            if (!this.party.inventory[invKey]) this.party.inventory[invKey] = [];
+            this.party.inventory[invKey].push(item);
+            hero.equipment[slotType] = null;
+            this.closeEquipPopup();
+            this.renderMenuEquipmentPanel();
+            this.ui.showPopup('Item Unequipped', item.name + ' removed.');
+            this.updateEquipmentUpgradeQuest();
+        }
+
+        equipMenuItem(hero, slotType, invKey, idx) {
+            if (!this.party.inventory[invKey]) this.party.inventory[invKey] = [];
+            const item = this.party.inventory[invKey][idx];
+            if (!item) return;
+            const oldItem = hero.equipment[slotType];
+            if (oldItem) this.party.inventory[invKey].push(oldItem);
+            hero.equipment[slotType] = item;
+            this.party.inventory[invKey].splice(idx, 1);
+            this.closeEquipPopup();
+            this.renderMenuEquipmentPanel();
+            this.ui.showPopup('Item Equipped', item.name + ' equipped on ' + hero.name + '.');
+            this.updateEquipmentUpgradeQuest();
+            if (this.achievements) this.achievements.report('item_equipped', { hero: hero, item: item });
         }
 
         /** Renders the standalone Spells panel for whichever hero is
@@ -22677,120 +22948,6 @@
             noteDiv.style.cssText = 'margin-top: 10px; padding: 8px; background: rgba(255,215,0,0.05); border-radius: 4px; border: 1px solid var(--border-color);';
             noteDiv.innerHTML = '<span style="color: #888; font-size: 11px;">💡 Click "Use" on healing spells to cast them outside battle</span>';
             spellsContainer.appendChild(noteDiv);
-        }
-
-        renderEquipmentList(type, hero, heroIndex) {
-            var container = document.getElementById('available-' + type);
-            if (!container) return;
-            container.innerHTML = '';
-            var slot = 'weapon';
-            if (type === 'armor') slot = 'armor';
-            else if (type === 'shields') slot = 'shield';
-            else if (type === 'jewelry') slot = 'jewelry';
-            var equippedItem = hero.equipment[slot];
-            if (equippedItem) {
-                var unequipDiv = document.createElement('div');
-                unequipDiv.className = 'shop-item';
-                unequipDiv.style.border = '2px solid #ffaa00';
-                unequipDiv.style.marginBottom = '10px';
-                unequipDiv.style.background = 'rgba(255,170,0,0.1)';
-                var stats = '';
-                if (equippedItem.attack) stats += 'ATK+' + equippedItem.attack + ' ';
-                if (equippedItem.defense) stats += 'DEF+' + equippedItem.defense + ' ';
-                if (equippedItem.magic) stats += 'MAG+' + equippedItem.magic + ' ';
-                unequipDiv.innerHTML = '<span><span style="color: #ffaa00;">➡️ EQUIPPED:</span> ' + equippedItem.name + ' <span style="color: #88ff88; font-size: 11px; margin-left: 5px;">' + stats + '</span></span><span class="item-price" style="color: #ffaa00;">❌ Unequip</span>';
-                unequipDiv.onclick = function() {
-                    if (type === 'shields') {
-                        if (!window.game.party.inventory.shields) window.game.party.inventory.shields = [];
-                        window.game.party.inventory.shields.push(equippedItem);
-                    } else if (type === 'jewelry') {
-                        if (!window.game.party.inventory.jewelry) window.game.party.inventory.jewelry = [];
-                        window.game.party.inventory.jewelry.push(equippedItem);
-                    } else {
-                        window.game.party.inventory[type].push(equippedItem);
-                    }
-                    hero.equipment[slot] = null;
-                    window.game.renderMenuEquipmentPanel();
-                    window.game.ui.showPopup('Item Unequipped', equippedItem.name + ' removed.');
-                    window.game.updateEquipmentUpgradeQuest();
-                };
-                container.appendChild(unequipDiv);
-                var separator = document.createElement('div');
-                separator.style.height = '2px';
-                separator.style.background = 'var(--border-color)';
-                separator.style.margin = '10px 0';
-                container.appendChild(separator);
-            }
-            var inventoryArray;
-            if (type === 'shields') {
-                if (!this.party.inventory.shields) this.party.inventory.shields = [];
-                inventoryArray = this.party.inventory.shields;
-            } else if (type === 'jewelry') {
-                if (!this.party.inventory.jewelry) this.party.inventory.jewelry = [];
-                inventoryArray = this.party.inventory.jewelry;
-            } else {
-                inventoryArray = this.party.inventory[type] || [];
-            }
-            if (!inventoryArray || inventoryArray.length === 0) {
-                var emptyDiv = document.createElement('div');
-                emptyDiv.className = 'shop-item';
-                var typeName = type === 'shields' ? 'shields' : type;
-                emptyDiv.innerHTML = '<span style="color: #888;">No ' + typeName + ' available</span>';
-                container.appendChild(emptyDiv);
-                return;
-            }
-            for (var idx = 0; idx < inventoryArray.length; idx++) {
-                var item = inventoryArray[idx];
-                var div = document.createElement('div');
-                div.className = 'shop-item';
-                var stats2 = '';
-                if (item.attack) stats2 += 'ATK+' + item.attack + ' ';
-                if (item.defense) stats2 += 'DEF+' + item.defense + ' ';
-                if (item.magic) stats2 += 'MAG+' + item.magic + ' ';
-                var canEquip = hero.canEquip(item);
-                var equipNote = '';
-                if (!canEquip) {
-                    if (item.type === 'shield') equipNote = ' (Warrior/Paladin only)';
-                    else if (item.mageOnly) equipNote = ' (Mage only)';
-                    else if (item.warriorOnly) equipNote = ' (Warrior only)';
-                    else if (item.paladinOnly) equipNote = ' (Paladin only)';
-                }
-                div.innerHTML = '<span>' + item.name + equipNote + ' <span style="color: #88ff88; font-size: 11px; margin-left: 5px;">' + stats2 + '</span></span><span class="item-price">' + (canEquip ? 'Equip' : '🔒') + '</span>';
-                if (canEquip) {
-                    div.onclick = (function(item, idx) {
-                        return function() {
-                            var oldItem = hero.equipment[slot];
-                            if (oldItem) {
-                                if (type === 'shields') {
-                                    if (!window.game.party.inventory.shields) window.game.party.inventory.shields = [];
-                                    window.game.party.inventory.shields.push(oldItem);
-                                } else if (type === 'jewelry') {
-                                    if (!window.game.party.inventory.jewelry) window.game.party.inventory.jewelry = [];
-                                    window.game.party.inventory.jewelry.push(oldItem);
-                                } else {
-                                    window.game.party.inventory[type].push(oldItem);
-                                }
-                            }
-                            hero.equipment[slot] = item;
-                            if (type === 'shields') {
-                                window.game.party.inventory.shields.splice(idx, 1);
-                            } else if (type === 'jewelry') {
-                                window.game.party.inventory.jewelry.splice(idx, 1);
-                            } else {
-                                window.game.party.inventory[type].splice(idx, 1);
-                            }
-                            window.game.renderMenuEquipmentPanel();
-                            window.game.ui.showPopup('Item Equipped', item.name + ' equipped on ' + hero.name + '.');
-                            window.game.updateEquipmentUpgradeQuest();
-                            if (window.game.achievements) window.game.achievements.report('item_equipped', { hero: hero, item: item });
-                        };
-                    })(item, idx);
-                } else {
-                    div.style.opacity = '0.5';
-                    div.style.cursor = 'not-allowed';
-                }
-                container.appendChild(div);
-            }
         }
 
         /** Fully restores the whole party's HP/MP and clears KO status,
