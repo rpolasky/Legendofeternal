@@ -4152,6 +4152,7 @@
             display: none;
             flex-direction: column;
             box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+            overflow-y: auto;
             z-index: 3;
         }
         .shop2-popup.open { display: flex; }
@@ -4159,14 +4160,15 @@
             position: absolute; top: 8px; right: 10px; font-size: 12px; color: #d8c8f5; cursor: pointer;
         }
         .shop2-artbox {
-            height: 110px;
+            height: 130px;
             background: rgba(255,255,255,0.05);
             border: 1px dashed rgba(255,215,0,0.4);
             border-radius: 8px;
             display: flex; align-items: center; justify-content: center;
             margin-bottom: 10px;
+            flex-shrink: 0;
         }
-        .shop2-artbox img { max-width: 64px; max-height: 64px; image-rendering: pixelated; }
+        .shop2-artbox img { width: 108px; height: 108px; object-fit: contain; image-rendering: pixelated; }
         .shop2-popup h4 { color: #ffd700; margin: 0 0 5px; font-size: 13px; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
         .shop2-popup .shop2-pdesc { color: #d3c6ee; font-size: 9.5px; margin-bottom: 8px; line-height: 1.35; }
         .shop2-stat-line { display: flex; justify-content: space-between; font-size: 10.5px; margin: 3px 0; color: #e5dcff; }
@@ -4463,7 +4465,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v117</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v118</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -4820,29 +4822,25 @@
                 <div class="shop2-popup" id="spellweaver-result" style="left:50%; right:auto; top:20px; bottom:20px; width:250px; transform:translateX(-50%);"></div>
             </div>
         </div>
-        <div id="guild-screen" class="screen menu-screen viewport-overlay" style="display: none; flex-direction: column; height: 100%; overflow: hidden;">
-            <div class="menu-header" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; border-bottom: 2px solid var(--border-color); background: rgba(0,0,0,0.2);">
-                <div style="display: flex; align-items: center; gap: 15px;">
-                    <h2 style="color: var(--highlight); font-size: 22px; margin: 0;">🏛️ GUILD HALL</h2>
-                    <button class="menu-button" onclick="window.game.exitGuild()" style="padding: 4px 15px; font-size: 13px;">🚪 Leave</button>
+        <div id="guild-screen" class="screen menu-screen viewport-overlay shop2" style="display: none; flex-direction: column; height: 100%; overflow: hidden; background-image: url('assets/shops/hall.jpg');">
+            <div class="shop2-hdr">
+                <div class="shop2-left">
+                    <div class="shop2-title">Guild Hall</div>
+                    <div class="shop2-desc">Quests, the Legendary Forge, and regional maps</div>
                 </div>
-                <div id="guild-gold" style="background: rgba(0,0,0,0.8); border: 2px solid var(--gold-color); padding: 5px 18px; color: var(--gold-color); font-size: 16px; font-weight: bold; border-radius: 6px;">💰 G: 0</div>
+                <div class="shop2-right">
+                    <span class="shop2-gold" id="guild-gold">G: 0</span>
+                    <div class="shop2-btn leave" onclick="window.game.exitGuild()">&#128682; Leave</div>
+                </div>
             </div>
-            
-            <div style="display: flex; flex: 1; gap: 15px; padding: 15px 20px; overflow: hidden;">
-                <div style="width: 180px; background: rgba(0,0,0,0.5); border: 2px solid var(--border-color); padding: 12px; overflow-y: auto; border-radius: 6px;">
-                    <h3 style="color: var(--highlight); margin-bottom: 12px; font-size: 14px;">NPCs</h3>
-                    <div id="npc-list"></div>
-                </div>
-                
-                <div style="flex: 1; background: rgba(0,0,0,0.5); border: 2px solid var(--border-color); padding: 12px; overflow-y: auto; border-radius: 6px;">
-                    <h3 style="color: var(--highlight); margin-bottom: 12px; font-size: 14px;">Quests</h3>
+            <div class="shop2-body" style="position: relative;">
+                <div class="shop2-rail" id="npc-list" style="width: 190px;"></div>
+                <div style="position: absolute; left: 200px; right: 300px; top: 20px; bottom: 20px; background: rgba(10,8,20,0.42); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid rgba(160,130,220,0.5); border-radius: 8px; padding: 10px; overflow-y: auto; z-index: 2;">
                     <div id="quest-list"></div>
                 </div>
-                
-                <div style="width: 280px; background: rgba(0,0,0,0.5); border: 2px solid var(--border-color); padding: 12px; overflow-y: auto; border-radius: 6px;">
+                <div style="position: absolute; right: 20px; top: 20px; bottom: 20px; width: 260px; background: rgba(10,8,20,0.42); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid rgba(160,130,220,0.5); border-radius: 8px; padding: 12px; overflow-y: auto; z-index: 2;">
                     <div id="quest-details">
-                        <p style="color: #8888bb; text-align: center;">Select a quest to view details</p>
+                        <div class="shop2-empty">Select a quest to view details</div>
                     </div>
                 </div>
             </div>
@@ -6417,7 +6415,7 @@
                 // horizontal row (not stacked vertically) specifically to avoid
                 // the roof-overhang collision below - see the note there.
                 { id: 'house1', x: 18, y: 5, w: 5, h: 5, icon: '🏠', label: 'Cabin', action: null },
-                { id: 'house6', x: 39, y: 13, w: 6, h: 4, icon: '🏠', label: 'Residence', action: null },
+                { id: 'house6', x: 39, y: 13, w: 6, h: 4, icon: '💰', label: 'Merchant', action: 'merchant' },
                 // Future-shop cluster: kept in the same row (all y=22) rather
                 // than stacked above/below each other or above Item Shop -
                 // building art is a complete sprite scaled to width and
@@ -16431,42 +16429,31 @@
         return _itemRarityLookup[item.name] || 'common';
     }
 
-    /** For the shop "vs equipped" comparison line: finds the first hero in
-     *  the party who could plausibly use this item (respecting class-only
-     *  restrictions) so a delta can be shown against their currently
-     *  equipped gear in the same slot. Returns null if no relevant hero. */
-    function findComparisonHero(party, item) {
-        if (!party || !party.heroes) return null;
-        return party.heroes.find(hero => {
-            if (hero.isDead && party.heroes.length > 1) return false;
-            if (item.warriorOnly && hero.heroClass !== 'warrior') return false;
-            if (item.mageOnly && hero.heroClass !== 'mage') return false;
-            if (item.paladinOnly && hero.heroClass !== 'paladin') return false;
-            return true;
-        }) || party.heroes[0] || null;
-    }
-
-    /** Builds the { label, stat, delta } comparison shown under an item's
-     *  stats in the shop detail popup, comparing the item's raw stat against
-     *  whatever the comparison hero currently has equipped in that slot. */
-    function getShopComparison(item, party) {
-        if (!item || !item.type) return null;
+    /** Builds one comparison row per party member for the shop detail
+     *  popup's "vs equipped" section: each hero is either unable to use the
+     *  item (class restriction), already has it equipped (+0), or shows the
+     *  raw stat delta against whatever they currently have in that slot. */
+    function getShopComparisonRows(item, party) {
+        if (!item || !item.type || !party || !party.heroes) return null;
         const slotMap = { weapon: 'weapon', armor: 'armor', shield: 'shield', jewelry: 'jewelry' };
         const slot = slotMap[item.type];
         if (!slot) return null;
-        const hero = findComparisonHero(party, item);
-        if (!hero || !hero.equipment) return null;
-        const equipped = hero.equipment[slot];
         const statKey = item.type === 'weapon' ? 'attack' : (item.magic && !item.defense ? 'magic' : 'defense');
-        const newVal = item[statKey] || 0;
-        const oldVal = equipped ? (equipped[statKey] || 0) : 0;
-        const delta = newVal - oldVal;
-        return {
-            heroName: hero.name,
-            equippedName: equipped ? equipped.name : 'nothing',
-            statKey: statKey,
-            delta: delta
-        };
+        return party.heroes.map(hero => {
+            const cantEquip = (item.warriorOnly && hero.heroClass !== 'warrior') ||
+                (item.mageOnly && hero.heroClass !== 'mage') ||
+                (item.paladinOnly && hero.heroClass !== 'paladin');
+            if (cantEquip) {
+                return { heroName: hero.name, status: 'cant_equip' };
+            }
+            const equipped = hero.equipment ? hero.equipment[slot] : null;
+            if (equipped && equipped.name === item.name) {
+                return { heroName: hero.name, status: 'equipped' };
+            }
+            const newVal = item[statKey] || 0;
+            const oldVal = equipped ? (equipped[statKey] || 0) : 0;
+            return { heroName: hero.name, status: 'delta', delta: newVal - oldVal };
+        });
     }
 
     class ShopSystem {
@@ -16720,14 +16707,22 @@
                     <div class="shop2-stat-line"><span>Power</span><span>${item.spell.power || 'N/A'}</span></div>`;
             }
             let comparisonHTML = '';
-            const comparison = getShopComparison(item, this.party);
-            if (comparison) {
-                const sign = comparison.delta > 0 ? '&#9650; +' : (comparison.delta < 0 ? '&#9660; ' : '');
-                const cls = comparison.delta > 0 ? 'shop2-stat-up' : (comparison.delta < 0 ? 'shop2-stat-down' : '');
-                comparisonHTML = `
-                    <div class="shop2-divider"></div>
-                    <div class="shop2-stat-line"><span>vs equipped (${comparison.equippedName})</span><span class="${cls}">${sign}${comparison.delta}</span></div>
-                `;
+            const compRows = getShopComparisonRows(item, this.party);
+            if (compRows && compRows.length) {
+                comparisonHTML += '<div class="shop2-divider"></div><div class="shop2-stat-line" style="color:#9d8bc9;"><span>vs equipped</span><span></span></div>';
+                compRows.forEach(row => {
+                    let valueHTML;
+                    if (row.status === 'cant_equip') {
+                        valueHTML = `<span style="color:#776a99;">Can't equip</span>`;
+                    } else if (row.status === 'equipped') {
+                        valueHTML = `<span style="color:#776a99;">Equipped +0</span>`;
+                    } else {
+                        const sign = row.delta > 0 ? '&#9650; +' : (row.delta < 0 ? '&#9660; ' : '');
+                        const cls = row.delta > 0 ? 'shop2-stat-up' : (row.delta < 0 ? 'shop2-stat-down' : '');
+                        valueHTML = `<span class="${cls}">${sign}${row.delta}</span>`;
+                    }
+                    comparisonHTML += `<div class="shop2-stat-line"><span>${row.heroName}</span>${valueHTML}</div>`;
+                });
             }
             const canAfford = this.party.gold >= item.price;
             const iconPath = getItemIconPath(item);
@@ -18355,7 +18350,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v117]');
+            console.log('Game starting... [build v118]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
@@ -19881,6 +19876,7 @@
                 case 'gemcrafter': this.enterGemCrafterShop(); break;
                 case 'spellweaver': this.enterSpellWeaverShop(); break;
                 case 'apothecary': this.enterApothecaryShop(); break;
+                case 'merchant': this.enterMerchantShop(); break;
             }
         }
 
@@ -20864,6 +20860,7 @@
                     <div style="margin-top: 15px;">
                         <p style="color: #888;">The king's quests lead to the main story. Complete them to progress!</p>
                     </div>
+                    <button class="menu-button" onclick="window.game.showBountyBoard()" style="margin-top: 15px; width: 100%; padding: 10px;">\u{1F4EF} Speak with the King's Herald (Bounties)</button>
                 </div>
             `;
             this.ui.showPopup(`Royal Audience - ${townName}`, menuHTML, true);
@@ -21629,21 +21626,24 @@
             const npcList = document.getElementById('npc-list');
             if (!npcList) return;
             npcList.innerHTML = '';
+            // Guild Hall now covers exactly three services - the Merchant
+            // (item upgrades), King's Herald (bounties), Wizard, Gem
+            // Crafter, and Apothecary all moved out to their own
+            // independent town buildings/screens.
             const npcs = [
-                { name: 'Guild Master', title: 'Quest Giver', icon: '👑', type: 'quest', dialogue: ["Welcome to the guild! I have quests for brave adventurers.", "Check the quest board for available contracts.", "Complete enough quests and you'll earn a reputation!"] },
-                { name: 'Merchant', title: 'Item Upgrader', icon: '💰', type: 'upgrade', dialogue: ["Bring me rare items and I can upgrade them!", "A legendary item plus gold becomes even more powerful.", "I can make your equipment stronger for a price."] },
-                { name: 'King\'s Herald', title: 'Bounty Giver', icon: '👑', type: 'bounty', dialogue: ["I place bounties on powerful monsters. Bring me proof!", "Defeat a Dragon and I'll reward you handsomely.", "Voraxis has a huge bounty on his head."] },
-                { name: 'Wizard', title: 'Spell Weaver', icon: '🔮', type: 'spellcraft', dialogue: ["I can combine spells to create new ones.", "Bring me two spells and I'll merge them.", "Fire and Ice can become something greater!"] },
-                { name: 'Explorer', title: 'Map Maker', icon: '🧭', type: 'map', dialogue: ["I can mark hidden locations on your map for a fee.", "For 200 gold, I'll reveal a secret cave.", "I've heard rumors of hidden treasures."] },
-                { name: 'Gem Crafter', title: 'Fragment Specialist', icon: '💎', type: 'crafting', dialogue: ["Bring me gem fragments and I'll craft powerful socket gems!", "Gems can be socketed into weapons AND armor now.", "Careful - if you pry a gem back out, you'll only recover part of the fragments."] },
-                { name: 'Apothecary', title: 'Potion Brewer', icon: '🧪', type: 'apothecary', dialogue: ["Don't sell me short - these old trophies make fine potions!", "A goblin ear and a bit of hide can go a long way in the right brew.", "I can whip up something for travel, luck, or a bit of peace and quiet."] },
-                { name: 'Shrine Keeper', title: 'Legendary Forge', icon: '⚔️', type: 'shrine', dialogue: ["Three heroes, three destinies, three weapons waiting to be found.", "Bring me the pieces as you find them - ore, tome, trial-won edge - and I'll shape them.", "A finished legendary weapon isn't just steel. It remembers what it took to make it."] }
+                { name: 'Quest Board', title: 'Available contracts', icon: '\u{1F4CB}', type: 'quest' },
+                { name: 'Shrine Keeper', title: 'Legendary Forge', icon: '\u2694\uFE0F', type: 'shrine' },
+                { name: 'Explorer', title: 'Map Maker', icon: '\u{1F9ED}', type: 'map' }
             ];
-            npcs.forEach(npc => {
+            npcs.forEach((npc, idx) => {
                 const div = document.createElement('div');
-                div.className = 'shop-item';
-                div.innerHTML = `<span>${npc.icon} ${npc.name}</span><span style="color: #888;">${npc.title}</span>`;
-                div.onclick = () => this.interactWithNPC(npc);
+                div.className = 'shop2-row' + (idx === 0 ? ' selected' : '');
+                div.innerHTML = `<div class="shop2-icon">${npc.icon}</div><div class="shop2-name">${npc.name}<div style="font-size:9px;color:#9d8bc9;">${npc.title}</div></div>`;
+                div.onclick = () => {
+                    document.querySelectorAll('#npc-list .shop2-row').forEach(el => el.classList.remove('selected'));
+                    div.classList.add('selected');
+                    this.interactWithNPC(npc);
+                };
                 npcList.appendChild(div);
             });
         }
@@ -21827,6 +21827,8 @@
             }
             this.updateGoldDisplays();
             this.ui.showPopup('Upgrade Successful!', `Your ${item.name} is now +${currentUpgrade + 1}!`);
+            this.shop.closeDetails();
+            if (this.craftUIMode === 'shop2') { this.renderMerchantRail(); }
         }
 
         showBountyBoard() {
@@ -22030,9 +22032,9 @@
             const tabsDiv = document.createElement('div');
             tabsDiv.style.cssText = 'display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid var(--border-color); padding-bottom: 10px; flex-wrap: wrap; justify-content: center;';
             tabsDiv.innerHTML = `
-                <button class="menu-button" onclick="window.game.showAvailableQuests()" style="padding: 5px 15px; font-size: 14px;">📋 Available Quests</button>
-                <button class="menu-button" onclick="window.game.showActiveQuests()" style="padding: 5px 15px; font-size: 14px;">⚔️ Active Quests</button>
-                <button class="menu-button" onclick="window.game.showCompletedQuests()" style="padding: 5px 15px; font-size: 14px;">✅ Completed</button>
+                <button class="menu-button" onclick="window.game.showAvailableQuests()" style="padding: 4px 8px; font-size: 11px;">📋 Available</button>
+                <button class="menu-button" onclick="window.game.showActiveQuests()" style="padding: 4px 8px; font-size: 11px;">⚔️ Active</button>
+                <button class="menu-button" onclick="window.game.showCompletedQuests()" style="padding: 4px 8px; font-size: 11px;">✅ Completed</button>
             `;
             questList.appendChild(tabsDiv);
             const contentDiv = document.createElement('div');
@@ -22381,6 +22383,81 @@
                 <div class="shop2-stat-line"><span>Requires</span><span style="color:#ffc35c;">${costParts.join(', ')}</span></div>
                 <div class="shop2-actionbtn${canBrew ? '' : ' disabled'}" onclick="${canBrew ? `window.game.brewPotion('${recipe.id}')` : ''}">
                     ${canBrew ? 'Brew' : 'Missing ingredients'}
+                </div>
+            `;
+            details.classList.add('open');
+        }
+
+        enterMerchantShop() {
+            this.craftUIMode = 'shop2';
+            document.getElementById('shop-name').textContent = 'Merchant';
+            document.getElementById('shop-description').textContent = 'Upgrade your rare and legendary gear';
+            document.getElementById('shop-gold').textContent = `G: ${this.party.gold}`;
+            const tabs = document.getElementById('shop-buysell-tabs');
+            if (tabs) tabs.style.display = 'none';
+            const screenEl = document.getElementById('shop-screen');
+            if (screenEl) screenEl.style.backgroundImage = "url('assets/shops/shop.jpg')";
+            this.shop.closeDetails();
+            this.renderMerchantRail();
+            this.state.switchScreen('shop');
+        }
+
+        renderMerchantRail() {
+            const container = document.getElementById('shop-items');
+            if (!container) return;
+            container.innerHTML = '';
+            const upgradableItems = [];
+            this.party.inventory.weapons.forEach((item, index) => {
+                if (item.price >= 300) {
+                    upgradableItems.push({ ...item, category: 'weapons', index: index, upgradeCost: Math.floor(item.price * 0.7) });
+                }
+            });
+            this.party.inventory.armor.forEach((item, index) => {
+                if (item.price >= 300) {
+                    upgradableItems.push({ ...item, category: 'armor', index: index, upgradeCost: Math.floor(item.price * 0.7) });
+                }
+            });
+            this.currentUpgradableItems = upgradableItems;
+            if (upgradableItems.length === 0) {
+                container.innerHTML = '<div class="shop2-empty">No items worth upgrading yet - bring rare or legendary gear (300G+ value).</div>';
+                return;
+            }
+            upgradableItems.forEach((item, idx) => {
+                const currentUpgrade = item.upgradeLevel || 0;
+                const maxUpgrade = item.maxUpgrade || 3;
+                const maxedOut = currentUpgrade >= maxUpgrade;
+                const canAfford = this.party.gold >= item.upgradeCost;
+                const iconPath = getItemIconPath(item);
+                const row = document.createElement('div');
+                row.className = `shop2-row r-${getItemRarity(item)}`;
+                row.style.opacity = (maxedOut || !canAfford) ? '0.5' : '1';
+                row.innerHTML = `
+                    <div class="shop2-icon">${iconPath ? `<img src="${iconPath}" onerror="this.parentElement.style.display='none'">` : ''}</div>
+                    <div class="shop2-name">${item.name} <span style="color:#9d8bc9;">+${currentUpgrade}</span></div>
+                    <span class="shop2-price">${maxedOut ? 'MAX' : item.upgradeCost + ' G'}</span>
+                `;
+                row.onclick = () => this.selectMerchantItem(item, idx, maxedOut, canAfford);
+                container.appendChild(row);
+            });
+        }
+
+        selectMerchantItem(item, idx, maxedOut, canAfford) {
+            const details = document.getElementById('shop-details');
+            if (!details) return;
+            const currentUpgrade = item.upgradeLevel || 0;
+            const upgradeStats = UPGRADE_BENEFITS[item.category === 'weapons' ? 'weapon' : 'armor'];
+            const iconPath = getItemIconPath(item);
+            const canUpgrade = !maxedOut && canAfford;
+            details.innerHTML = `
+                <div class="shop2-close" onclick="window.game.shop.closeDetails()">&#10005;</div>
+                <div class="shop2-artbox">${iconPath ? `<img src="${iconPath}" onerror="this.parentElement.style.display='flex';this.style.display='none'">` : ''}</div>
+                <h4>${item.name} +${currentUpgrade}</h4>
+                <div class="shop2-pdesc">${item.desc || ''}</div>
+                <div class="shop2-stat-line"><span>Next level grants</span><span class="shop2-stat-up">+${upgradeStats.attack || upgradeStats.defense}${upgradeStats.magic ? ` / +${upgradeStats.magic} MAG` : ''}</span></div>
+                <div class="shop2-divider"></div>
+                <div class="shop2-stat-line"><span>Cost</span><span style="color:#ffc35c;">${maxedOut ? 'Maxed out' : item.upgradeCost + ' G'}</span></div>
+                <div class="shop2-actionbtn${canUpgrade ? '' : ' disabled'}" onclick="${canUpgrade ? `window.game.upgradeItem(${idx})` : ''}">
+                    ${maxedOut ? 'Max upgrade reached' : (canAfford ? 'Upgrade' : 'Not enough gold')}
                 </div>
             `;
             details.classList.add('open');
