@@ -4160,15 +4160,15 @@
             position: absolute; top: 8px; right: 10px; font-size: 12px; color: #d8c8f5; cursor: pointer;
         }
         .shop2-artbox {
-            height: 130px;
+            height: 98px;
             background: rgba(255,255,255,0.05);
             border: 1px dashed rgba(255,215,0,0.4);
             border-radius: 8px;
             display: flex; align-items: center; justify-content: center;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             flex-shrink: 0;
         }
-        .shop2-artbox img { width: 108px; height: 108px; object-fit: contain; image-rendering: pixelated; }
+        .shop2-artbox img { width: 81px; height: 81px; object-fit: contain; image-rendering: pixelated; }
         .shop2-popup h4 { color: #ffd700; margin: 0 0 5px; font-size: 13px; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
         .shop2-popup .shop2-pdesc { color: #d3c6ee; font-size: 9.5px; margin-bottom: 8px; line-height: 1.35; }
         .shop2-stat-line { display: flex; justify-content: space-between; font-size: 10.5px; margin: 3px 0; color: #e5dcff; }
@@ -4591,7 +4591,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v120</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v121</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -18456,7 +18456,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v120]');
+            console.log('Game starting... [build v121]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
