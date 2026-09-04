@@ -3459,6 +3459,90 @@
             }
         }
 
+        /* ====================================================================== */
+        /*                      TREASURE REVEAL POPUP                             */
+        /* ====================================================================== */
+        /* Replaces the plain text "Chest Opened! / Treasure Vault!" popups with
+           a themed reveal - chest/hoard art, a gold-count headline, an item
+           list, and a chunky primary action button - reusing the existing
+           #popup-overlay/.popup-box shell (see showTreasureReveal()) rather
+           than building a whole new overlay system. */
+        .treasure-reveal {
+            text-align: center;
+            /* .popup-box .message sets white-space: pre-line for plain-text
+             * popups (so \n in a message string becomes a real line break) -
+             * inherited here it was turning every newline/indentation
+             * whitespace in this template literal into a forced blank line,
+             * which is what was pushing the button ~150px below the fold on
+             * a short viewport. This block's content is real HTML elements,
+             * not \n-formatted text, so reset to normal wrapping. */
+            white-space: normal;
+        }
+        .treasure-reveal-img {
+            display: block;
+            margin: 0 auto 8px;
+            max-width: 30vh;
+            max-height: 22vh;
+            width: auto;
+            height: auto;
+            filter: drop-shadow(0 8px 20px rgba(255, 200, 60, 0.35));
+            animation: treasureRevealPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        @keyframes treasureRevealPop {
+            0% { transform: scale(0.6) rotate(-4deg); opacity: 0; }
+            70% { transform: scale(1.08) rotate(2deg); opacity: 1; }
+            100% { transform: scale(1) rotate(0); }
+        }
+        .treasure-reveal-headline {
+            font-size: clamp(13px, 3vh, 18px);
+            color: var(--highlight, #ffd700);
+            font-weight: bold;
+            margin-bottom: 6px;
+            text-shadow: 0 0 12px rgba(255, 215, 0, 0.5);
+        }
+        .treasure-reveal-gold {
+            font-size: clamp(15px, 3.5vh, 22px);
+            color: #ffd700;
+            font-weight: bold;
+            margin: 4px 0;
+        }
+        .treasure-reveal-items {
+            font-size: clamp(10px, 2.2vh, 13px);
+            color: #d8c8ff;
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+            padding: 6px 10px;
+            margin: 6px 0;
+            line-height: 1.4;
+        }
+        .treasure-reveal-btn {
+            display: block;
+            width: 100%;
+            margin-top: 8px;
+            padding: clamp(8px, 2vh, 12px);
+            font-size: clamp(12px, 2.6vh, 15px);
+            font-weight: bold;
+            color: #241505;
+            background: linear-gradient(180deg, #ffe27a, #ffb700);
+            border: 1px solid #a5760a;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 3px 0 #a5760a, 0 4px 12px rgba(0,0,0,0.4);
+        }
+        .treasure-reveal-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #a5760a; }
+        .treasure-reveal-btn-secondary {
+            display: block;
+            width: 100%;
+            margin-top: 6px;
+            padding: clamp(7px, 1.6vh, 10px);
+            font-size: clamp(11px, 2.2vh, 13px);
+            color: var(--text-color, #e0d0ff);
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,215,0,0.35);
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
         .popup-box h3 {
             color: var(--highlight);
             margin-bottom: 15px;
@@ -4852,7 +4936,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v128</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v129</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -19413,7 +19497,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v128]');
+            console.log('Game starting... [build v129]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
@@ -20672,6 +20756,49 @@
          *  opening a menu. Only plays once per screen per session
          *  (see this.seenShopWelcome); after the first visit it skips
          *  straight to onEnterScreen so repeat trips aren't slowed down. */
+        /** Themed replacement for the old plain-text "Chest Opened!"/
+         *  "Treasure Vault!" popups - chest/hoard art, a gold headline, an
+         *  item list, and a chunky primary action button, reusing the
+         *  existing popup-overlay shell rather than a whole new system.
+         *  opts: { title, imageSrc, headline, gold, items: [names],
+         *  primaryLabel, onPrimary, secondaryLabel, onSecondary }. Gold/
+         *  items are assumed already granted by the caller (same as the
+         *  old popups) - the buttons here are about closing out the
+         *  moment and optionally taking a follow-up action (e.g. leaving
+         *  the dungeon), not gating the reward itself. */
+        showTreasureReveal(opts) {
+            const itemsHTML = (opts.items && opts.items.length)
+                ? `<div class="treasure-reveal-items">Found: ${opts.items.join(', ')}</div>`
+                : '';
+            const goldHTML = opts.gold
+                ? `<div class="treasure-reveal-gold">💰 ${opts.gold.toLocaleString()} Gold</div>`
+                : '';
+            const secondaryHTML = opts.secondaryLabel
+                ? `<button class="treasure-reveal-btn-secondary" id="treasure-reveal-secondary-btn">${opts.secondaryLabel}</button>`
+                : '';
+            const html = `
+                <div class="treasure-reveal">
+                    <img class="treasure-reveal-img" src="${opts.imageSrc}" alt="" onerror="this.style.display='none'">
+                    <div class="treasure-reveal-headline">${opts.headline || 'Wow! You found treasure!'}</div>
+                    ${goldHTML}
+                    ${itemsHTML}
+                    <button class="treasure-reveal-btn" id="treasure-reveal-primary-btn">${opts.primaryLabel || '✨ Take All the Treasure!'}</button>
+                    ${secondaryHTML}
+                </div>
+            `;
+            this.ui.showPopup(opts.title || 'Treasure!', html, true);
+            const primaryBtn = document.getElementById('treasure-reveal-primary-btn');
+            if (primaryBtn) primaryBtn.onclick = () => {
+                this.ui.closePopup();
+                if (opts.onPrimary) opts.onPrimary();
+            };
+            const secondaryBtn = document.getElementById('treasure-reveal-secondary-btn');
+            if (secondaryBtn) secondaryBtn.onclick = () => {
+                this.ui.closePopup();
+                if (opts.onSecondary) opts.onSecondary();
+            };
+        }
+
         showShopWelcome(key, onEnterScreen) {
             const greeter = SHOP_GREETERS[key];
             if (!greeter || (this.seenShopWelcome && this.seenShopWelcome.has(key))) {
@@ -21235,8 +21362,13 @@
             }
             this.updateQuestProgress('treasure_find', 1, null, { location: this.dungeonMap ? this.dungeonMap.locationName : null });
             this.updateQuestProgress('retrieve_item', 1, null, { location: this.dungeonMap ? this.dungeonMap.locationName : null });
-            const itemsText = foundNames.length ? `\nFound: ${foundNames.join(', ')}` : '';
-            this.ui.showPopup('🎁 Chest Opened!', `You found ${goldFound} gold!${itemsText}`);
+            this.showTreasureReveal({
+                title: '🎁 Chest Opened!',
+                imageSrc: 'assets/treasure/chest_reveal.png',
+                headline: 'Wow! You found treasure!',
+                gold: goldFound,
+                items: foundNames
+            });
             this.checkDungeonProximity();
         }
 
@@ -21266,7 +21398,16 @@
             }
             this.updateQuestProgress('treasure_find', 1, null, { location: this.dungeonMap ? this.dungeonMap.locationName : null });
             this.updateQuestProgress('retrieve_item', 1, null, { location: this.dungeonMap ? this.dungeonMap.locationName : null });
-            this.ui.showPopup('🌟 Treasure Vault!', `You found ${goldFound} gold!\nFound: ${foundNames.join(', ')}`);
+            this.showTreasureReveal({
+                title: '🌟 Treasure Vault!',
+                imageSrc: 'assets/treasure/vault_reveal.png',
+                headline: "You've found the hoard!",
+                gold: goldFound,
+                items: foundNames,
+                primaryLabel: '✨ Take All the Treasure!',
+                secondaryLabel: '🚪 Exit the Dungeon',
+                onSecondary: () => this.exitLocation()
+            });
             this.checkDungeonProximity();
         }
 
@@ -23249,33 +23390,36 @@
         findCaveTreasure() {
             let goldFound = 500;
             this.updateQuestProgress('treasure_find', 1);
-            if (Math.random() < 0.1) {
-                goldFound = 1000;
-                this.ui.showPopup('🌟 MASSIVE TREASURE!', `You found a glittering chest with ${goldFound} gold!`);
-            } else {
-                this.ui.showPopup('Treasure Found!', `You found a chest with ${goldFound} gold!`);
-            }
+            const isMassive = Math.random() < 0.1;
+            if (isMassive) goldFound = 1000;
             this.audio.play('coin');
             this.party.gold += goldFound;
             this.updateGoldDisplays();
+            // Consolidated into one reveal instead of the old pattern of
+            // firing a gold popup immediately followed by a second item
+            // popup - since showPopup() just overwrites whatever's already
+            // showing, that second call was silently replacing the gold
+            // popup before the player had a chance to read it.
+            let droppedItem = null;
             if (Math.random() < 0.25) {
                 const itemRoll = Math.random();
-                let droppedItem = null;
                 const lootTable = LOOT_TABLES[getCurrentLootQuadrant()] || LOOT_TABLES.brighthollow;
                 if (itemRoll < 0.1 && lootTable.legendary && lootTable.legendary.length > 0) {
                     droppedItem = lootTable.legendary[Math.floor(Math.random() * lootTable.legendary.length)];
-                    this.ui.showPopup('Legendary Item!', `You found a legendary ${droppedItem.name}!`);
                 } else if (itemRoll < 0.3 && lootTable.rare && lootTable.rare.length > 0) {
                     droppedItem = lootTable.rare[Math.floor(Math.random() * lootTable.rare.length)];
-                    this.ui.showPopup('Rare Item!', `You found a rare ${droppedItem.name}!`);
                 } else if (lootTable.uncommon && lootTable.uncommon.length > 0) {
                     droppedItem = lootTable.uncommon[Math.floor(Math.random() * lootTable.uncommon.length)];
-                    this.ui.showPopup('Item Found!', `You found ${droppedItem.name}!`);
                 }
-                if (droppedItem) {
-                    this.party.addItem({ ...droppedItem });
-                }
+                if (droppedItem) this.party.addItem({ ...droppedItem });
             }
+            this.showTreasureReveal({
+                title: isMassive ? '🌟 MASSIVE TREASURE!' : '🎁 Chest Opened!',
+                imageSrc: 'assets/treasure/chest_reveal.png',
+                headline: isMassive ? 'Wow! A glittering chest!' : 'Wow! You found treasure!',
+                gold: goldFound,
+                items: droppedItem ? [droppedItem.name] : []
+            });
         }
 
         openGuild() {
