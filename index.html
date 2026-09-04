@@ -4810,7 +4810,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v123</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v124</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -6241,6 +6241,37 @@
         if (screen === 'world') return 'whispering_woods';
         return '_fallback';
     }
+
+    /** Greeter NPC + welcome line for each shop/guild entry point, used by
+     *  Game.showShopWelcome() to play a short dialogue exchange before the
+     *  actual shop/guild screen opens. Several shopkeepers reuse the same
+     *  portrait (e.g. 'wizard' for the Magic Shop, Gem Crafter, and Spell
+     *  Weaver) since there's no bespoke art per crafting specialist yet -
+     *  swap these out individually once dedicated portraits exist. */
+    const SHOP_GREETERS = {
+        guild: { npcName: 'Guild Master', portraitKey: 'guildmaster', backgroundKey: 'guild_hall',
+            text: "Welcome to the Adventurer's Guild! Here you'll find the Quest Board for new contracts, the Shrine Keeper to forge your legendary weapons, and our Explorer to help you find secrets on the map." },
+        gemcrafter: { npcName: 'Gem Crafter', portraitKey: 'wizard', backgroundKey: 'shop_interior',
+            text: "Bring me your fragments, and I'll fuse them into gems fit to socket in your finest gear." },
+        apothecary: { npcName: 'Apothecary', portraitKey: 'elder', backgroundKey: 'shop_interior',
+            text: "I brew tinctures and potions from whatever trophies you bring back from your travels. Let's see what we can make." },
+        merchant: { npcName: 'Merchant', portraitKey: 'merchant', backgroundKey: 'shop_interior',
+            text: "Ah, a customer! I can upgrade your rare and legendary gear - bring it here and I'll make it shine." },
+        spellweaver: { npcName: 'Spell Weaver', portraitKey: 'wizard', backgroundKey: 'wizard_tower',
+            text: "Two spells, woven into one - that is my craft. Show me what you know, and let's see what we can combine." },
+        weapon: { npcName: 'Blacksmith', portraitKey: 'blacksmith', backgroundKey: 'shop_interior',
+            text: "Looking to arm yourself? Every blade here is forged to hold an edge in battle." },
+        armor: { npcName: 'Armorer', portraitKey: 'soldier', backgroundKey: 'shop_interior',
+            text: "Good armor is the difference between a scar and a grave. Let's find something that fits." },
+        magic: { npcName: 'Arcanist', portraitKey: 'wizard', backgroundKey: 'shop_interior',
+            text: "Ah, a spellcaster! Come, let me show you what the arcane has to offer." },
+        item: { npcName: 'Shopkeep', portraitKey: 'villager', backgroundKey: 'shop_interior',
+            text: "Potions, supplies, the essentials - everything an adventurer forgets to pack." },
+        shield: { npcName: 'Blacksmith', portraitKey: 'blacksmith', backgroundKey: 'shop_interior',
+            text: "A good shield has saved more lives than any sword. Have a look." },
+        jewelry: { npcName: 'Jeweler', portraitKey: 'merchant', backgroundKey: 'shop_interior',
+            text: "Rings, charms, trinkets with a bit of magic worked into them - take your pick." }
+    };
 
     // =====================================================================
     //                     TOWNSFOLK DATA (shared)
@@ -19033,6 +19064,11 @@
             this.shop = new ShopSystem();
             this.ui = new UIManager();
             this.dialogue = new DialogueManager();
+            // Tracks which shop/guild "welcome" dialogues have already
+            // played this session, so returning to the Guild Hall (or any
+            // shop) for the tenth time doesn't replay the same greeting -
+            // see showShopWelcome(). Intentionally session-only, not saved.
+            this.seenShopWelcome = new Set();
             this.audio = new AudioManager();
             this.isSelling = false;
             // Default before any town has actually been visited - was previously
@@ -19126,7 +19162,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v123]');
+            console.log('Game starting... [build v124]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
@@ -19458,7 +19494,7 @@
         }
 
         enterShop(type) {
-            this.shop.enter(type, this.party);
+            this.showShopWelcome(type, () => { this.shop.enter(type, this.party); });
         }
 
         enterInn() {
@@ -20348,6 +20384,32 @@
          *  buildQuestLines() for callers that are inside a choice action. */
         presentQuestInDialogue(dm, opts) {
             dm.continueWith(this.buildQuestLines(opts));
+        }
+
+        /** Plays a short welcome exchange with a shop/guild's greeter NPC
+         *  before handing off to whatever function actually opens that
+         *  screen (onEnterScreen) - used by openGuild/enterShop/etc. so
+         *  walking into any shop feels like meeting someone rather than
+         *  opening a menu. Only plays once per screen per session
+         *  (see this.seenShopWelcome); after the first visit it skips
+         *  straight to onEnterScreen so repeat trips aren't slowed down. */
+        showShopWelcome(key, onEnterScreen) {
+            const greeter = SHOP_GREETERS[key];
+            if (!greeter || (this.seenShopWelcome && this.seenShopWelcome.has(key))) {
+                onEnterScreen();
+                return;
+            }
+            this.seenShopWelcome.add(key);
+            const lead = this.party && this.party.heroes && this.party.heroes[0];
+            const lines = [
+                { speaker: greeter.npcName, portraitKey: greeter.portraitKey, side: 'left', text: greeter.text }
+            ];
+            if (lead) lines.push({ speaker: lead.name, portraitKey: lead.heroClass, side: 'right', text: 'Good to know. Let\'s take a look.' });
+            this.dialogue.start({
+                background: greeter.backgroundKey,
+                lines,
+                onEnd: onEnterScreen
+            });
         }
 
         // Legacy popup-driven accept/complete - kept for the bounty board
@@ -22885,6 +22947,10 @@
         }
 
         openGuild() {
+            this.showShopWelcome('guild', () => this._openGuildScreen());
+        }
+
+        _openGuildScreen() {
             this.state.switchScreen('guild');
             this.renderGuild();
             setTimeout(() => {
@@ -23102,6 +23168,10 @@
         // =================================================================
 
         enterGemCrafterShop() {
+            this.showShopWelcome('gemcrafter', () => this._openGemCrafterShop());
+        }
+
+        _openGemCrafterShop() {
             this.craftUIMode = 'shop2';
             const colors = Object.keys(GEM_FRAGMENT_INFO);
             this.selectedGemColorTab = this.selectedGemColorTab || colors[0];
@@ -23208,6 +23278,10 @@
         }
 
         enterApothecaryShop() {
+            this.showShopWelcome('apothecary', () => this._openApothecaryShop());
+        }
+
+        _openApothecaryShop() {
             this.craftUIMode = 'shop2';
             document.getElementById('shop-name').textContent = 'Apothecary';
             document.getElementById('shop-description').textContent = 'Brew potions from monster trophies';
@@ -23267,6 +23341,10 @@
         }
 
         enterMerchantShop() {
+            this.showShopWelcome('merchant', () => this._openMerchantShop());
+        }
+
+        _openMerchantShop() {
             this.craftUIMode = 'shop2';
             document.getElementById('shop-name').textContent = 'Merchant';
             document.getElementById('shop-description').textContent = 'Upgrade your rare and legendary gear';
@@ -23342,6 +23420,10 @@
         }
 
         enterSpellWeaverShop() {
+            this.showShopWelcome('spellweaver', () => this._openSpellWeaverShop());
+        }
+
+        _openSpellWeaverShop() {
             const availableSpells = [];
             this.party.heroes.forEach((hero, heroIndex) => {
                 hero.spells.forEach(spell => {
