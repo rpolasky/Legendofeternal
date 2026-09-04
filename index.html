@@ -3174,7 +3174,7 @@
             right: 3%;
             display: flex;
             gap: 8px;
-            z-index: 3;
+            z-index: 5;
         }
         .dialogue-icon-btn {
             width: clamp(26px, 4vw, 34px);
@@ -3203,10 +3203,15 @@
         }
         .dialogue-history-panel {
             position: absolute;
-            top: 3%;
+            /* Starts below the topbar icon row (not overlapping it) so
+             * History/Auto/Skip stay visible and tappable while the panel
+             * is open - previously this sat at the same top:3% as the
+             * topbar with a higher z-index, silently covering the very
+             * buttons needed to close it. */
+            top: calc(3% + 42px);
             right: 3%;
             width: min(78%, 420px);
-            max-height: 60%;
+            max-height: 50%;
             overflow-y: auto;
             background: rgba(8,6,16,0.92);
             border: 1px solid rgba(255,215,0,0.35);
@@ -3218,6 +3223,14 @@
             color: var(--text-color, #e0d0ff);
         }
         .dialogue-history-panel.visible { display: block; }
+        .dialogue-history-close-hint {
+            text-align: center;
+            color: rgba(255,215,0,0.7);
+            font-size: 10px;
+            padding-bottom: 6px;
+            margin-bottom: 6px;
+            border-bottom: 1px solid rgba(255,215,0,0.2);
+        }
         .dialogue-history-line { margin: 0 0 8px 0; line-height: 1.4; }
         .dialogue-history-line b { color: var(--highlight, #ffd700); }
         .dialogue-box {
@@ -4839,7 +4852,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v127</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v128</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -17774,6 +17787,16 @@
             this._boundKeyHandler = (e) => this.handleKey(e);
             const catcher = document.getElementById('dialogue-click-catcher');
             if (catcher) catcher.addEventListener('click', () => this.advance());
+            // The history panel sits visually on top of the click-catcher
+            // (higher z-index, so its choice buttons/scroll are usable) -
+            // that also means taps landing directly on the panel never
+            // reach the catcher's own listener above. Without this, "tap
+            // anywhere to close" was only true for the area OUTSIDE the
+            // panel; tapping the panel itself (the most natural place to
+            // tap) did nothing, which is exactly what read as the game
+            // being stuck.
+            const historyPanel = document.getElementById('dialogue-history-panel');
+            if (historyPanel) historyPanel.addEventListener('click', () => this.advance());
         }
 
         /** Entry point. opts = { background, lines: [{speaker, portraitKey,
@@ -17973,7 +17996,15 @@
          *  index, never both in the same call. */
         advance() {
             if (!this.isOpen) return;
-            if (this.historyOpen) return; // history panel swallows taps while open
+            // Tapping anywhere while the history panel is open closes it,
+            // rather than silently swallowing the tap - a stuck-feeling
+            // dead end was exactly the bug report here: history had no way
+            // to close except tapping the exact same small icon again, and
+            // that icon could end up hidden behind the panel's own z-index
+            // (see the CSS fix alongside this). This never advances the
+            // conversation itself - just dismisses history and returns
+            // control to wherever the player already was.
+            if (this.historyOpen) { this.setHistoryVisible(false); return; }
             const current = this.lines[this.index];
             if (current && current.choices && current.choices.length && !this.isTyping) return; // must pick a button
             if (this.isTyping) {
@@ -18042,9 +18073,10 @@
         renderHistory() {
             const panel = document.getElementById('dialogue-history-panel');
             if (!panel) return;
-            panel.innerHTML = this.history.map(h =>
-                `<div class="dialogue-history-line"><b>${h.speaker}</b><br>${h.text}</div>`
-            ).join('');
+            panel.innerHTML = '<div class="dialogue-history-close-hint">▼ tap anywhere to close ▼</div>' +
+                this.history.map(h =>
+                    `<div class="dialogue-history-line"><b>${h.speaker}</b><br>${h.text}</div>`
+                ).join('');
             panel.scrollTop = panel.scrollHeight;
         }
 
@@ -19381,7 +19413,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v127]');
+            console.log('Game starting... [build v128]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
