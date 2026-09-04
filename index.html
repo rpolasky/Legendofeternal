@@ -4839,7 +4839,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v126</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v127</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -6236,9 +6236,12 @@
 
     /** Best-effort portrait key for a wandering-world or townsfolk NPC that
      *  has no bespoke art of its own yet - looks at the NPC's icon/sprite
-     *  emoji and name for a hint, otherwise falls back to a generic
-     *  villager. Keeps every existing NPC visually presentable in the new
-     *  dialogue scene without requiring per-NPC art up front. */
+     *  emoji and name for a hint. Anything that doesn't match a specific
+     *  role gets a deterministic (same name -> same portrait every time)
+     *  pick from the generic pool instead of all landing on the same
+     *  villager portrait - different one-off NPCs ("Royal Herald", "Toran",
+     *  "Ancient Spirit", etc.) now actually look like different people. */
+    const GENERIC_NPC_PORTRAIT_POOL = ['villager', 'blacksmith', 'wizard', 'explorer', 'soldier', 'elder', 'priest', 'bard', 'merchant'];
     function portraitKeyForNPC(npc) {
         if (!npc) return DIALOGUE_PORTRAITS._fallback ? '_fallback' : null;
         const name = (npc.name || '').toLowerCase();
@@ -6252,7 +6255,12 @@
         if (/elder|old|prospector/i.test(name) || sprite === '👴') return 'elder';
         if (/priest|cleric|shrine/i.test(name) || sprite === '⛪') return 'priest';
         if (/bard|musician/i.test(name)) return 'bard';
-        return 'villager';
+        // No role match - hash the name to a stable index into the pool
+        // rather than defaulting everyone to 'villager'.
+        let hash = 0;
+        for (let i = 0; i < name.length; i++) { hash = (hash * 31 + name.charCodeAt(i)) | 0; }
+        const idx = Math.abs(hash) % GENERIC_NPC_PORTRAIT_POOL.length;
+        return GENERIC_NPC_PORTRAIT_POOL[idx];
     }
 
     /** Best-effort background key for wherever a conversation is currently
@@ -12201,20 +12209,24 @@
                 });
             }
 
-            // Cosmetic wandering villagers (non-interactive, purely for atmosphere)
+            // Ambient townsfolk (non-interactive, purely for atmosphere) -
+            // used to be pixel-art figures pacing back and forth between
+            // two points; now standalone portrait tokens parked at a fixed
+            // spot instead, matching every other NPC's "standalone, no
+            // walking" treatment. Cycled deterministically through the
+            // generic portrait pool by index so a town full of them isn't
+            // all the same face.
             if (townMap.wanderers) {
                 townMap.wanderers.forEach((w, i) => {
-                    const cyclePos = Math.sin(time * w.speed + i);
-                    const t = (cyclePos + 1) / 2;
-                    const wx = (w.x1 + (w.x2 - w.x1) * t) * ts;
-                    const wy = (w.y1 + (w.y2 - w.y1) * t) * ts;
-                    const movingRight = Math.cos(time * w.speed + i) * (w.x2 - w.x1) >= 0;
+                    const wx = ((w.x1 + w.x2) / 2) * ts;
+                    const wy = ((w.y1 + w.y2) / 2) * ts;
+                    const portraitKey = GENERIC_NPC_PORTRAIT_POOL[i % GENERIC_NPC_PORTRAIT_POOL.length];
+                    if (drawNpcPortraitToken(ctx, wx, wy, ts, portraitKey, { time, seed: i * 5 })) return;
                     const wPal = getNPCPalette('wanderer' + i);
                     drawPixelPerson(ctx, wx, wy, ts, {
                         ...wPal,
                         prop: w.icon,
-                        facing: (w.x1 === w.x2) ? 'down' : (movingRight ? 'right' : 'left'),
-                        moving: true,
+                        facing: 'down',
                         time,
                         seed: i * 5
                     });
@@ -19369,7 +19381,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v126]');
+            console.log('Game starting... [build v127]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
@@ -19438,18 +19450,33 @@
 
         /** Shown once, automatically, the moment a brand-new game reaches the
          *  world screen - presents the intro chapter as a narrated
-         *  dialogue scene first, then opens the same journal UI the player
-         *  will revisit later from the world screen's Lore button. */
+         *  dialogue scene. Does NOT auto-open the old text journal
+         *  afterward anymore (that was an extra popup-on-top-of-a-popup);
+         *  the journal is still there any time via the world screen's Lore
+         *  button for anyone who wants to reread. */
         showLoreIntro() {
             const chapter = LORE_CHAPTERS.find(c => c.id === 'intro');
-            this.presentLoreChapterAsScene(chapter, () => this.openLoreJournal());
+            this.presentLoreChapterAsScene(chapter, () => {
+                // A brand new game's very first save used to happen when
+                // the auto-opened journal was closed - now that nothing
+                // auto-opens, do it here instead, silently (no "Save Slot
+                // Initialized" popup - the player just finished a whole
+                // cinematic intro, one more dialog to dismiss is noise).
+                if (this._pendingNewGameSave) {
+                    this._pendingNewGameSave = false;
+                    this.saveGame(true);
+                }
+            });
         }
 
         /** Called the moment a story boss's defeat is confirmed (see the
          *  bossDefeated hook in Battle's endBattle()). Unlocks that region's
-         *  lore chapter (if not already unlocked) and immediately reopens
-         *  the journal so the new chapter reads like a natural continuation
-         *  of just having won that fight, rather than a silent flag flip. */
+         *  lore chapter (if not already unlocked) and presents it as a
+         *  narrated dialogue scene. Used to auto-open the old text journal
+         *  right after too - removed per feedback (a popup immediately
+         *  after the scene ended was an unwanted extra window); the
+         *  journal is still there any time via the world screen's Lore
+         *  button. */
         unlockLoreChapter(bossLocationName) {
             const chapter = LORE_CHAPTERS.find(c => c.unlocksAfterBoss === bossLocationName);
             if (!chapter) return;
@@ -19459,10 +19486,9 @@
             // Let the "you're back in the world/town" screen transition settle
             // before playing the chapter as a narrated dialogue scene,
             // rather than fighting the battle-exit transition for the
-            // player's attention. The journal (still readable/rereadable
-            // any time from the world screen button) opens right after.
+            // player's attention.
             setTimeout(() => {
-                this.presentLoreChapterAsScene(chapter, () => this.openLoreJournal());
+                this.presentLoreChapterAsScene(chapter, null);
             }, 500);
         }
 
@@ -19600,6 +19626,15 @@
 
         openWorldMap() {
             console.log('Opening world map');
+            // Remember whatever screen the player was actually on (town,
+            // world, guild, etc.) so Close restores THAT instead of always
+            // dumping them back onto the world map next to wherever they
+            // last were - previously this was hardcoded to 'world', so
+            // opening the map from inside a town and closing it again
+            // silently kicked the player out of the town entirely.
+            if (this.state.currentScreen !== 'worldmap') {
+                this._preMapScreen = this.state.currentScreen;
+            }
             if (!this.worldMapRenderer) {
                 console.log('Creating new WorldMapRenderer');
                 this.worldMapRenderer = new WorldMapRenderer();
@@ -19621,7 +19656,7 @@
         }
 
         closeWorldMap() {
-            this.state.switchScreen('world');
+            this.state.switchScreen(this._preMapScreen || 'world');
         }
 
         get worldMap() {
@@ -20657,15 +20692,23 @@
         }
 
         /** Presents a Lore journal chapter's paragraphs as a narrated
-         *  dialogue scene (typewriter, tap-to-advance, no portrait - this
-         *  is narration rather than a specific character speaking) instead
-         *  of just silently unlocking it in the journal. onEnd typically
-         *  reopens the journal itself so the chapter is still there to
-         *  reread afterward, same as before this existed. */
+         *  dialogue scene, told by a recurring scholar character (the
+         *  Royal Chronicler) rather than as faceless narration - gives the
+         *  lore an actual person to feel like it's coming from. Every
+         *  chapter except the ending closes with a nudge toward what to do
+         *  next (seek the king, check the Guild Hall for quests) so the
+         *  story scene actually leads somewhere instead of just ending on
+         *  a fade. onEnd fires when the scene closes - nothing auto-opens
+         *  the text journal afterward anymore (see showLoreIntro/
+         *  unlockLoreChapter), so callers typically pass null here now. */
         presentLoreChapterAsScene(chapter, onEnd) {
             if (!chapter || !chapter.text || !chapter.text.length) { if (onEnd) onEnd(); return; }
             const backgroundKey = LORE_CHAPTER_BACKGROUNDS[chapter.id] || '_fallback';
-            const lines = chapter.text.map(t => ({ speaker: chapter.title, portraitKey: null, side: 'left', text: t }));
+            const narrator = 'Royal Chronicler';
+            const lines = chapter.text.map(t => ({ speaker: narrator, portraitKey: 'wizard', side: 'left', text: t }));
+            if (chapter.id !== 'chapter_final') {
+                lines.push({ speaker: narrator, portraitKey: 'wizard', side: 'left', text: "Seek out the king if you wish to learn more - and the Guild Hall is always a good place to find your next quest." });
+            }
             this.dialogue.start({ background: backgroundKey, lines, onEnd: onEnd || null });
         }
 
