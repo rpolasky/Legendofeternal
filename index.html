@@ -3242,9 +3242,37 @@
             z-index: 1;
             cursor: pointer;
         }
+        .dialogue-choices {
+            position: absolute;
+            left: 3%;
+            right: 3%;
+            bottom: calc(3% + 22% + 10px);
+            display: none;
+            flex-direction: column;
+            gap: 6px;
+            z-index: 3;
+        }
+        .dialogue-choices.visible { display: flex; }
+        .dialogue-choice-btn {
+            background: linear-gradient(180deg, rgba(20,16,34,0.92) 0%, rgba(10,8,18,0.96) 100%);
+            border: 1px solid rgba(255,215,0,0.45);
+            color: var(--text-color, #e0d0ff);
+            border-radius: 8px;
+            padding: clamp(8px, 1.6vh, 12px) clamp(12px, 2.5vw, 18px);
+            font-size: clamp(11px, 2vw, 15px);
+            text-align: left;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            transition: background 0.15s ease, border-color 0.15s ease;
+        }
+        .dialogue-choice-btn:active, .dialogue-choice-btn:hover {
+            background: rgba(255,215,0,0.16);
+            border-color: var(--highlight, #ffd700);
+        }
         @media (max-width: 480px) {
             .dialogue-portrait-left, .dialogue-portrait-right { width: 44%; }
             .dialogue-box { min-height: 28%; }
+            .dialogue-choices { bottom: calc(3% + 28% + 10px); }
         }
 
         @keyframes overlayFade {
@@ -4782,7 +4810,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v122</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v123</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -5374,9 +5402,17 @@
                     <div class="dialogue-text" id="dialogue-text"></div>
                     <div class="dialogue-advance-hint" id="dialogue-advance-hint">▼</div>
                 </div>
+                <!-- In-scene branching choices (quest accept/decline, bounties
+                     vs. quest, etc.) render here instead of falling back to
+                     the old popup system, so the whole conversation -
+                     including its outcome - stays inside the cinematic
+                     frame. Positioned to replace the dialogue box's tap
+                     prompt once a line with choices finishes typing. -->
+                <div class="dialogue-choices" id="dialogue-choices"></div>
                 <div class="dialogue-click-catcher" id="dialogue-click-catcher"></div>
             </div>
         </div>
+
 
         <!-- Limit break option descriptions used to be a CSS :hover::after
              tooltip on each option button - which never triggers on a touch
@@ -17574,6 +17610,7 @@
             document.getElementById('dialogue-name-tag').textContent = line.speaker || '';
             const hint = document.getElementById('dialogue-advance-hint');
             if (hint) hint.classList.remove('visible');
+            this.renderChoices(null);
 
             // Portrait placement: whichever side this line's speaker is on
             // gets the "speaking" emphasis; a portrait already showing on
@@ -17595,6 +17632,18 @@
             this.renderHistory();
 
             this.typeText(line.text || '');
+        }
+
+        /** Swaps in a new list of lines and keeps the scene open (same
+         *  backdrop/portraits/history) instead of closing and reopening -
+         *  this is how branching works: a choice's action calls this to
+         *  continue the same conversation down whichever path was picked,
+         *  rather than the old pattern of ending the dialogue and falling
+         *  back to a separate popup for quest accept/claim/etc. */
+        continueWith(lines) {
+            if (!lines || !lines.length) { this.end(); return; }
+            this.lines = lines;
+            this.showLine(0);
         }
 
         setPortraitSlot(side, portraitKey, speaking) {
@@ -17645,12 +17694,44 @@
             const line = this.lines[this.index];
             if (textEl && line) textEl.textContent = line.text || '';
             const hint = document.getElementById('dialogue-advance-hint');
+            if (line && line.choices && line.choices.length) {
+                // Choice lines replace the tap-to-continue prompt with real
+                // buttons - the player picks one instead of tapping through.
+                if (hint) hint.classList.remove('visible');
+                clearTimeout(this.autoTimer);
+                this.renderChoices(line.choices);
+                return;
+            }
             if (hint) hint.classList.add('visible');
             if (this.autoOn) {
                 clearTimeout(this.autoTimer);
                 const wait = Math.max(900, (line && line.text ? line.text.length : 0) * 35);
                 this.autoTimer = setTimeout(() => { if (this.autoOn) this.advance(); }, wait);
             }
+        }
+
+        renderChoices(choices) {
+            const panel = document.getElementById('dialogue-choices');
+            if (!panel) return;
+            if (!choices || !choices.length) {
+                panel.classList.remove('visible');
+                panel.innerHTML = '';
+                return;
+            }
+            panel.innerHTML = choices.map((c, idx) => `<button class="dialogue-choice-btn" data-idx="${idx}"></button>`).join('');
+            // textContent (not innerHTML) for the label - choice text can
+            // come from data that was never meant to be interpreted as
+            // markup, so this avoids reopening an injection path.
+            Array.from(panel.children).forEach((btn, idx) => {
+                btn.textContent = choices[idx].text || '...';
+                btn.onclick = (e) => { e.stopPropagation(); this.selectChoice(choices[idx]); };
+            });
+            panel.classList.add('visible');
+        }
+
+        selectChoice(choice) {
+            this.renderChoices(null);
+            if (choice && typeof choice.action === 'function') choice.action(this);
         }
 
         /** Tap/click/Enter/Space all route here. Rule from the spec: while
@@ -17662,6 +17743,8 @@
         advance() {
             if (!this.isOpen) return;
             if (this.historyOpen) return; // history panel swallows taps while open
+            const current = this.lines[this.index];
+            if (current && current.choices && current.choices.length && !this.isTyping) return; // must pick a button
             if (this.isTyping) {
                 this.finishTyping();
                 return;
@@ -17726,6 +17809,7 @@
             this.isOpen = false;
             this.autoOn = false;
             this.setHistoryVisible(false);
+            this.renderChoices(null);
             ['left', 'right'].forEach(side => {
                 const slot = document.getElementById('dialogue-portrait-' + side);
                 if (slot) { slot.dataset.filled = '0'; slot.classList.add('dialogue-portrait-empty'); slot.classList.remove('dialogue-speaking', 'dialogue-listening'); }
@@ -19042,7 +19126,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v122]');
+            console.log('Game starting... [build v123]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
@@ -20133,121 +20217,160 @@
             }
             const dialogueIndex = Math.floor(Math.random() * npc.dialogue.length);
             const message = npc.dialogue[dialogueIndex];
-            let questHTML = '';
-            let hasQuest = false, isComplete = false;
-            if (npc.quest) {
-                hasQuest = this.quests.some(q => q.id === npc.quest.id);
-                const activeQuest = this.quests.find(q => q.id === npc.quest.id);
-                isComplete = activeQuest && activeQuest.progress >= activeQuest.goal;
-                if (!hasQuest) {
-                    questHTML = `
-                        <div style="background: rgba(255,215,0,0.1); padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 4px solid var(--gold-color);">
-                            <h4 style="color: var(--gold-color); margin-bottom: 10px;">⚔️ Quest Available</h4>
-                            <p><strong>${npc.quest.name}</strong></p>
-                            <p>${npc.quest.description}</p>
-                            <p style="color: #888; margin-top: 5px;">Reward: ${npc.quest.reward.gold} G, ${npc.quest.reward.item}</p>
-                            <button class="menu-button" onclick="window.game.acceptNPCQuest('${npc.quest.id}')" 
-                                    style="margin-top: 10px; padding: 5px 15px;">Accept Quest</button>
-                        </div>
-                    `;
-                } else if (isComplete) {
-                    questHTML = `
-                        <div style="background: rgba(68,255,68,0.1); padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 4px solid #44ff44;">
-                            <h4 style="color: #44ff44; margin-bottom: 10px;">✅ Quest Complete!</h4>
-                            <p><strong>${npc.quest.name}</strong></p>
-                            <p>You've completed the quest! Return for your reward.</p>
-                            <button class="menu-button" onclick="window.game.completeNPCQuest('${npc.quest.id}')" 
-                                    style="margin-top: 10px; padding: 5px 15px; background: #44ff44; color: #000;">Claim Reward</button>
-                        </div>
-                    `;
-                } else {
-                    const progress = activeQuest ? activeQuest.progress : 0;
-                    const questDef = QUEST_DATA.find(q => q.id === npc.quest.id);
-                    let breakdownHTML = '';
-                    if (questDef && questDef.goals && questDef.goals.stalkers && questDef.goals.essence) {
-                        breakdownHTML = `
-                            <p>Shadow Stalkers Defeated: ${(activeQuest && activeQuest.stalkerCount) || 0}/${questDef.goals.stalkers.required}</p>
-                            <p>Shadow Essence Found: ${(activeQuest && activeQuest.essenceCount) || 0}/${questDef.goals.essence.required}</p>
-                        `;
-                    }
-                    questHTML = `
-                        <div style="background: rgba(100,100,255,0.1); padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 4px solid #4466ff;">
-                            <h4 style="color: #88aaff; margin-bottom: 10px;">📋 Quest in Progress</h4>
-                            <p><strong>${npc.quest.name}</strong></p>
-                            ${breakdownHTML}
-                            <p>Progress: ${progress}/${npc.quest.goal}</p>
-                        </div>
-                    `;
-                }
-            }
-            const hintText = npc.hint ? `<div style="background: rgba(255,215,0,0.1); padding: 10px; border-radius: 5px; margin-top: 10px; border: 1px solid var(--gold-color);">
-                    <p style="margin: 0; color: var(--gold-color);">💡 ${npc.hint}</p>
-                </div>` : '';
-            // JRPG DIALOGUE SCENE presentation - the NPC's existing random
-            // dialogue line plays out as a cinematic exchange (NPC, then a
-            // brief hero acknowledgement) instead of a static popup. Quest
-            // accept/progress/complete details still use the existing
-            // popup/button flow (acceptNPCQuest/completeNPCQuest) - the
-            // dialogue scene hands off to it via onEnd once the
-            // conversation finishes, so none of that logic is duplicated.
             const npcPortraitKey = portraitKeyForNPC(npc);
             const lead = this.party && this.party.heroes && this.party.heroes[0];
-            const dialogueLines = [
+            const heroName = lead ? lead.name : null;
+            const heroPortraitKey = lead ? lead.heroClass : null;
+
+            // Whole conversation - greeting, hint, and (if this NPC offers
+            // one) the quest offer/progress/claim with real in-scene
+            // buttons - is built as one line list and handed to the
+            // dialogue scene once. Nothing falls back to the old popup
+            // system anymore; accept/claim resolve via choice actions that
+            // call continueWith() to keep the same scene going.
+            const lines = [
                 { speaker: npc.name, portraitKey: npcPortraitKey, side: 'left', text: message }
             ];
-            if (lead) {
-                let heroLine = 'Noted.';
-                if (npc.quest) {
-                    if (!hasQuest) heroLine = "We'll look into it.";
-                    else if (isComplete) heroLine = "It's done - let's collect our reward.";
-                    else heroLine = "We're already on it.";
-                }
-                dialogueLines.push({ speaker: lead.name, portraitKey: lead.heroClass, side: 'right', text: heroLine });
+            if (npc.hint) lines.push({ speaker: npc.name, portraitKey: npcPortraitKey, side: 'left', text: `💡 ${npc.hint}` });
+            if (npc.quest) {
+                lines.push(...this.buildQuestLines({
+                    speakerName: npc.name,
+                    portraitKey: npcPortraitKey,
+                    questId: npc.quest.id,
+                    offerText: npc.quest.description,
+                    rewardText: npc.quest.reward ? `${npc.quest.reward.gold} G, ${npc.quest.reward.item}` : null,
+                    heroName, heroPortraitKey
+                }));
+            } else if (heroName) {
+                lines.push({ speaker: heroName, portraitKey: heroPortraitKey, side: 'right', text: 'Noted.' });
             }
-            const followUpHTML = questHTML + hintText;
             this.dialogue.start({
                 background: backgroundKeyForCurrentContext(),
-                lines: dialogueLines,
-                onEnd: followUpHTML ? () => { this.ui.showPopup(npc.name, followUpHTML, true); } : null
+                lines
             });
         }
 
-        acceptNPCQuest(questId) {
+        /** Pure quest-state mutators, no UI side effects - shared by the
+         *  legacy popup-button flow (acceptNPCQuest/completeNPCQuest below,
+         *  kept for the bounty board and any other existing callers) and
+         *  the new in-dialogue quest resolution (presentQuestInDialogue),
+         *  so accept/complete logic lives in exactly one place regardless
+         *  of which UI triggered it. */
+        acceptQuestState(questId) {
             const questData = QUEST_DATA.find(q => q.id === questId);
-            if (!questData) return;
-            const alreadyAccepted = this.quests.some(q => q.id === questId);
-            if (alreadyAccepted) {
-                this.ui.showPopup('Already Accepted', 'You already have this quest!');
-                return;
-            }
+            if (!questData) return { ok: false, reason: 'notfound' };
+            if (this.quests.some(q => q.id === questId)) return { ok: false, reason: 'already' };
             const quest = { ...questData, progress: 0, id: questData.id, completedNotified: false };
             if (quest.type === 'elemental_kills') { quest.fireKills = 0; quest.iceKills = 0; }
             if (quest.type === 'visit_locations') { quest.visited = []; }
             if (quest.type === 'battle_streak') { quest.currentStreak = 0; }
             this.quests.push(quest);
-            this.ui.showPopup('Quest Accepted', `Started: ${quest.name}`);
+            return { ok: true, quest };
+        }
+
+        completeQuestState(questId) {
+            const questIndex = this.quests.findIndex(q => q.id === questId);
+            if (questIndex === -1) return { ok: false, reason: 'notfound' };
+            const quest = this.quests[questIndex];
+            if (quest.progress < quest.goal) return { ok: false, reason: 'incomplete' };
+            this.completedQuestIds.add(quest.id);
+            this.party.gold += quest.reward.gold;
+            if (quest.reward.item) this.grantQuestRewardItem(quest.reward.item, quest.reward.quantity);
+            this.quests.splice(questIndex, 1);
+            this.updateGoldDisplays();
+            return { ok: true, quest };
+        }
+
+        /** Presents a quest's current state (offer / in-progress / ready to
+         *  turn in) as dialogue lines with real in-scene choice buttons,
+         *  fully resolving accept/claim without leaving the dialogue scene
+         *  or falling back to the old popup. Shared by talkToKing() and
+         *  showNPCPopup()'s quest-giver flow. `dm` is the DialogueManager
+         *  instance already mid-conversation (continueWith keeps the same
+         *  backdrop/portraits/history going rather than reopening a scene). */
+        /** Builds the offer / in-progress / ready-to-turn-in dialogue lines
+         *  (with real in-scene choice buttons) for a quest, without
+         *  presenting them - callers either splice these into a
+         *  conversation's initial line list (showNPCPopup) or hand them to
+         *  dm.continueWith() to branch into them mid-conversation
+         *  (talkToKing's "discuss the quest" choice). Keeping this as a
+         *  pure builder (rather than a side-effecting "present" call)
+         *  means the exact same quest-resolution logic works in both
+         *  places without duplicating it. */
+        buildQuestLines(opts) {
+            const { speakerName, portraitKey, questId, offerText, rewardText, heroName, heroPortraitKey } = opts;
+            const hasQuest = this.quests.some(q => q.id === questId);
+            const activeQuest = this.quests.find(q => q.id === questId);
+            const isComplete = activeQuest && activeQuest.progress >= activeQuest.goal;
+            const questData = QUEST_DATA.find(q => q.id === questId);
+            let lines = [];
+            if (!hasQuest) {
+                lines.push({ speaker: speakerName, portraitKey, side: 'left', text: offerText || (questData ? questData.description : 'Will you help us?') });
+                lines.push({
+                    speaker: speakerName, portraitKey, side: 'left',
+                    text: rewardText ? `The reward for this task: ${rewardText}` : 'There will be a reward for your trouble.',
+                    choices: [
+                        { text: '⚔️ Accept the Quest', action: (dm2) => {
+                            const res = this.acceptQuestState(questId);
+                            const followLines = [];
+                            if (heroName) followLines.push({ speaker: heroName, portraitKey: heroPortraitKey, side: 'right', text: res.ok ? "Consider it done." : "We're already on this one." });
+                            followLines.push({ speaker: speakerName, portraitKey, side: 'left', text: res.ok ? 'Safe travels, and good fortune.' : 'Then hurry back once it is finished.' });
+                            dm2.continueWith(followLines);
+                        }},
+                        { text: 'Not Right Now', action: (dm2) => dm2.end() }
+                    ]
+                });
+            } else if (isComplete) {
+                lines.push({
+                    speaker: speakerName, portraitKey, side: 'left', text: 'You have returned - and I sense success in your eyes.',
+                    choices: [
+                        { text: '🎁 Claim Reward', action: (dm2) => {
+                            const res = this.completeQuestState(questId);
+                            const followLines = [];
+                            followLines.push({ speaker: speakerName, portraitKey, side: 'left', text: res.ok ? 'Well earned. Take this with our thanks.' : 'Hm - something is amiss with that claim.' });
+                            if (heroName && res.ok) followLines.push({ speaker: heroName, portraitKey: heroPortraitKey, side: 'right', text: `We received ${res.quest.reward.gold} G and ${res.quest.reward.item}.` });
+                            dm2.continueWith(followLines);
+                        }},
+                        { text: 'Not Yet', action: (dm2) => dm2.end() }
+                    ]
+                });
+            } else {
+                const progress = activeQuest ? activeQuest.progress : 0;
+                const goal = activeQuest ? activeQuest.goal : (questData ? questData.goal : '?');
+                lines.push({ speaker: speakerName, portraitKey, side: 'left', text: `How goes it? (${progress}/${goal})` });
+                if (heroName) lines.push({ speaker: heroName, portraitKey: heroPortraitKey, side: 'right', text: "We're still working on it." });
+            }
+            return lines;
+        }
+
+        /** Branch into a quest's dialogue lines mid-conversation (keeps the
+         *  same scene open via continueWith) - thin wrapper around
+         *  buildQuestLines() for callers that are inside a choice action. */
+        presentQuestInDialogue(dm, opts) {
+            dm.continueWith(this.buildQuestLines(opts));
+        }
+
+        // Legacy popup-driven accept/complete - kept for the bounty board
+        // and any other button that still calls these directly. Both now
+        // just wrap the pure state mutators above.
+        acceptNPCQuest(questId) {
+            const res = this.acceptQuestState(questId);
+            if (!res.ok) {
+                if (res.reason === 'already') this.ui.showPopup('Already Accepted', 'You already have this quest!');
+                return;
+            }
+            this.ui.showPopup('Quest Accepted', `Started: ${res.quest.name}`);
             this.ui.closePopup();
         }
 
         completeNPCQuest(questId) {
-            const questIndex = this.quests.findIndex(q => q.id === questId);
-            if (questIndex === -1) {
-                this.ui.showPopup('Error', 'Quest not found!');
+            const res = this.completeQuestState(questId);
+            if (!res.ok) {
+                this.ui.showPopup(res.reason === 'incomplete' ? 'Not Complete' : 'Error',
+                    res.reason === 'incomplete' ? 'You haven\'t finished this quest yet!' : 'Quest not found!');
                 return;
             }
-            const quest = this.quests[questIndex];
-            if (quest.progress < quest.goal) {
-                this.ui.showPopup('Not Complete', 'You haven\'t finished this quest yet!');
-                return;
-            }
-            this.completedQuestIds.add(quest.id);
-            this.party.gold += quest.reward.gold;
-            if (quest.reward.item) {
-                this.grantQuestRewardItem(quest.reward.item, quest.reward.quantity);
-            }
-            this.quests.splice(questIndex, 1);
-            this.updateGoldDisplays();
-            this.ui.showPopup('✅ Quest Complete!', `Received ${quest.reward.gold} G and ${quest.reward.item}!`);
+            this.ui.showPopup('✅ Quest Complete!', `Received ${res.quest.reward.gold} G and ${res.quest.reward.item}!`);
             this.ui.closePopup();
         }
 
@@ -21500,29 +21623,21 @@
         showTownsfolkDetails(index, townName) {
             const townsfolk = TOWNSFOLK_DATA;
             const npc = (townsfolk[townName] || townsfolk.brighthollow)[index];
-            // Hint + quest-suggestion text (flavor only - these NPCs don't
-            // have real trackable quests, unlike showNPCPopup's) still
-            // shows in a follow-up popup after the dialogue scene closes.
-            let followUpHTML = `
-                <div style="background: rgba(255,215,0,0.1); padding: 15px; border-radius: 5px; margin: 10px 0; border-left: 4px solid var(--gold-color);">
-                    <h4 style="color: var(--gold-color); margin: 0 0 5px 0;">💡 Hint</h4>
-                    <p style="margin: 0;">${npc.hint}</p>
-                </div>
-                <div style="background: rgba(100,100,255,0.1); padding: 15px; border-radius: 5px; margin: 10px 0; border-left: 4px solid #4466ff;">
-                    <h4 style="color: #88aaff; margin: 0 0 5px 0;">⚔️ Quest Suggestion</h4>
-                    <p style="margin: 0;">${npc.quest}</p>
-                </div>
-            `;
+            // Hint + quest-suggestion are flavor only (no real trackable
+            // quest here, unlike showNPCPopup's) - they're just additional
+            // spoken lines now, so the whole exchange stays in one scene
+            // with nothing handed off to the old popup.
             const npcPortraitKey = npc.spriteKey && DIALOGUE_PORTRAITS[npc.spriteKey] ? npc.spriteKey : portraitKeyForNPC(npc);
             const lead = this.party && this.party.heroes && this.party.heroes[0];
             const dialogueLines = [
                 { speaker: npc.name, portraitKey: npcPortraitKey, side: 'left', text: npc.dialogue }
             ];
+            if (npc.hint) dialogueLines.push({ speaker: npc.name, portraitKey: npcPortraitKey, side: 'left', text: `💡 ${npc.hint}` });
+            if (npc.quest) dialogueLines.push({ speaker: npc.name, portraitKey: npcPortraitKey, side: 'left', text: `⚔️ ${npc.quest}` });
             if (lead) dialogueLines.push({ speaker: lead.name, portraitKey: lead.heroClass, side: 'right', text: 'Good to know. Thank you.' });
             this.dialogue.start({
                 background: backgroundKeyForCurrentContext(),
-                lines: dialogueLines,
-                onEnd: () => { this.ui.showPopup(npc.name, followUpHTML, true); }
+                lines: dialogueLines
             });
         }
 
@@ -21578,52 +21693,54 @@
                 else if (townText.includes('Duskmere')) townName = 'Duskmere';
                 else if (townText.includes('Sylvaris')) townName = 'Sylvaris';
             }
+            // backgroundKey: none of the uploaded 16:9 art is a literal
+            // throne room yet, so each ruler borrows the best-fitting
+            // available interior for now - temple.jpg's grand pillared hall
+            // for Brighthollow, the moodier library for Duskmere, and the
+            // nature-shrine art for Sylvaris' more druidic court. Swap
+            // these for dedicated throne-room backdrops whenever they're
+            // available (see DIALOGUE_BACKGROUNDS).
             const kingDialogues = {
-                'Brighthollow': { name: 'King Aldric', portraitKey: 'king_aldric', dialogue: "Welcome, brave adventurer! Our kingdom has been fractured since Voraxis appeared. Each region has its own ruler now, but we all face the same threat.", quest: "Defeat the Goblin King to reopen the mountain pass. That's your first step toward uniting the kingdoms against Voraxis.", reward: "Return to me after you've cleared the pass, and I'll reward you.", questId: 'brighthollow_envoy' },
-                'Duskmere': { name: 'Queen Seraphina', portraitKey: 'queen_seraphina', dialogue: "The undead plague my lands. The Dark Fortress to the south is the source, but I lack the strength to assault it.", quest: "Defeat the Dread Knight in the Dark Fortress. He leads the undead army.", reward: "Defeat him and I'll grant you the Shadow Blade, effective against dark creatures.", questId: 'duskmere_watchtower', followUpQuestId: 'duskmere_shrine_awaits', followUpUnlockFlag: 'archetype_shrine_unlocked' },
-                'Sylvaris': { name: 'King Theron', portraitKey: 'king_theron', dialogue: "The desert expands each year. The Sunken Temple holds the key to stopping it, but it's guarded by powerful elementals.", quest: "Explore the Sunken Temple and find the Orb of Seasons. It can restore the land.", reward: "Bring me the orb and I'll teach you the ultimate elemental spells.", questId: 'sylvaris_oasis_advisor' }
+                'Brighthollow': { name: 'King Aldric', portraitKey: 'king_aldric', backgroundKey: 'temple', dialogue: "Welcome, brave adventurer! Our kingdom has been fractured since Voraxis appeared. Each region has its own ruler now, but we all face the same threat.", quest: "Defeat the Goblin King to reopen the mountain pass. That's your first step toward uniting the kingdoms against Voraxis.", reward: "the pass reopened, and my gratitude", questId: 'brighthollow_envoy' },
+                'Duskmere': { name: 'Queen Seraphina', portraitKey: 'queen_seraphina', backgroundKey: 'library', dialogue: "The undead plague my lands. The Dark Fortress to the south is the source, but I lack the strength to assault it.", quest: "Defeat the Dread Knight in the Dark Fortress. He leads the undead army.", reward: "the Shadow Blade, effective against dark creatures", questId: 'duskmere_watchtower', followUpQuestId: 'duskmere_shrine_awaits', followUpUnlockFlag: 'archetype_shrine_unlocked' },
+                'Sylvaris': { name: 'King Theron', portraitKey: 'king_theron', backgroundKey: 'garden_shrine', dialogue: "The desert expands each year. The Sunken Temple holds the key to stopping it, but it's guarded by powerful elementals.", quest: "Explore the Sunken Temple and find the Orb of Seasons. It can restore the land.", reward: "the ultimate elemental spells", questId: 'sylvaris_oasis_advisor' }
             };
             const king = kingDialogues[townName] || kingDialogues['Brighthollow'];
-
-            // Real, trackable royal story quest - accept/progress/complete
-            // buttons reuse the same acceptNPCQuest/completeNPCQuest flow as
-            // any other quest-giver NPC, since those just look the quest up
-            // in QUEST_DATA by id regardless of who's offering it.
-            let royalQuestHTML = this.renderRoyalQuestBlock(king.questId, 'Royal Quest');
-            // Follow-up quest (e.g. "The Shrine Awaits") only appears once
-            // its unlock flag has been set - currently only Duskmere, fired
-            // from Battle.endBattle() the moment the Dread Knight falls.
-            if (king.followUpQuestId && king.followUpUnlockFlag && this.completedQuestIds.has(king.followUpUnlockFlag)) {
-                royalQuestHTML += this.renderRoyalQuestBlock(king.followUpQuestId, 'Royal Quest');
-            }
-
-            let menuHTML = `
-                <div style="text-align: left;">
-                    <div style="background: rgba(100,100,255,0.1); padding: 15px; border-radius: 5px; margin: 10px 0; border-left: 4px solid #4466ff;">
-                        <h4 style="color: #88aaff;">⚔️ Path to the Ashveil Spire:</h4>
-                        <p>${king.quest}</p>
-                        <p style="color: #ffaa00; margin-top: 10px;">Reward: ${king.reward}</p>
-                    </div>
-                    ${royalQuestHTML}
-                    <div style="margin-top: 15px;">
-                        <p style="color: #888;">The king's quests lead to the main story. Complete them to progress!</p>
-                    </div>
-                    <button class="menu-button" onclick="window.game.showBountyBoard()" style="margin-top: 15px; width: 100%; padding: 10px;">\u{1F4EF} Speak with the King's Herald (Bounties)</button>
-                </div>
-            `;
-            // Royal audience gets the full JRPG dialogue treatment (throne
-            // room backdrop, king portrait, hero reply) - the quest/reward/
-            // bounty-board buttons still resolve via the existing popup,
-            // shown once the scene ends.
             const lead = this.party && this.party.heroes && this.party.heroes[0];
-            const dialogueLines = [
+            const heroName = lead ? lead.name : null;
+            const heroPortraitKey = lead ? lead.heroClass : null;
+
+            // Royal audience: greeting, then a real branching choice
+            // between the story quest and the bounty board - both resolve
+            // entirely inside the dialogue scene now (bounties hand off to
+            // the existing bounty board screen since that's a whole
+            // separate shop-style UI, but the quest itself is fully
+            // in-scene via buildQuestLines/continueWith, same as any other
+            // quest-giver).
+            const openingLines = [
                 { speaker: king.name, portraitKey: king.portraitKey, side: 'left', text: king.dialogue }
             ];
-            if (lead) dialogueLines.push({ speaker: lead.name, portraitKey: lead.heroClass, side: 'right', text: 'We will not let the kingdom fall, Your Majesty.' });
+            if (heroName) openingLines.push({ speaker: heroName, portraitKey: heroPortraitKey, side: 'right', text: 'We will not let the kingdom fall, Your Majesty.' });
+            openingLines.push({
+                speaker: king.name, portraitKey: king.portraitKey, side: 'left',
+                text: 'Shall we speak of the task before you, or would you like to see the bounties my herald has posted?',
+                choices: [
+                    { text: '⚔️ Discuss the Quest', action: (dm) => {
+                        const followUpUnlocked = king.followUpQuestId && king.followUpUnlockFlag && this.completedQuestIds.has(king.followUpUnlockFlag);
+                        const questId = (this.completedQuestIds.has(king.questId) && followUpUnlocked) ? king.followUpQuestId : king.questId;
+                        this.presentQuestInDialogue(dm, {
+                            speakerName: king.name, portraitKey: king.portraitKey,
+                            questId, offerText: king.quest, rewardText: king.reward,
+                            heroName, heroPortraitKey
+                        });
+                    }},
+                    { text: '📋 View Bounties', action: (dm) => { dm.end(); this.showBountyBoard(); } },
+                    { text: 'Take My Leave', action: (dm) => dm.end() }
+                ]
+            });
             this.dialogue.start({
-                background: 'brighthollow_castle',
-                lines: dialogueLines,
-                onEnd: () => { this.ui.showPopup(`Royal Audience - ${townName}`, menuHTML, true); }
+                background: king.backgroundKey,
+                lines: openingLines
             });
         }
 
