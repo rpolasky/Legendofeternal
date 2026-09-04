@@ -3076,13 +3076,24 @@
             align-items: center;
             z-index: 1400;
             opacity: 0;
-            transition: opacity 0.28s ease;
+            transition: opacity 0.32s ease;
         }
         .dialogue-scene-overlay.active {
             display: flex;
         }
         .dialogue-scene-overlay.visible {
             opacity: 1;
+        }
+        /* Cinematic entrance/exit: the stage itself scales in slightly on
+           open (subtle "push in" toward the scene, JRPG cutscene style)
+           and scales back down on close, layered on top of the overlay's
+           own opacity fade above. */
+        .dialogue-stage {
+            transform: scale(1.045);
+            transition: transform 0.32s ease;
+        }
+        .dialogue-scene-overlay.visible .dialogue-stage {
+            transform: scale(1);
         }
         /* 16:9 stage, letterboxed within whatever space is available -
            width-constrained on wide/landscape screens, height-constrained
@@ -3123,6 +3134,17 @@
             justify-content: center;
             pointer-events: none;
             transition: opacity 0.3s ease, filter 0.3s ease, transform 0.3s ease;
+        }
+        /* Subtle idle life on whoever's currently speaking - a slow,
+           small bob, distinct from (and layered under) the
+           opacity/filter/transform emphasis transition above. Kept tiny
+           on purpose per the "don't make animations excessive" spec. */
+        .dialogue-portrait-slot.dialogue-speaking img {
+            animation: dialogueSpeakBob 2.6s ease-in-out infinite;
+        }
+        @keyframes dialogueSpeakBob {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-1.2%); }
         }
         .dialogue-portrait-slot img {
             max-height: 100%;
@@ -3171,6 +3193,13 @@
         .dialogue-icon-btn.dialogue-btn-on {
             border-color: var(--highlight, #ffd700);
             background: rgba(255,215,0,0.18);
+        }
+        #dialogue-auto-btn.dialogue-btn-on {
+            animation: dialogueAutoPulse 1.6s ease-in-out infinite;
+        }
+        @keyframes dialogueAutoPulse {
+            0%, 100% { box-shadow: 0 0 0 rgba(255,215,0,0.5); }
+            50% { box-shadow: 0 0 8px rgba(255,215,0,0.85); }
         }
         .dialogue-history-panel {
             position: absolute;
@@ -4810,7 +4839,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v124</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v126</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -6181,6 +6210,12 @@
         elder: 'assets/dialogue/portraits/elder.png',
         priest: 'assets/dialogue/portraits/priest.png',
         bard: 'assets/dialogue/portraits/bard.png',
+        // Story bosses - shown opposite the party during pre-battle banter
+        // (see BOSS_PRE_BATTLE_LINES / Game.startPreBattleDialogue).
+        goblinking: 'assets/dialogue/portraits/goblinking.png',
+        dreadknight: 'assets/dialogue/portraits/dreadknight.png',
+        mummylord: 'assets/dialogue/portraits/mummylord.png',
+        voraxis: 'assets/dialogue/portraits/voraxis.png',
         _fallback: 'assets/dialogue/portraits/villager.png'
     };
 
@@ -6241,6 +6276,48 @@
         if (screen === 'world') return 'whispering_woods';
         return '_fallback';
     }
+
+    /** Short banter lines exchanged between party members right before
+     *  each story boss fight - "pre-battle dialogue" from the spec.
+     *  Hero lines alternate speakers across the party's actual current
+     *  heroes (see Game.startPreBattleDialogue), so it naturally adapts to
+     *  whichever heroes are alive/in the party rather than hard-coding
+     *  names. bossName/bossPortraitKey/bossLine puts the actual villain on
+     *  screen (opposite the party) for one menacing closing line before
+     *  the fight begins. */
+    const BOSS_PRE_BATTLE_LINES = {
+        'Goblin Keep': { backgroundKey: 'whispering_woods', lines: [
+            "This is it - the Goblin King's throne lies just ahead.",
+            "He won't go down easy. Stay sharp, watch each other's backs."
+        ], bossName: 'Goblin King', bossPortraitKey: 'goblinking',
+           bossLine: "You dare enter MY keep? None leave this throne room breathing!" },
+        'Dark Fortress': { backgroundKey: 'forest_shrine', lines: [
+            "The air's colder here. The Dread Knight is close.",
+            "Whatever happens in there, we finish this together."
+        ], bossName: 'Dread Knight', bossPortraitKey: 'dreadknight',
+           bossLine: "Living flesh, come to die again. Join my legion - it never stops growing." },
+        'Sunken Temple': { backgroundKey: 'temple', lines: [
+            "The Mummy Lord has slept down here for centuries. Let's not wake anything else.",
+            "Fire and steady hands. We've trained for this."
+        ], bossName: 'Mummy Lord', bossPortraitKey: 'mummylord',
+           bossLine: "Who disturbs my eternal rest? Your bones will make fine additions to my tomb." },
+        'Ashveil Spire': { backgroundKey: 'library', lines: [
+            "This is where it ends. Voraxis waits beyond these halls.",
+            "Every road we've walked led here. Let's finish what we started.",
+            "Together, then. No matter what's on the other side of that door."
+        ], bossName: 'Voraxis', bossPortraitKey: 'voraxis',
+           bossLine: "Three kingdoms, three trials, and still you don't understand. The balance was ALWAYS meant to break." }
+    };
+
+    /** Backdrop for each Lore journal chapter when it's presented as a
+     *  narrated dialogue scene (see Game.presentLoreChapterAsScene). */
+    const LORE_CHAPTER_BACKGROUNDS = {
+        intro: 'whispering_woods',
+        chapter_brighthollow: 'brighthollow_castle',
+        chapter_duskmere: 'forest_shrine',
+        chapter_sylvaris: 'garden_shrine',
+        chapter_final: 'library'
+    };
 
     /** Greeter NPC + welcome line for each shop/guild entry point, used by
      *  Game.showShopWelcome() to play a short dialogue exchange before the
@@ -6563,6 +6640,77 @@
         img.src = 'assets/npcs/' + NPC_WALK_SHEET_FILES[key] + '.png';
         NPC_WALK_SHEETS[key] = img;
     });
+
+    /** Standalone, non-walking NPC art: draws a cropped bust of one of the
+     *  dialogue-scene portrait PNGs (see DIALOGUE_PORTRAITS) as a small
+     *  standing token on the town/world map, replacing the old procedural
+     *  pixel-person-with-emoji-prop rendering (drawPixelPerson) for every
+     *  NPC the player can actually talk to. Deliberately static - just a
+     *  gentle idle sway, no walk-cycle - per the "standalone characters,
+     *  no motion" direction. Falls back to false (caller then falls back
+     *  to drawPixelPerson) if the portrait hasn't loaded yet, so nothing
+     *  ever renders as a blank tile. */
+    const NPC_PORTRAIT_TOKEN_IMAGES = {};
+    function getNpcPortraitTokenImage(portraitKey) {
+        if (!portraitKey) return null;
+        if (NPC_PORTRAIT_TOKEN_IMAGES[portraitKey]) return NPC_PORTRAIT_TOKEN_IMAGES[portraitKey];
+        const url = DIALOGUE_PORTRAITS[portraitKey];
+        if (!url) return null;
+        const img = new Image();
+        img.loaded = false;
+        img.onload = () => { img.loaded = true; };
+        img.src = url;
+        NPC_PORTRAIT_TOKEN_IMAGES[portraitKey] = img;
+        return img;
+    }
+    function drawNpcPortraitToken(ctx, x, y, size, portraitKey, opts = {}) {
+        const img = getNpcPortraitTokenImage(portraitKey);
+        if (!img || !img.loaded) return false;
+        const { time = 0, seed = 0, nameLabel = null, glow = '#ffd700' } = opts;
+        const cx = x + size / 2;
+        const feetY = y + size * 0.98;
+        const bob = Math.sin(time * 1.6 + seed) * 0.9; // idle sway only, no walk cycle
+        const spriteH = size * 1.6;
+        // Portraits are full-body, but at map scale a bust crop (top ~42%
+        // of the source image: head/shoulders/chest) reads far more
+        // clearly than a tiny full figure would. Source images are all a
+        // consistent portrait framing, so one crop ratio works across the
+        // whole set.
+        const cropFrac = 0.42;
+        const srcW = img.naturalWidth || img.width;
+        const srcH = (img.naturalHeight || img.height) * cropFrac;
+
+        ctx.save();
+        ctx.fillStyle = 'rgba(0,0,0,0.35)';
+        ctx.beginPath();
+        ctx.ellipse(cx, y + size - 2, size * 0.26, size * 0.09, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        const drawH = spriteH;
+        const drawW = drawH * (srcW / srcH);
+        if (glow) {
+            ctx.save();
+            ctx.shadowColor = glow;
+            ctx.shadowBlur = size * 0.22;
+            ctx.drawImage(img, 0, 0, srcW, srcH, cx - drawW / 2, feetY + bob - drawH, drawW, drawH);
+            ctx.restore();
+        }
+        ctx.drawImage(img, 0, 0, srcW, srcH, cx - drawW / 2, feetY + bob - drawH, drawW, drawH);
+
+        if (nameLabel) {
+            ctx.save();
+            ctx.font = 'bold 10px Courier New';
+            ctx.fillStyle = '#ffd700';
+            ctx.shadowColor = '#000';
+            ctx.shadowBlur = 4;
+            ctx.textAlign = 'center';
+            ctx.fillText(nameLabel, cx, feetY - drawH - size * 0.1);
+            ctx.shadowBlur = 0;
+            ctx.restore();
+        }
+        return true;
+    }
 
     /** Same drawing convention as drawHeroSprite (shadow, bob, walk-frame
      *  cycling), but sourced from NPC_WALK_SHEETS and with an optional name
@@ -12004,10 +12152,12 @@
                 ctx.shadowBlur = 0;
             });
 
-            // Townsfolk NPCs (interactive) - real named-hero art where one of
-            // the 5 fits the role (see spriteKey in TOWNSFOLK_DATA), falling
-            // back to the small pixel-art person (icon as a held prop) for
-            // everyone else so nothing regresses for roles with no good fit.
+            // Townsfolk NPCs (interactive) - standalone portrait art (same
+            // images used in the dialogue scenes) as a static token,
+            // replacing the old walk-sheet/procedural-pixel-person look.
+            // Falls back to the old rendering only for the brief window
+            // before a portrait image finishes loading, so nothing is ever
+            // a blank tile.
             if (townMap.npcSpots) {
                 const npcData = TOWNSFOLK_DATA[townMap.key] || TOWNSFOLK_DATA.brighthollow;
                 townMap.npcSpots.forEach(spot => {
@@ -12016,6 +12166,10 @@
                     const nx = spot.x * ts;
                     const ny = spot.y * ts;
                     const seed = spot.x * 3 + spot.y;
+                    const portraitKey = npc.spriteKey && DIALOGUE_PORTRAITS[npc.spriteKey] ? npc.spriteKey : portraitKeyForNPC(npc);
+                    if (drawNpcPortraitToken(ctx, nx, ny, ts, portraitKey, { time, seed, nameLabel: npc.name })) {
+                        return;
+                    }
                     if (npc.spriteKey && drawNamedSprite(ctx, nx, ny, ts, npc.spriteKey, { facing: 'down', time, seed, nameLabel: npc.name })) {
                         return;
                     }
@@ -13360,13 +13514,20 @@
                 });
             }
 
-            // Draw NPCs as small pixel-art people (their old emoji becomes the
-            // item they're holding, instead of being the whole sprite).
+            // Draw NPCs as standalone portrait tokens (same art as their
+            // dialogue scenes), falling back to the old pixel-person
+            // rendering only while a portrait image is still loading.
             if (worldMap.npcs && this.zoom > 0.5) {
                 worldMap.npcs.forEach(npc => {
                     if (npc.x >= startCol && npc.x < endCol && npc.y >= startRow && npc.y < endRow) {
                         const screenX = (npc.x - startCol) * ts;
                         const screenY = (npc.y - startRow) * ts;
+                        const portraitKey = portraitKeyForNPC(npc);
+                        const nameLabel = this.zoom > 0.7 ? npc.name : null;
+                        if (drawNpcPortraitToken(ctx, screenX, screenY, ts, portraitKey, { time, seed: npc.x * 3 + npc.y, nameLabel })) {
+                            ctx.shadowBlur = 0;
+                            return;
+                        }
                         const pal = getNPCPalette(npc.name);
                         drawPixelPerson(ctx, screenX, screenY, ts, {
                             ...pal,
@@ -13377,7 +13538,7 @@
                             time,
                             seed: npc.x * 3 + npc.y,
                             glow: '#ffd700',
-                            nameLabel: this.zoom > 0.7 ? npc.name : null
+                            nameLabel
                         });
                         ctx.shadowBlur = 0;
                     }
@@ -14151,6 +14312,15 @@
             // resetCommandState() call cleaned up the leftover state from
             // the limit break, not anything Auto Battle itself did.
             this.resetCommandState();
+            // Belt-and-suspenders fix for the "still shows LIMIT BREAK"
+            // report: render the command bar the instant the charge is
+            // spent (limitBreakCharge is already 0 above), rather than
+            // waiting for the ~260-620ms attack animation's callback to do
+            // it. The animation's own renderMainCommands() calls further
+            // down still run too - both are idempotent, this just removes
+            // any dependency on that async callback actually firing before
+            // the player looks at the button again.
+            this.renderMainCommands();
 
             let isCrit = true;
             let isMiss = false;
@@ -17331,6 +17501,16 @@
                 };
                 const screenEl = document.getElementById('shop-screen');
                 if (screenEl) screenEl.style.backgroundImage = `url('${backdrops[shopType] || backdrops.weapon}')`;
+                // BUG FIX: enterGemCrafterShop()/enterApothecaryShop() hide
+                // the Buy/Sell tab bar (tabs.style.display = 'none') since
+                // crafting shops don't use it - but that's a persistent
+                // inline style, and nothing ever set it back. Once a player
+                // visited either crafting shop once, the Sell button (and
+                // Buy tab) vanished from every regular shop for the rest of
+                // the session. Explicitly restore it here on every normal
+                // shop entry.
+                const tabs = document.getElementById('shop-buysell-tabs');
+                if (tabs) tabs.style.display = '';
                 this.isSelling = false;
                 this.closeDetails();
                 this.render();
@@ -17578,6 +17758,7 @@
             this.historyOpen = false;
             this.history = [];
             this.onEnd = null;
+            this.closeTimer = null;
             this._boundKeyHandler = (e) => this.handleKey(e);
             const catcher = document.getElementById('dialogue-click-catcher');
             if (catcher) catcher.addEventListener('click', () => this.advance());
@@ -17607,6 +17788,13 @@
 
             const overlay = document.getElementById('dialogue-scene-overlay');
             if (overlay) {
+                // A prior conversation's end() schedules a delayed removal
+                // of the 'active' class (see end()) so the closing fade can
+                // play. If a new scene starts again before that timer
+                // fires - e.g. one dialogue's onEnd immediately triggers
+                // another - that stale timeout would otherwise hide this
+                // brand-new scene out from under it. Cancel it here.
+                clearTimeout(this.closeTimer);
                 overlay.classList.add('active');
                 // Force reflow so the opacity transition actually plays
                 // instead of the 'active'+'visible' classes landing in the
@@ -17803,9 +17991,27 @@
             if (this.autoOn && !this.isTyping) this.finishTyping(); // (re)start the auto-advance timer
         }
 
+        /** "Skip" fast-forwards through the rest of the conversation
+         *  instantly - but it always stops at a choice screen (so a quest
+         *  accept/decline or a branch like "quest or bounties" can never
+         *  be skipped past without the player actually picking) or the
+         *  natural end. This replaced an earlier version that just force-
+         *  closed the whole scene, which could silently skip a choice the
+         *  player still needed to make. */
         skipToEnd(e) {
             if (e) e.stopPropagation();
-            this.end();
+            this.autoOn = false;
+            const autoBtn = document.getElementById('dialogue-auto-btn');
+            if (autoBtn) autoBtn.classList.remove('dialogue-btn-on');
+            clearTimeout(this.autoTimer);
+            let guard = 0;
+            while (this.isOpen && guard < 300) {
+                guard++;
+                if (this.isTyping) { this.finishTyping(); }
+                const current = this.lines[this.index];
+                if (current && current.choices && current.choices.length) break;
+                this.showLine(this.index + 1);
+            }
         }
 
         toggleHistory(e) {
@@ -17847,7 +18053,8 @@
             });
             if (overlay) {
                 overlay.classList.remove('visible');
-                setTimeout(() => { overlay.classList.remove('active'); }, 280);
+                clearTimeout(this.closeTimer);
+                this.closeTimer = setTimeout(() => { overlay.classList.remove('active'); }, 280);
             }
             if (window.game && window.game.state) window.game.state.resume();
             this.onEnd = null;
@@ -19162,7 +19369,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v124]');
+            console.log('Game starting... [build v126]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
@@ -19230,11 +19437,12 @@
         }
 
         /** Shown once, automatically, the moment a brand-new game reaches the
-         *  world screen - it's just openLoreJournal() with only 'intro'
-         *  unlocked yet, so it's the same UI the player will revisit later
-         *  from the world screen's Lore button. */
+         *  world screen - presents the intro chapter as a narrated
+         *  dialogue scene first, then opens the same journal UI the player
+         *  will revisit later from the world screen's Lore button. */
         showLoreIntro() {
-            this.openLoreJournal();
+            const chapter = LORE_CHAPTERS.find(c => c.id === 'intro');
+            this.presentLoreChapterAsScene(chapter, () => this.openLoreJournal());
         }
 
         /** Called the moment a story boss's defeat is confirmed (see the
@@ -19249,9 +19457,13 @@
             if (this.unlockedLore.includes(chapter.id)) return;
             this.unlockedLore.push(chapter.id);
             // Let the "you're back in the world/town" screen transition settle
-            // before popping the journal open, rather than fighting the
-            // battle-exit transition for the player's attention.
-            setTimeout(() => this.openLoreJournal(), 500);
+            // before playing the chapter as a narrated dialogue scene,
+            // rather than fighting the battle-exit transition for the
+            // player's attention. The journal (still readable/rereadable
+            // any time from the world screen button) opens right after.
+            setTimeout(() => {
+                this.presentLoreChapterAsScene(chapter, () => this.openLoreJournal());
+            }, 500);
         }
 
         /** The actual ending of the game - called once, the moment Voraxis
@@ -20412,6 +20624,51 @@
             });
         }
 
+        /** Plays a short pre-battle banter exchange between whichever party
+         *  members are alive right now, then hands off to onStartBattle().
+         *  Lines alternate left/right across the living party (Rowan,
+         *  Mina, Pike or however many remain) so it reads like a real
+         *  exchange rather than one hero monologuing. Bosses without a
+         *  config (i.e. not one of the 4 story dungeons) just start the
+         *  battle immediately - this never blocks a fight from happening. */
+        startPreBattleDialogue(bossLocationName, onStartBattle) {
+            const cfg = BOSS_PRE_BATTLE_LINES[bossLocationName];
+            const heroes = this.party && this.party.heroes ? this.party.heroes.filter(h => !h.isDead) : [];
+            if (!cfg || !heroes.length) { onStartBattle(); return; }
+            const lines = cfg.lines.map((text, i) => {
+                const hero = heroes[i % heroes.length];
+                return { speaker: hero.name, portraitKey: hero.heroClass, side: i % 2 === 0 ? 'left' : 'right', text };
+            });
+            // The boss's one closing line (if art/text exists for this
+            // fight) lands on the opposite side from whichever hero spoke
+            // last - a sudden villain reveal right before the fight, using
+            // the portrait art rather than the "no villain art" fallback
+            // this system shipped with originally.
+            if (cfg.bossName && cfg.bossPortraitKey && cfg.bossLine) {
+                const lastSide = lines.length ? lines[lines.length - 1].side : 'left';
+                const bossSide = lastSide === 'left' ? 'right' : 'left';
+                lines.push({ speaker: cfg.bossName, portraitKey: cfg.bossPortraitKey, side: bossSide, text: cfg.bossLine });
+            }
+            this.dialogue.start({
+                background: cfg.backgroundKey,
+                lines,
+                onEnd: onStartBattle
+            });
+        }
+
+        /** Presents a Lore journal chapter's paragraphs as a narrated
+         *  dialogue scene (typewriter, tap-to-advance, no portrait - this
+         *  is narration rather than a specific character speaking) instead
+         *  of just silently unlocking it in the journal. onEnd typically
+         *  reopens the journal itself so the chapter is still there to
+         *  reread afterward, same as before this existed. */
+        presentLoreChapterAsScene(chapter, onEnd) {
+            if (!chapter || !chapter.text || !chapter.text.length) { if (onEnd) onEnd(); return; }
+            const backgroundKey = LORE_CHAPTER_BACKGROUNDS[chapter.id] || '_fallback';
+            const lines = chapter.text.map(t => ({ speaker: chapter.title, portraitKey: null, side: 'left', text: t }));
+            this.dialogue.start({ background: backgroundKey, lines, onEnd: onEnd || null });
+        }
+
         // Legacy popup-driven accept/complete - kept for the bounty board
         // and any other button that still calls these directly. Both now
         // just wrap the pure state mutators above.
@@ -21117,7 +21374,7 @@
                 }
             }
             this.audio.playMusic('battle', 'castle');
-            this.battle.startEncounter(this.party, 'castle');
+            this.startPreBattleDialogue(bossName, () => { this.battle.startEncounter(this.party, 'castle'); });
             // boss_defeat progress now fires correctly from endBattle() on
             // an actual kill (see the comment there) - this call used to
             // fire here, on fight START with no target, and never did
@@ -23029,7 +23286,7 @@
                 }
             }
             this.audio.playMusic('battle', 'castle');
-            this.battle.startEncounter(this.party, 'castle');
+            this.startPreBattleDialogue(bossName, () => { this.battle.startEncounter(this.party, 'castle'); });
             // boss_defeat progress now fires correctly from endBattle() on
             // an actual kill (see the comment there) - this call used to
             // fire here, on fight START with no target, and never did
