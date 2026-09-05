@@ -2493,7 +2493,40 @@
             100% { transform: translate(-50%, -50%) translate(var(--dx), var(--dy)) scale(1.3); opacity: 0; }
         }
 
+        /* Victory screen redesign (presentation-only pass - same rewards
+         * data, staggered reveal instead of everything popping in at once).
+         * Sequence: dim the battlefield -> chest bounces in solo -> title
+         * flashes in with a screen-tint pulse + confetti -> reward rows
+         * reveal one at a time (gold/EXP count up rather than snapping to
+         * the final number) -> item find gets the biggest, last flourish
+         * (it's the most exciting single outcome) -> Continue appears only
+         * once everything's been shown, with a gentle pulse to invite the
+         * tap, instead of sitting above the rewards before you've even
+         * seen them. */
+        .victory-dim-overlay {
+            position: absolute; inset: 0; z-index: 195; pointer-events: none;
+            background: rgba(0,0,0,0);
+            animation: victoryDimIn 0.5s ease-out forwards;
+        }
+        @keyframes victoryDimIn { to { background: rgba(0,0,0,0.55); } }
+
+        .victory-flash {
+            position: absolute; inset: 0; z-index: 199; pointer-events: none;
+            background: radial-gradient(circle, rgba(255,215,0,0.55), transparent 70%);
+            opacity: 0;
+            animation: victoryFlashPulse 0.7s ease-out forwards;
+        }
+        @keyframes victoryFlashPulse {
+            0% { opacity: 0; }
+            25% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
         #battle-results-popup {
+            background: rgba(12,8,22,0.6);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,215,0,0.55) !important;
             animation: popupEntrance 0.35s cubic-bezier(.2,1.4,.4,1);
         }
 
@@ -2501,6 +2534,36 @@
             0% { opacity: 0; transform: translate(-50%, -50%) scale(0.7); }
             100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
         }
+
+        .victory-row {
+            opacity: 0;
+            transform: translateY(10px);
+            animation: victoryRowIn 0.45s ease-out forwards;
+        }
+        @keyframes victoryRowIn {
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .victory-item-reveal {
+            opacity: 0;
+            transform: scale(0.85) translateY(10px);
+            animation: victoryItemIn 0.5s cubic-bezier(.2,1.3,.4,1) forwards;
+        }
+        @keyframes victoryItemIn {
+            60% { transform: scale(1.05) translateY(0); opacity: 1; }
+            100% { transform: scale(1) translateY(0); opacity: 1; }
+        }
+
+        .victory-continue-btn {
+            opacity: 0;
+            animation: victoryRowIn 0.4s ease-out forwards, victoryBtnPulse 1.6s ease-in-out infinite;
+        }
+        @keyframes victoryBtnPulse {
+            0%, 100% { box-shadow: 0 0 8px rgba(255,215,0,0.35); }
+            50% { box-shadow: 0 0 20px rgba(255,215,0,0.85); }
+        }
+
+        .victory-count-num { font-variant-numeric: tabular-nums; }
 
         .victory-title-glow {
             animation: victoryTitleGlow 1.4s ease-in-out infinite;
@@ -5076,7 +5139,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v135</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v138</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -9136,7 +9199,18 @@
         }
     };
 
-    const DUAL_TECH_TIER_MULT = { tiny: 0.35, small: 0.65, moderate: 0.95, big: 1.25, biggest: 1.5, 'n/a': 0 };
+    // Balance pass (v138): original values (tiny/small/moderate/big/biggest
+    // = 0.35/0.65/0.95/1.25/1.5) left every damage-dealing Dual Tech doing
+    // LESS damage than just using both heroes' solo Limit Breaks back to
+    // back - the opposite of the intended "slightly more than combined"
+    // feel. Scaled up ~1.7x across the board (tiny less so, since tiny-tier
+    // techs lean on a big secondary effect rather than raw damage) so pure-
+    // damage flagship techs (Wrath Unbound, Piercing Verdict, Twin Faith
+    // Strike) land at ~1.0-1.3x combined solo damage, with lower tiers
+    // scaling down from there to leave room for their secondary effects'
+    // value. Verified against getDualTechBasePower() output across levels
+    // 10/20/30 before applying - see project notes for the full analysis.
+    const DUAL_TECH_TIER_MULT = { tiny: 0.55, small: 1.1, moderate: 1.6, big: 2.1, biggest: 2.6, 'n/a': 0 };
 
     /** Which of the 3 fixed hero-pairs (if any) two heroClasses form.
      *  Returns the pairKey ('warrior_mage' etc.) or null - every hero pairs
@@ -16791,67 +16865,117 @@
             if (rareBonus) totalGold += rareBonus.gold;
             const existingPopup = document.getElementById('battle-results-popup');
             if (existingPopup) existingPopup.remove();
+            const existingDim = document.getElementById('victory-dim-overlay');
+            if (existingDim) existingDim.remove();
+            const battleWindow = document.getElementById('battle-window');
+
+            // Dim the battlefield first so focus shifts to the results -
+            // plays immediately, well before the panel itself appears.
+            const dim = document.createElement('div');
+            dim.id = 'victory-dim-overlay';
+            dim.className = 'victory-dim-overlay';
+            battleWindow.appendChild(dim);
+
             const popup = document.createElement('div');
             popup.id = 'battle-results-popup';
             popup.style.cssText = `
                 position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-                background: linear-gradient(145deg, var(--panel-bg), #1a0a2e);
-                border: 3px solid var(--highlight);
+                border-radius: 12px;
                 padding: 30px;
                 min-width: 450px;
                 max-height: 80vh;
                 overflow-y: auto;
                 text-align: center;
                 z-index: 200;
-                border-radius: 12px;
                 box-shadow: 0 0 60px rgba(0,0,0,0.8), var(--glow-gold);
                 pointer-events: auto;
             `;
-            let itemHTML = '';
-            if (droppedItem) {
-                const colors = { legendary: '#aa00ff', rare: '#00aaff', uncommon: '#88ff88', common: '#888888' };
-                itemHTML = `
-                    <div style="margin: 15px 0; padding: 12px; background: rgba(0,0,0,0.3); border-radius: 6px; border-left: 4px solid ${colors[rarity]};">
-                        <div style="font-size: 28px; margin-bottom: 5px;">📦 ➡️ ✨</div>
-                        <div style="color: ${colors[rarity]};">Found: ${droppedItem.name}!</div>
-                        ${droppedItem.desc ? `<div style="color: #888; font-size: 12px; margin-top: 5px;">${droppedItem.desc}</div>` : ''}
-                    </div>
-                `;
-            }
-            let materialsHTML = '';
-            if (materialsFound.length > 0) {
-                materialsHTML = '<div style="margin: 15px 0;"><h4 style="color: #c0c0c0;">📦 Materials Gained:</h4>';
-                materialsFound.forEach(mat => {
-                    materialsHTML += `<div style="padding: 5px; background: rgba(192,192,192,0.1); margin: 3px 0;">${mat.name} x${mat.quantity}</div>`;
-                });
-                materialsHTML += '</div>';
-            }
-            let rareBonusHTML = '';
+
+            // Build every reward row up front (so the panel's final size is
+            // known and nothing reflows mid-reveal), each starting invisible
+            // via .victory-row and given its own animation-delay so they
+            // reveal one at a time rather than all at once. Gold/EXP get a
+            // count-up (see animateCountUp()) timed to start exactly when
+            // their row becomes visible.
+            let delay = 550; // chest + title beat plays first, uninterrupted
+            const STEP = 160;
+            const rows = [];
+
+            rows.push({ html: `<p class="victory-row" style="margin: 10px 0; animation-delay: ${delay}ms;">💰 Gold gained: <span class="victory-count-num" id="vc-gold">0</span></p>`, countTarget: totalGold, countId: 'vc-gold', countDelay: delay });
+            delay += STEP;
+            rows.push({ html: `<p class="victory-row" style="margin: 10px 0; animation-delay: ${delay}ms;">✨ Experience gained: <span class="victory-count-num" id="vc-exp">0</span></p>`, countTarget: totalExp, countId: 'vc-exp', countDelay: delay });
+            delay += STEP;
+
             if (rareBonus) {
                 const bonusIcon = rareBonus.type === 'gem' ? '💎' : '🎁';
-                rareBonusHTML = `
-                    <div style="margin: 15px 0; padding: 12px; background: rgba(255,20,50,0.1); border-radius: 6px; border-left: 4px solid #ff3355;">
+                rows.push({ html: `
+                    <div class="victory-row" style="margin: 15px 0; padding: 12px; background: rgba(255,20,50,0.12); border-radius: 6px; border-left: 4px solid #ff3355; animation-delay: ${delay}ms;">
                         <div style="color: #ff8899; font-weight: bold;">${bonusIcon} Rare Encounter Bonus</div>
                         <div style="color: #ffb3c0; margin-top: 4px;">${rareBonus.name}</div>
-                    </div>
-                `;
+                    </div>` });
+                delay += STEP;
             }
+
+            if (materialsFound.length > 0) {
+                let matHTML = `<div class="victory-row" style="margin: 15px 0 4px; animation-delay: ${delay}ms;"><h4 style="color: #c0c0c0; margin-bottom: 6px;">📦 Materials Gained:</h4></div>`;
+                rows.push({ html: matHTML });
+                materialsFound.forEach(mat => {
+                    delay += 90;
+                    rows.push({ html: `<div class="victory-row" style="padding: 5px; background: rgba(192,192,192,0.1); margin: 3px 0; border-radius: 4px; animation-delay: ${delay}ms;">${mat.name} x${mat.quantity}</div>` });
+                });
+                delay += STEP;
+            }
+
+            if (droppedItem) {
+                const colors = { legendary: '#aa00ff', rare: '#00aaff', uncommon: '#88ff88', common: '#888888' };
+                rows.push({ html: `
+                    <div class="victory-item-reveal" style="margin: 15px 0; padding: 14px; background: rgba(0,0,0,0.35); border-radius: 6px; border-left: 4px solid ${colors[rarity]}; box-shadow: 0 0 24px ${colors[rarity]}55; animation-delay: ${delay}ms;">
+                        <div style="font-size: 28px; margin-bottom: 5px;">📦 ➡️ ✨</div>
+                        <div style="color: ${colors[rarity]}; font-weight: bold;">Found: ${droppedItem.name}!</div>
+                        ${droppedItem.desc ? `<div style="color: #888; font-size: 12px; margin-top: 5px;">${droppedItem.desc}</div>` : ''}
+                    </div>` });
+                delay += 500; // the item-reveal animation itself runs long; give it room before Continue shows
+            }
+
+            const continueDelay = delay + 200;
+
             popup.innerHTML = `
                 <div style="font-size: 48px; margin-bottom: 10px; animation: chestOpen 0.5s;">📦</div>
-                <h2 class="victory-title-glow" style="color: ${rareBonus ? '#ff3355' : 'var(--highlight)'}; margin-bottom: 14px;">${rareBonus ? '🌑 MENACING FOE DEFEATED!' : '🏆 VICTORY!'}</h2>
-                <button class="menu-button" onclick="window.game.battle.exitBattleResults()"
-                        style="margin: 0 auto 20px; display: block; padding: 10px 28px; font-size: 15px;">Continue</button>
+                <h2 class="victory-title-glow" style="color: ${rareBonus ? '#ff3355' : 'var(--highlight)'}; margin-bottom: 14px; opacity: 0; animation: victoryRowIn 0.4s ease-out 250ms forwards, victoryTitleGlow 1.4s ease-in-out 650ms infinite;">${rareBonus ? '🌑 MENACING FOE DEFEATED!' : '🏆 VICTORY!'}</h2>
                 <div style="margin-bottom: 20px; text-align: left;">
-                    <p style="margin: 10px 0;">💰 Gold gained: ${totalGold}</p>
-                    <p style="margin: 10px 0;">✨ Experience gained: ${totalExp}</p>
-                    ${rareBonusHTML}
-                    ${materialsHTML}
-                    ${itemHTML}
+                    ${rows.map(r => r.html).join('')}
                 </div>
+                <button class="menu-button victory-continue-btn" onclick="window.game.battle.exitBattleResults()"
+                        style="margin: 0 auto; display: block; padding: 10px 28px; font-size: 15px; animation-delay: ${continueDelay}ms, ${continueDelay + 400}ms;">Continue</button>
             `;
-            document.getElementById('battle-window').appendChild(popup);
+            battleWindow.appendChild(popup);
             this.animateChestOpening();
-            fireVictoryConfetti();
+
+            // Title beat: screen-tint flash + confetti land together right
+            // as "VICTORY!" appears, not trailing after the rewards like
+            // before - this is the emotional peak, so it fires early.
+            setTimeout(() => {
+                const flash = document.createElement('div');
+                flash.className = 'victory-flash';
+                battleWindow.appendChild(flash);
+                setTimeout(() => flash.remove(), 700);
+                fireVictoryConfetti();
+            }, 250);
+
+            rows.forEach(r => {
+                if (r.countId) {
+                    setTimeout(() => animateCountUp(r.countId, r.countTarget, 550), r.countDelay);
+                }
+            });
+
+            // On a landscape mobile viewport, a full reward set (materials +
+            // item drop) can genuinely exceed the panel's visible height -
+            // auto-scroll so Continue is guaranteed in view once it appears,
+            // rather than leaving the player to discover they need to
+            // scroll a popup that just finished animating in.
+            setTimeout(() => {
+                popup.scrollTo({ top: popup.scrollHeight, behavior: 'smooth' });
+            }, continueDelay);
         }
 
         animateChestOpening() {
@@ -16882,6 +17006,8 @@
         exitBattleResults() {
             const popup = document.getElementById('battle-results-popup');
             if (popup) popup.remove();
+            const dim = document.getElementById('victory-dim-overlay');
+            if (dim) dim.remove();
             this.showingResults = false;
             this.endBattle(false);
         }
@@ -20119,7 +20245,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v135]');
+            console.log('Game starting... [build v138]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
@@ -23698,6 +23824,8 @@
         }
 
         showAvailableQuests() {
+            this.guildQuestTab = 'available';
+            this.renderGuildQuestTabs();
             const content = document.getElementById('quest-list-content');
             if (!content) return;
             content.innerHTML = '';
@@ -23753,6 +23881,8 @@
         }
 
         showActiveQuests() {
+            this.guildQuestTab = 'active';
+            this.renderGuildQuestTabs();
             const content = document.getElementById('quest-list-content');
             if (!content) return;
             content.innerHTML = '';
@@ -23771,6 +23901,8 @@
         }
 
         showCompletedQuests() {
+            this.guildQuestTab = 'completed';
+            this.renderGuildQuestTabs();
             const content = document.getElementById('quest-list-content');
             if (!content) return;
             content.innerHTML = '';
@@ -24051,14 +24183,6 @@
         _openGuildScreen() {
             this.state.switchScreen('guild');
             this.renderGuild();
-            setTimeout(() => {
-                const availableBtn = document.querySelector('#quest-list button:first-child');
-                if (availableBtn) {
-                    availableBtn.click();
-                } else {
-                    this.showAvailableQuests();
-                }
-            }, 100);
         }
 
         exitGuild() {
@@ -24072,17 +24196,34 @@
             if (!questList) return;
             questList.innerHTML = '';
             const tabsDiv = document.createElement('div');
-            tabsDiv.style.cssText = 'display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid var(--border-color); padding-bottom: 10px; flex-wrap: wrap; justify-content: center;';
-            tabsDiv.innerHTML = `
-                <button class="menu-button" onclick="window.game.showAvailableQuests()" style="padding: 4px 8px; font-size: 11px;">📋 Available</button>
-                <button class="menu-button" onclick="window.game.showActiveQuests()" style="padding: 4px 8px; font-size: 11px;">⚔️ Active</button>
-                <button class="menu-button" onclick="window.game.showCompletedQuests()" style="padding: 4px 8px; font-size: 11px;">✅ Completed</button>
-            `;
+            tabsDiv.className = 'shop2-tabs';
+            tabsDiv.id = 'guild-quest-tabs';
+            tabsDiv.style.cssText = 'margin-bottom: 16px; flex-wrap: wrap;';
             questList.appendChild(tabsDiv);
             const contentDiv = document.createElement('div');
             contentDiv.id = 'quest-list-content';
             questList.appendChild(contentDiv);
             this.showAvailableQuests();
+        }
+
+        /** Reskinned from plain .menu-button to the shop2 .shop2-btn tab
+         *  style (matching Buy/Sell in shops, color tabs in the Gem
+         *  Crafter) so the Guild Hall's quest tabs stop being the one
+         *  leftover legacy-styled element in an otherwise fully shop2
+         *  screen. this.guildQuestTab tracks which tab is active so the
+         *  gold highlight follows clicks the same way Buy/Sell does. */
+        renderGuildQuestTabs() {
+            const tabsDiv = document.getElementById('guild-quest-tabs');
+            if (!tabsDiv) return;
+            const tab = this.guildQuestTab || 'available';
+            const tabs = [
+                { key: 'available', icon: '📋', label: 'Available', fn: 'showAvailableQuests' },
+                { key: 'active', icon: '⚔️', label: 'Active', fn: 'showActiveQuests' },
+                { key: 'completed', icon: '✅', label: 'Completed', fn: 'showCompletedQuests' }
+            ];
+            tabsDiv.innerHTML = tabs.map(t =>
+                `<div class="shop2-btn${tab === t.key ? ' active' : ''}" onclick="window.game.${t.fn}()">${t.icon} ${t.label}</div>`
+            ).join('');
         }
 
         exploreCastle() {
@@ -29473,6 +29614,32 @@ const QUEST_DATA = [
         if (window.game && window.game.audio) {
             window.game.audio.play('bossAppear');
         }
+    }
+
+    /** Animates a number counting up from 0 to `target` inside the element
+     *  with id `elId` over `duration` ms - used by showBattleResults() so
+     *  gold/EXP land with some weight instead of just snapping straight to
+     *  the final number. Eases out (fast start, slow settle) since that
+     *  reads better for a short count than linear. Silently no-ops if the
+     *  target is 0 or the element isn't there (results panel may have
+     *  already been dismissed before this fires). */
+    function animateCountUp(elId, target, duration) {
+        const el = document.getElementById(elId);
+        if (!el || !target) {
+            if (el) el.textContent = target || 0;
+            return;
+        }
+        const start = performance.now();
+        function tick(now) {
+            const elapsed = now - start;
+            const t = Math.min(1, elapsed / duration);
+            const eased = 1 - Math.pow(1 - t, 3);
+            const current = Math.floor(eased * target);
+            if (!document.body.contains(el)) return; // panel dismissed mid-count
+            el.textContent = current;
+            if (t < 1) requestAnimationFrame(tick);
+        }
+        requestAnimationFrame(tick);
     }
 
     /** Gold/silver confetti burst across the top of the screen on victory. */
