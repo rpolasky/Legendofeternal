@@ -1992,6 +1992,31 @@
             color: #1a1a1a !important;
         }
 
+        /* Dual Tech command button - same text-label treatment as
+           .limit-break-btn, but a two-tone blue/gold gradient so it reads
+           as a distinct, rarer option sitting right next to it. */
+        .dual-tech-btn {
+            width: auto;
+            padding: 0 18px;
+            font-size: 13px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            gap: 6px;
+            background: linear-gradient(135deg, #1a4a8a, #d4af00) !important;
+            border-color: #ffe066 !important;
+            color: #fff !important;
+            animation: dualTechBtnPulse 1.4s ease-in-out infinite;
+        }
+        .dual-tech-btn:hover {
+            border-color: #fff6cc !important;
+            box-shadow: 0 4px 25px rgba(212,175,0,0.6) !important;
+        }
+        @keyframes dualTechBtnPulse {
+            0%, 100% { box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
+            50% { box-shadow: 0 0 22px rgba(102,204,255,0.8); }
+        }
+
         /* Limit break option descriptions moved to a tap-friendly popup (see
            #limit-break-overlay in the HTML / showLimitBreakMenu() in the
            script) - they used to be a CSS :hover::after tooltip here, which
@@ -2036,6 +2061,121 @@
             opacity: 0.92;
             text-transform: none;
             letter-spacing: normal;
+        }
+
+        /* Dual Tech popup - reuses .limit-break-option's row shape via
+           .dual-tech-option, just in the blue/gold theme matching
+           .dual-tech-btn instead of Limit Break's magenta. */
+        .dual-tech-box {
+            max-width: 380px;
+        }
+        .dual-tech-option {
+            background: linear-gradient(135deg, #1a4a8a, #7a5a00);
+            border: 2px solid #ffe066;
+            border-radius: 8px;
+            color: #fff;
+            padding: 12px 14px;
+            text-align: left;
+            cursor: pointer;
+            font-family: inherit;
+            width: 100%;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .dual-tech-option:hover,
+        .dual-tech-option:active {
+            border-color: #fff6cc;
+            box-shadow: 0 4px 20px rgba(102,204,255,0.5);
+        }
+        .dual-tech-option .dt-label {
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .dual-tech-option .dt-partner {
+            font-size: 11px;
+            font-weight: bold;
+            opacity: 0.85;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .dual-tech-option .dt-desc {
+            font-size: 12px;
+            font-weight: normal;
+            line-height: 1.4;
+            opacity: 0.92;
+        }
+
+        /* Dual Tech name-card banner cutscene (see playDualTechCutscene()
+           in the script) - a colored bar sweeps across the battle screen
+           with the combo's name, themed via --dt-color-a/--dt-color-b
+           (set inline per-pair by the JS). Pure CSS, no new art required -
+           lightweight but reads as a real "moment" alongside the dual
+           hero lunge that plays at the same time. */
+        .dual-tech-banner {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+            z-index: 500;
+            opacity: 0;
+        }
+        .dual-tech-banner.active {
+            animation: dualTechFlash 1.15s ease-out;
+        }
+        .dual-tech-banner-bar {
+            --dt-color-a: #8a2be2;
+            --dt-color-b: #ff6a00;
+            --dt-banner-img: none;
+            width: 100%;
+            padding: 20px 0;
+            text-align: center;
+            /* Themed illustrated banner (see DUAL_TECH_PAIRS/LIMIT_BREAK_BANNER_COLORS
+               'banner' path) stretched full-width via cover - since this bar
+               is much wider than it is tall, cover shows the FULL width of
+               the artwork (its left-to-right color story) cropped only to a
+               thin vertical band from its center. A dark scrim layers on
+               top so the title/subtitle stay readable over bright art
+               (e.g. the icy-white end of the Hymn of the Storm banner). */
+            background-image: linear-gradient(rgba(0,0,0,0.25), rgba(0,0,0,0.45)), var(--dt-banner-img);
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            box-shadow: 0 0 40px var(--dt-color-b);
+            transform: scaleX(0);
+        }
+        .dual-tech-banner.active .dual-tech-banner-bar {
+            animation: dualTechBarSweep 1.15s ease-out;
+        }
+        .dual-tech-banner-title {
+            font-size: 26px;
+            font-weight: 900;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: #fff;
+            text-shadow: 0 0 12px rgba(0,0,0,0.85), 0 0 22px var(--dt-color-b);
+        }
+        .dual-tech-banner-subtitle {
+            font-size: 12px;
+            letter-spacing: 1px;
+            color: #fff;
+            opacity: 0.9;
+            margin-top: 2px;
+            text-shadow: 0 0 8px rgba(0,0,0,0.85);
+        }
+        @keyframes dualTechFlash {
+            0% { opacity: 0; }
+            10% { opacity: 1; }
+            82% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+        @keyframes dualTechBarSweep {
+            0% { transform: scaleX(0); }
+            22% { transform: scaleX(1); }
+            100% { transform: scaleX(1); }
         }
 
         /* Magic/Item list popup (see #battle-action-overlay in the HTML) -
@@ -4936,7 +5076,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v130</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v133</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -5203,6 +5343,17 @@
                             <button class="cmd-btn" title="Item" onclick="window.game.battle.selectCommand('item')">🎒</button>
                             <button class="cmd-btn" title="Run" onclick="window.game.battle.selectCommand('run')">🏃</button>
                             <button class="cmd-btn" id="auto-battle-btn" title="Auto Battle" onclick="window.game.battle.toggleAutoBattle()">⚡</button>
+                        </div>
+                    </div>
+
+                    <!-- Dual Tech name-card banner - see playDualTechCutscene()
+                         in the script. Hidden (opacity:0, no 'active' class) by
+                         default; JS fills in the title/subtitle and colors and
+                         toggles 'active' right as a Dual Tech fires. -->
+                    <div class="dual-tech-banner" id="dual-tech-banner">
+                        <div class="dual-tech-banner-bar" id="dual-tech-banner-bar">
+                            <div class="dual-tech-banner-title" id="dual-tech-banner-title"></div>
+                            <div class="dual-tech-banner-subtitle" id="dual-tech-banner-subtitle"></div>
                         </div>
                     </div>
                 </div>
@@ -5555,6 +5706,17 @@
                 <h3>💥 Limit Break</h3>
                 <div class="limit-break-modal-options" id="limit-break-options"></div>
                 <button class="menu-button" onclick="document.getElementById('limit-break-overlay').classList.remove('active')">⬅️ Back</button>
+            </div>
+        </div>
+        <!-- Dual Tech popup (see showDualTechMenu() in the script) - same
+             tap-friendly shape as #limit-break-overlay above, just themed
+             gold/blue instead of magenta so it reads as a distinct, rarer
+             option next to Limit Break. -->
+        <div class="popup-overlay" id="dual-tech-overlay">
+            <div class="popup-box limit-break-box dual-tech-box" id="dual-tech-box">
+                <h3>🌟 Dual Tech</h3>
+                <div class="limit-break-modal-options" id="dual-tech-options"></div>
+                <button class="menu-button" onclick="document.getElementById('dual-tech-overlay').classList.remove('active')">⬅️ Back</button>
             </div>
         </div>
         <!-- Shared list-style popup for the Magic and Item battle commands
@@ -8853,6 +9015,155 @@
             }
         ]
     };
+
+    // =====================================================================
+    //                    DUAL TECHS (hero-pair combo attacks)
+    // =====================================================================
+    // Chrono Trigger-style combo attacks between the 3 fixed heroes, gated
+    // behind ARCHETYPE_DEFS above. Only 3 hero pairs exist (one per
+    // heroClass combination); each pair has ONE mechanical identity (see
+    // DUAL_TECH_PAIRS for its title/theme colors) with the archetype
+    // pairing only changing name/flavor/secondary-effect - 3 systems, 27
+    // distinct-feeling outcomes. See BattleSystem.getDualTechOptions()/
+    // executeDualTech() for how this table gets used.
+    //
+    // Balance note (deliberately conservative, tune later): each tech's
+    // raw power is getDualTechBasePower() (a blend of both heroes' key
+    // stats) times a small tier multiplier (see DUAL_TECH_TIER_MULT) -
+    // aiming for "a bit more than what the two heroes' separate Limit
+    // Breaks would have done," not a multiplied-up nuke. Secondary effects
+    // (heals/buffs/debuffs) carry extra value on top of the raw number, so
+    // techs that pair a support effect with damage use a lower tier.
+    const DUAL_TECH_PAIRS = {
+        warrior_mage: { title: 'Blade and Spellfire', colorA: '#8a2be2', colorB: '#ff6a00', banner: 'assets/battle/dualtech_blade_spellfire.png' },
+        warrior_paladin: { title: 'Twin Blades of Dawn', colorA: '#ffcc33', colorB: '#66ccff', banner: 'assets/battle/dualtech_twin_blades_dawn.png' },
+        mage_paladin: { title: 'Hymn of the Storm', colorA: '#1a6fd1', colorB: '#e6f7ff', banner: 'assets/battle/dualtech_hymn_storm.png' }
+    };
+
+    // Keyed as DUAL_TECHS[pairKey][`${archetypeOfFirstClass}_${archetypeOfSecondClass}`],
+    // where "first"/"second" class match the order of pairKey's own name
+    // (e.g. warrior_mage -> Rowan's archetype first, Mina's second).
+    const DUAL_TECHS = {
+        warrior_mage: {
+            berserker_elementalist: { name: 'Inferno Fury', kind: 'phys_single', tier: 'moderate', element: 'fire', missingHpScale: true,
+                desc: "A blazing strike that hits harder the lower Rowan's HP falls." },
+            berserker_battlemage: { name: 'Savage Spellblade', kind: 'phys_multi', tier: 'small', hits: 2,
+                desc: 'Two savage, spell-charged blows in quick succession.' },
+            berserker_arcanist: { name: 'Reckless Surge', kind: 'phys_single', tier: 'moderate', ignoreDefensePct: 0.5,
+                desc: "A wild swing that tears through half the target's defense." },
+            guardian_elementalist: { name: 'Warded Flame', kind: 'phys_single', tier: 'small', element: 'fire',
+                secondary: { type: 'buff_both', stat: 'defense', power: 1.3, duration: 2 },
+                desc: 'A flame-wreathed strike that leaves both fighters better guarded.' },
+            guardian_battlemage: { name: 'Iron Aegis Strike', kind: 'phys_single', tier: 'small',
+                secondary: { type: 'shield_both', amount: 0.15 },
+                desc: 'An unerring blow that leaves a faint protective ward on both.' },
+            guardian_arcanist: { name: 'Bulwark Nova', kind: 'phys_aoe', tier: 'small',
+                secondary: { type: 'buff_all', stat: 'defense', power: 1.15, duration: 2 },
+                desc: 'A small arcane-backed shockwave that also steadies the party.' },
+            duelist_elementalist: { name: 'Lightning Rush', kind: 'phys_multi', tier: 'small', hits: 2, element: 'lightning', critBonus: 0.25,
+                desc: 'Two lightning-quick strikes with a much higher chance to crit.' },
+            duelist_battlemage: { name: 'Flashblade Cascade', kind: 'phys_multi', tier: 'tiny', hits: 3,
+                desc: 'A blistering three-hit combo of blade and spellcraft.' },
+            duelist_arcanist: { name: 'Piercing Verdict', kind: 'phys_single', tier: 'big', ignoreDefensePct: 1.0,
+                desc: "A precise thrust that ignores the target's defense outright." }
+        },
+        warrior_paladin: {
+            berserker_holy_paladin: { name: 'Desperate Vow', kind: 'phys_single', tier: 'big',
+                secondary: { type: 'heal_both_if_low', threshold: 0.4, power: 60 },
+                desc: 'A furious blow, backed by a vow to heal whoever needs it most.' },
+            berserker_crusader: { name: 'Wrath Unbound', kind: 'phys_single', tier: 'biggest',
+                desc: 'The hardest flat hit either of them can throw. No frills.' },
+            berserker_warden: { name: 'Reckless Guard', kind: 'phys_single', tier: 'big',
+                secondary: { type: 'buff_self_after', hero: 'a', stat: 'defense', power: 1.3, duration: 2 },
+                desc: 'A reckless strike, after which Rowan settles into a guarded stance.' },
+            guardian_holy_paladin: { name: 'Sanctified Wall', kind: 'phys_single', tier: 'moderate',
+                secondary: { type: 'heal_all', power: 45 },
+                desc: 'A solid blow, radiating a mending light over the whole party.' },
+            guardian_crusader: { name: 'Radiant Bulwark', kind: 'phys_single', tier: 'moderate',
+                secondary: { type: 'shield_both', amount: 0.2 },
+                desc: 'A holy-charged strike that leaves both fighters shielded.' },
+            guardian_warden: { name: 'Unbreakable Line', kind: 'phys_single', tier: 'tiny',
+                secondary: { type: 'buff_all', stat: 'defense', power: 1.35, duration: 3 },
+                desc: 'A modest hit, but the defensive line it forms holds strong.' },
+            duelist_holy_paladin: { name: 'Blessed Flurry', kind: 'phys_multi', tier: 'small', hits: 2,
+                secondary: { type: 'heal_both', power: 25 },
+                desc: 'A flurry of blessed strikes with a touch of healing light.' },
+            duelist_crusader: { name: 'Zealous Assault', kind: 'phys_multi', tier: 'small', hits: 2, critBonus: 0.3,
+                desc: 'A high-crit flurry of holy-charged blows.' },
+            duelist_warden: { name: "Guardian's Gambit", kind: 'phys_single', tier: 'small',
+                secondary: { type: 'buff_self_after', hero: 'b', stat: 'defense', power: 1.25, duration: 2 },
+                desc: 'A quick strike, with Pike drawing every eye afterward.' }
+        },
+        mage_paladin: {
+            elementalist_holy_paladin: { name: 'Cleansing Flame', kind: 'magic_single', tier: 'moderate', element: 'fire',
+                secondary: { type: 'cleanse_party' },
+                desc: 'A cleansing blaze that also burns away lingering afflictions.' },
+            elementalist_crusader: { name: 'Judgment Storm', kind: 'magic_aoe', tier: 'moderate',
+                desc: 'A big elemental-and-holy storm that batters every foe.' },
+            elementalist_warden: { name: 'Frozen Sanctuary', kind: 'magic_single', tier: 'small', element: 'ice',
+                secondary: { type: 'buff_all', stat: 'defense', power: 1.25, duration: 3 },
+                desc: 'A biting frost strike that leaves the party better shielded.' },
+            battlemage_holy_paladin: { name: "Mender's Edge", kind: 'magic_single', tier: 'small',
+                secondary: { type: 'heal_all', power: 55 },
+                desc: 'A sharp magical strike, trailed by healing light for everyone.' },
+            battlemage_crusader: { name: 'Twin Faith Strike', kind: 'magic_single', tier: 'big',
+                desc: 'A single devastating burst of shared conviction.' },
+            battlemage_warden: { name: 'Aegis Blade', kind: 'magic_single', tier: 'moderate',
+                secondary: { type: 'shield_both', amount: 0.2 },
+                desc: 'A spellblade strike that shields both casters afterward.' },
+            arcanist_holy_paladin: { name: 'Serene Ward', kind: 'heal_all_full', tier: 'n/a',
+                secondary: { type: 'mp_restore_all' },
+                desc: 'A wave of pure serenity - fully mends and restores the party.' },
+            arcanist_crusader: { name: 'Arcane Judgment', kind: 'magic_single', tier: 'moderate',
+                secondary: { type: 'debuff_enemy', stat: 'attack', power: 0.7 },
+                desc: "A judging bolt that withers the target's own attack power." },
+            arcanist_warden: { name: 'Ward of Ages', kind: 'magic_single', tier: 'tiny',
+                secondary: { type: 'buff_all', stat: 'defense', power: 1.5, duration: 4 },
+                desc: 'Barely a scratch of damage, but a ward that lasts for ages.' }
+        }
+    };
+
+    const DUAL_TECH_TIER_MULT = { tiny: 0.35, small: 0.65, moderate: 0.95, big: 1.25, biggest: 1.5, 'n/a': 0 };
+
+    /** Which of the 3 fixed hero-pairs (if any) two heroClasses form.
+     *  Returns the pairKey ('warrior_mage' etc.) or null - every hero pairs
+     *  with both other heroes, so a given hero can have up to 2 Dual Techs
+     *  available at once (rare, but the menu lists both when it happens). */
+    function getDualTechPairKey(classX, classY) {
+        const pairs = ['warrior_mage', 'warrior_paladin', 'mage_paladin'];
+        return pairs.find(p => {
+            const [a, b] = p.split('_');
+            return (a === classX && b === classY) || (a === classY && b === classX);
+        }) || null;
+    }
+
+    /** Blended power source for a Dual Tech's raw number, before the tier
+     *  multiplier. Physical pairs (warrior involved) lead with the
+     *  warrior's attack; the pure magic/holy pair leads with both heroes'
+     *  magic. Both heroes always contribute something, even in a
+     *  warrior-led pair, so the combo genuinely reflects both fighters. */
+    function getDualTechBasePower(heroA, heroB, pairKey) {
+        const a = heroA.getEffectiveStats();
+        const b = heroB.getEffectiveStats();
+        if (pairKey === 'mage_paladin') {
+            return a.magic * 1.1 + b.magic * 0.7;
+        }
+        const bSecondary = (pairKey === 'warrior_mage') ? b.magic : b.attack;
+        return a.attack * 1.0 + bSecondary * 0.55;
+    }
+
+    /** Same defense-mitigation formula as Monster.takeDamage(), but lets a
+     *  Dual Tech ignore some fraction of the target's defense first (for
+     *  techs like Piercing Verdict/Reckless Surge) without needing a
+     *  separate damage pipeline. */
+    function dealDualTechDamage(target, rawDamage, ignoreDefensePct = 0) {
+        const effectiveDefense = ignoreDefensePct
+            ? Math.floor((target.defense || 0) * (1 - ignoreDefensePct))
+            : (target.defense || 0);
+        const actualDamage = Math.max(1, Math.floor(rawDamage) - Math.floor(effectiveDefense / 2));
+        target.currentHp = Math.max(0, target.currentHp - actualDamage);
+        return actualDamage;
+    }
 
     // =====================================================================
     //                            HERO CLASS
@@ -13779,6 +14090,10 @@
             // one-time death animation, so updateMonsterDisplay() (called
             // repeatedly as HP changes) doesn't replay it on every refresh.
             this.deathAnimPlayed = new Set();
+            // See executeDualTech()/nextHero() - indices whose turn this
+            // round was already spent on a Dual Tech someone else
+            // initiated. Reset at the start of every hero-phase round.
+            this.heroTurnConsumed = new Set();
         }
 
         startEncounter(party, location = 'world') {
@@ -13809,9 +14124,17 @@
             this.waitingForTarget = false;
             this.runAttempts = 0;
             this.deathAnimPlayed = new Set();
+            this.heroTurnConsumed = new Set();
 
             this.generateMonsters(location, party.getAverageLevel());
             this.setupBattleUI();
+            // Bug found while testing Dual Techs: this never called
+            // renderMainCommands(), so turn one's command bar stayed on
+            // the static HTML markup instead of reflecting real state -
+            // if a hero carried a maxed Limit Break gauge (or a ready
+            // Dual Tech) into a fresh encounter, the button just wouldn't
+            // appear until some other action happened to re-render it.
+            this.renderMainCommands();
             applyBattleEnvironment(location);
             window.game.state.switchScreen('battle');
 
@@ -14300,14 +14623,22 @@
             if (!commandArea) return;
             const hero = this.party.heroes[this.selectedHeroIndex];
             const limitReady = hero && !hero.isDead && hero.isLimitBreakReady();
+            const dualTechOptions = (hero && !hero.isDead) ? this.getDualTechOptions(hero) : [];
             // Attack/Magic/Item/Run are icon-only (self-explanatory), but
-            // Limit Break keeps its text label since that's genuinely
-            // useful to read in the moment, per request.
+            // Limit Break/Dual Tech keep their text labels since that's
+            // genuinely useful to read in the moment, per request.
             const attackBtnHTML = limitReady
                 ? `<button class="cmd-btn limit-break-btn" title="Limit Break" onclick="window.game.battle.selectCommand('limitbreak')">💥 LIMIT BREAK</button>`
                 : `<button class="cmd-btn" title="Attack" onclick="window.game.battle.selectCommand('attack')">⚔️</button>`;
+            // Shown alongside (not instead of) the Limit Break/Attack button -
+            // per the design, spending the combo is a real choice against
+            // just cashing in a solo Limit Break right now.
+            const dualTechBtnHTML = dualTechOptions.length
+                ? `<button class="cmd-btn dual-tech-btn" title="Dual Tech" onclick="window.game.battle.selectCommand('dualtech')">🌟 DUAL TECH</button>`
+                : '';
             commandArea.innerHTML = `
                 ${attackBtnHTML}
+                ${dualTechBtnHTML}
                 <button class="cmd-btn" title="Magic" onclick="window.game.battle.selectCommand('magic')">🔮</button>
                 <button class="cmd-btn" title="Item" onclick="window.game.battle.selectCommand('item')">🎒</button>
                 <button class="cmd-btn" title="Run" onclick="window.game.battle.selectCommand('run')">🏃</button>
@@ -14330,6 +14661,11 @@
             if (command === 'limitbreak') {
                 if (!hero.isLimitBreakReady()) return;
                 this.showLimitBreakMenu(hero);
+                return;
+            }
+
+            if (command === 'dualtech') {
+                this.showDualTechMenu(hero);
                 return;
             }
 
@@ -14394,6 +14730,250 @@
             overlay.classList.add('active');
         }
 
+        // =================================================================
+        //                          DUAL TECHS
+        // =================================================================
+        /** Returns every Dual Tech currently available to `hero` - one
+         *  entry per ready, unlocked partner (a hero can have up to 2 at
+         *  once, one per other party member). Each entry's heroA/heroB are
+         *  ordered to match DUAL_TECHS' own key order (see
+         *  getDualTechPairKey()), NOT necessarily hero-then-partner. */
+        getDualTechOptions(hero) {
+            if (!hero || hero.isDead || !hero.archetype || !hero.isLimitBreakReady()) return [];
+            const heroIndex = this.party.heroes.indexOf(hero);
+            const results = [];
+            this.party.heroes.forEach((partner, idx) => {
+                if (idx === heroIndex || partner.isDead || !partner.archetype || !partner.isLimitBreakReady()) return;
+                const pairKey = getDualTechPairKey(hero.heroClass, partner.heroClass);
+                if (!pairKey) return;
+                const [classA] = pairKey.split('_');
+                const heroA = (hero.heroClass === classA) ? hero : partner;
+                const heroB = (heroA === hero) ? partner : hero;
+                const comboKey = `${heroA.archetype}_${heroB.archetype}`;
+                const techDef = DUAL_TECHS[pairKey] && DUAL_TECHS[pairKey][comboKey];
+                if (!techDef) return;
+                results.push({ partner, pairKey, techDef, heroA, heroB });
+            });
+            return results;
+        }
+
+        /** Tap-friendly popup (mirrors showLimitBreakMenu()) listing every
+         *  Dual Tech currently available to this hero. */
+        showDualTechMenu(hero) {
+            const options = this.getDualTechOptions(hero);
+            if (!options.length) return;
+            const overlay = document.getElementById('dual-tech-overlay');
+            const optionsContainer = document.getElementById('dual-tech-options');
+            if (!overlay || !optionsContainer) return;
+            optionsContainer.innerHTML = '';
+            options.forEach(opt => {
+                const pairInfo = DUAL_TECH_PAIRS[opt.pairKey];
+                const btn = document.createElement('button');
+                btn.className = 'dual-tech-option';
+                btn.innerHTML = `<span class="dt-label">🌟 ${opt.techDef.name}</span>` +
+                    `<span class="dt-partner">${opt.heroA.name} + ${opt.heroB.name} — ${pairInfo.title}</span>` +
+                    `<span class="dt-desc">${opt.techDef.desc}</span>`;
+                btn.onclick = () => {
+                    overlay.classList.remove('active');
+                    this.beginDualTech(opt.heroA, opt.heroB, opt.pairKey, opt.techDef);
+                };
+                optionsContainer.appendChild(btn);
+            });
+            overlay.classList.add('active');
+        }
+
+        /** Damage-type techs need an enemy target first (reuses the normal
+         *  attack targeting flow - selectTarget() branches on
+         *  'dualtech_attack'); support-only techs (heals/AoE/full-party
+         *  effects) fire immediately with no target needed. */
+        beginDualTech(heroA, heroB, pairKey, techDef) {
+            const TARGETED_KINDS = ['phys_single', 'magic_single', 'phys_multi'];
+            if (TARGETED_KINDS.includes(techDef.kind)) {
+                this.selectedCommand = 'dualtech_attack';
+                this.pendingDualTech = { heroA, heroB, pairKey, techDef };
+                this.waitingForTarget = true;
+                this.log(`${heroA.name} and ${heroB.name} prepare ${techDef.name}! Choose a target.`);
+            } else {
+                this.executeDualTech(heroA, heroB, pairKey, techDef, null);
+            }
+        }
+
+        /** Spends BOTH heroes' Limit Break gauges and both their turns for
+         *  the round (per design: two banked ultimates + two turns for one
+         *  combined payoff, not a free action). The currently-acting hero
+         *  (whichever of the pair got here first) is the "initiator" - the
+         *  OTHER one, if they haven't gone yet this round, gets their
+         *  upcoming turn silently skipped by nextHero() (see
+         *  heroTurnConsumed). If the partner already acted earlier this
+         *  round, there's nothing left to skip - a rare edge case, fine to
+         *  revisit if it ever matters for balance. */
+        executeDualTech(heroA, heroB, pairKey, techDef, target) {
+            this.magicOnlyBattle = false;
+            const initiator = this.party.heroes[this.selectedHeroIndex];
+            const partner = (initiator === heroA) ? heroB : heroA;
+            this.pendingLimitBreakUsed = true;
+            heroA.limitBreakCharge = 0;
+            heroB.limitBreakCharge = 0;
+            const partnerIndex = this.party.heroes.indexOf(partner);
+            if (partnerIndex > this.selectedHeroIndex) {
+                if (!this.heroTurnConsumed) this.heroTurnConsumed = new Set();
+                this.heroTurnConsumed.add(partnerIndex);
+            }
+            this.resetCommandState();
+            this.renderMainCommands();
+
+            const pairInfo = DUAL_TECH_PAIRS[pairKey];
+            window.game.audio.play('magic');
+            window.game.audio.play('sword');
+            this.log(`🌟 ${heroA.name} and ${heroB.name} unleash ${techDef.name}!`);
+            playDualTechCutscene(pairInfo, techDef.name, `${heroA.name} & ${heroB.name} — ${pairInfo.title}`);
+
+            triggerDualHeroApproach(heroA, heroB, () => {
+                this.resolveDualTechEffect(heroA, heroB, pairKey, techDef, target);
+            }, () => {
+                if (this.checkBattleEnd()) return;
+                this.renderMainCommands();
+                this.nextHero();
+            });
+        }
+
+        /** The actual numbers - see getDualTechBasePower()/DUAL_TECH_TIER_MULT
+         *  up top for the balance approach. Dispatches on techDef.kind for
+         *  the primary effect, then techDef.secondary (if any) for the
+         *  extra heal/buff/debuff layered on top. */
+        resolveDualTechEffect(heroA, heroB, pairKey, techDef, target) {
+            const pairInfo = DUAL_TECH_PAIRS[pairKey];
+            const basePower = getDualTechBasePower(heroA, heroB, pairKey);
+            let power = basePower * (DUAL_TECH_TIER_MULT[techDef.tier] || 0.8);
+            if (techDef.missingHpScale) {
+                const hpPct = heroA.currentHp / heroA.getEffectiveStats().maxHp;
+                power *= (1 + (1 - hpPct) * 0.5);
+            }
+
+            const applyElemental = (dmg, tgt) => {
+                if (!techDef.element || !tgt) return dmg;
+                if (tgt.elementalWeakness && tgt.elementalWeakness[techDef.element]) {
+                    dmg = Math.floor(dmg * tgt.elementalWeakness[techDef.element]);
+                    this.log(`✨ ${tgt.name} is weak to ${techDef.element}!`);
+                }
+                if (tgt.elementalResist && tgt.elementalResist[techDef.element]) {
+                    dmg = Math.floor(dmg * tgt.elementalResist[techDef.element]);
+                    this.log(`🛡️ ${tgt.name} resists ${techDef.element}!`);
+                }
+                return dmg;
+            };
+
+            const dealHit = (tgt, rawDmg) => {
+                const dmg = applyElemental(Math.floor(rawDmg), tgt);
+                const actual = dealDualTechDamage(tgt, dmg, techDef.ignoreDefensePct || 0);
+                const idx = this.monsters.indexOf(tgt);
+                const monsterDiv = document.getElementById(`monster-${idx}`);
+                if (monsterDiv) {
+                    shakeBattleScreen(true);
+                    hitFlash(monsterDiv);
+                    playMonsterRecoilAnim(monsterDiv);
+                    this.createAttackEffects(monsterDiv, true);
+                    const center = getBattleCenter(monsterDiv);
+                    if (center) window.fx.burst(center.x, center.y, pairInfo.colorB, 40);
+                }
+                this.showDamage(tgt, actual, false, true);
+                if (!tgt.isAlive()) this.log(`${tgt.name} is defeated!`);
+                return actual;
+            };
+
+            if (techDef.kind === 'phys_single' || techDef.kind === 'magic_single') {
+                if (techDef.critBonus && Math.random() < (0.2 + techDef.critBonus)) {
+                    power *= 1.6;
+                    this.log('💥 CRITICAL!');
+                }
+                const actual = dealHit(target, power);
+                this.log(`${heroA.name} & ${heroB.name} land ${techDef.name} on ${target.name} for ${actual} damage!`);
+            } else if (techDef.kind === 'phys_multi') {
+                const hits = techDef.hits || 2;
+                let total = 0;
+                for (let i = 0; i < hits && target.isAlive(); i++) {
+                    total += dealHit(target, power / hits);
+                }
+                this.log(`${heroA.name} & ${heroB.name} strike ${hits}x with ${techDef.name} for ${total} total damage!`);
+            } else if (techDef.kind === 'phys_aoe' || techDef.kind === 'magic_aoe') {
+                let total = 0;
+                this.monsters.filter(m => m.isAlive()).forEach(m => { total += dealHit(m, power); });
+                this.log(`${heroA.name} & ${heroB.name}'s ${techDef.name} hits every foe for ${total} total damage!`);
+            } else if (techDef.kind === 'heal_all_full') {
+                this.party.heroes.filter(h => !h.isDead).forEach(h => { h.currentHp = h.getEffectiveStats().maxHp; });
+                this.log(`✨ ${techDef.name} restores the whole party to full health!`);
+            }
+
+            if (techDef.secondary) {
+                this.applyDualTechSecondary(techDef.secondary, heroA, heroB, target);
+            }
+
+            this.updateMonsterDisplay();
+            this.updatePartyDisplay();
+        }
+
+        /** The extra heal/buff/shield/debuff/cleanse layered on top of a
+         *  Dual Tech's primary effect (see techDef.secondary in
+         *  DUAL_TECHS). Shields reuse the existing hero.buffs defense-buff
+         *  mechanism (short duration, higher power) rather than a new
+         *  damage-absorption system - the game has no separate "shield HP"
+         *  concept today, and a strong short defense buff reads the same
+         *  way in the moment. */
+        applyDualTechSecondary(secondary, heroA, heroB, target) {
+            const livingParty = this.party.heroes.filter(h => !h.isDead);
+            switch (secondary.type) {
+                case 'buff_both':
+                    [heroA, heroB].forEach(h => h.buffs.push({ stat: secondary.stat, power: secondary.power, duration: secondary.duration }));
+                    this.log(`🛡️ ${heroA.name} and ${heroB.name} are bolstered!`);
+                    break;
+                case 'buff_all':
+                    livingParty.forEach(h => h.buffs.push({ stat: secondary.stat, power: secondary.power, duration: secondary.duration }));
+                    this.log(`🛡️ The whole party is bolstered!`);
+                    break;
+                case 'shield_both':
+                    [heroA, heroB].forEach(h => h.buffs.push({ stat: 'defense', power: 1 + secondary.amount, duration: 2 }));
+                    this.log(`🛡️ ${heroA.name} and ${heroB.name} are warded!`);
+                    break;
+                case 'buff_self_after': {
+                    const target2 = secondary.hero === 'a' ? heroA : heroB;
+                    target2.buffs.push({ stat: secondary.stat, power: secondary.power, duration: secondary.duration });
+                    this.log(`🛡️ ${target2.name} settles into a guarded stance!`);
+                    break;
+                }
+                case 'heal_all':
+                    livingParty.forEach(h => { h.currentHp = Math.min(h.getEffectiveStats().maxHp, h.currentHp + secondary.power); });
+                    this.log(`💚 The party is mended!`);
+                    break;
+                case 'heal_both':
+                    [heroA, heroB].forEach(h => { if (!h.isDead) h.currentHp = Math.min(h.getEffectiveStats().maxHp, h.currentHp + secondary.power); });
+                    this.log(`💚 ${heroA.name} and ${heroB.name} feel the mending light!`);
+                    break;
+                case 'heal_both_if_low': {
+                    const isLow = (h) => !h.isDead && (h.currentHp / h.getEffectiveStats().maxHp) <= secondary.threshold;
+                    if (isLow(heroA) || isLow(heroB)) {
+                        [heroA, heroB].forEach(h => { if (!h.isDead) h.currentHp = Math.min(h.getEffectiveStats().maxHp, h.currentHp + secondary.power); });
+                        this.log(`💚 The vow holds - both are mended!`);
+                    }
+                    break;
+                }
+                case 'mp_restore_all':
+                    livingParty.forEach(h => { h.currentMp = h.getEffectiveStats().maxMp; });
+                    this.log(`✨ The party's mana is fully restored!`);
+                    break;
+                case 'cleanse_party':
+                    livingParty.forEach(h => { h.statusEffects = []; });
+                    this.log(`✨ Lingering afflictions are cleansed!`);
+                    break;
+                case 'debuff_enemy':
+                    if (target && target.isAlive()) {
+                        target[secondary.stat] = Math.max(1, Math.floor(target[secondary.stat] * secondary.power));
+                        this.log(`🌀 ${target.name}'s ${secondary.stat} crumbles!`);
+                    }
+                    break;
+            }
+            this.updatePartyDisplay();
+        }
+
         /** Warrior/Paladin attack-style limit breaks need an enemy target - reuses the
          *  normal attack targeting flow, but selectTarget() branches on this mode. */
         startLimitBreakTargeting(hero, mode) {
@@ -14407,6 +14987,7 @@
             this.magicOnlyBattle = false;
             this.pendingLimitBreakUsed = true;
             hero.limitBreakCharge = 0;
+            playLimitBreakBanner(hero.name, getLimitBreakLabel(hero, mode));
             // Every other action handler (executeAttack, executeMagic,
             // executeBattleItem, executeMageLimitBreak, ...) calls this
             // after firing so this.selectedCommand/waitingForTarget go back
@@ -14526,6 +15107,8 @@
             this.pendingLimitBreakUsed = true;
             hero.limitBreakCharge = 0;
             this.resetCommandState();
+            const modeLabels = { amplify: 'Arcane Amplify', convergence: 'Convergence', refresh: 'Arcane Refresh' };
+            playLimitBreakBanner(hero.name, modeLabels[mode] || 'Limit Break');
             if (mode === 'amplify') {
                 hero.pendingAmplify = true;
                 hero.pendingConvergence = false;
@@ -14554,6 +15137,8 @@
             this.pendingLimitBreakUsed = true;
             hero.limitBreakCharge = 0;
             this.resetCommandState();
+            const modeLabels = { guard: 'Sanctified Guard', cureall: 'Group Cure' };
+            playLimitBreakBanner(hero.name, modeLabels[mode] || 'Limit Break');
             if (mode === 'guard') {
                 const spell = { name: 'Sanctified Guard', type: 'all_buff', stat: 'defense', duration: 4, cost: 0 };
                 this.executeMagic(hero, spell, null);
@@ -14741,6 +15326,19 @@
                 this.executeLimitBreakAttack(hero, target, this.limitBreakMode);
                 this.waitingForTarget = false;
                 this.limitBreakMode = null;
+                return;
+            }
+
+            if (this.selectedCommand === 'dualtech_attack' && this.pendingDualTech) {
+                const target = this.monsters[index];
+                if (!target || !target.isAlive()) {
+                    this.log('Invalid target!');
+                    return;
+                }
+                const { heroA, heroB, pairKey, techDef } = this.pendingDualTech;
+                this.pendingDualTech = null;
+                this.waitingForTarget = false;
+                this.executeDualTech(heroA, heroB, pairKey, techDef, target);
                 return;
             }
         }
@@ -15599,7 +16197,17 @@
                 this.enemyPhase();
                 return;
             }
-            while (this.selectedHeroIndex < this.party.heroes.length && this.party.heroes[this.selectedHeroIndex].isDead) {
+            // heroTurnConsumed holds indices whose turn this round was
+            // already spent on a Dual Tech someone else initiated (see
+            // executeDualTech) - skipped here the same way a dead hero's
+            // turn is, so the round moves straight past them.
+            while (this.selectedHeroIndex < this.party.heroes.length &&
+                   (this.party.heroes[this.selectedHeroIndex].isDead ||
+                    (this.heroTurnConsumed && this.heroTurnConsumed.has(this.selectedHeroIndex)))) {
+                if (this.heroTurnConsumed && this.heroTurnConsumed.has(this.selectedHeroIndex)) {
+                    this.log(`${this.party.heroes[this.selectedHeroIndex].name}'s turn is spent on the combo.`);
+                    this.heroTurnConsumed.delete(this.selectedHeroIndex);
+                }
                 this.selectedHeroIndex++;
                 if (this.selectedHeroIndex >= this.party.heroes.length) {
                     this.selectedHeroIndex = 0;
@@ -15739,6 +16347,7 @@
                 if (this.checkBattleEnd()) return;
                 this.currentTurn = 0;
                 this.selectedHeroIndex = 0;
+                this.heroTurnConsumed = new Set();
                 this.log('Player turn begins.');
                 this.updatePartyDisplay();
                 this.renderMainCommands();
@@ -19497,7 +20106,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v130]');
+            console.log('Game starting... [build v133]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
@@ -29090,6 +29699,75 @@ const QUEST_DATA = [
             heroEl.classList.remove('lunging');
             if (onComplete) onComplete();
         }, LUNGE_MS);
+    }
+
+    /** Dual Tech version of triggerHeroApproach() above - both heroes lunge
+     *  together instead of one. Same timing/shape (impact partway through
+     *  the lunge, complete once it finishes) so it slots into the existing
+     *  attack-animation rhythm rather than feeling like a separate system. */
+    function triggerDualHeroApproach(heroA, heroB, onImpact, onComplete) {
+        const LUNGE_MS = 620;
+        const IMPACT_MS = 260;
+        const elA = getBattleElement(heroA);
+        const elB = getBattleElement(heroB);
+        [elA, elB].forEach(el => {
+            if (!el) return;
+            el.classList.remove('lunging');
+            void el.offsetWidth;
+            el.classList.add('lunging');
+        });
+        if (elA) playHeroAttackAnim(heroA);
+        if (elB) playHeroAttackAnim(heroB);
+        setTimeout(() => { if (onImpact) onImpact(); }, IMPACT_MS);
+        setTimeout(() => {
+            [elA, elB].forEach(el => el && el.classList.remove('lunging'));
+            if (onComplete) onComplete();
+        }, LUNGE_MS);
+    }
+
+    /** Solo Limit Break's own version of the same banner beat, using the
+     *  Limit Break command's own established color identity (the magenta/
+     *  purple already used by .limit-break-btn/.limit-break-option) rather
+     *  than a new palette - reads as "same family, smaller moment" next to
+     *  Dual Tech's per-pair colors. */
+    const LIMIT_BREAK_BANNER_COLORS = { colorA: '#6a1a8a', colorB: '#ff66cc', banner: 'assets/battle/limitbreak_banner.png' };
+    function playLimitBreakBanner(heroName, label) {
+        playDualTechCutscene(LIMIT_BREAK_BANNER_COLORS, label, `${heroName} — Limit Break`);
+    }
+
+    /** guaranteed_crit is shared by both Warrior and Paladin (see
+     *  showLimitBreakMenu's optionSets) but means a different named move
+     *  for each - this mirrors those exact button labels so the banner
+     *  always matches what the player picked from the menu. */
+    function getLimitBreakLabel(hero, mode) {
+        if (mode === 'guaranteed_crit') return hero.heroClass === 'paladin' ? 'Judgment Strike' : 'Guaranteed Critical';
+        if (mode === 'elemental_fury') return 'Elemental Fury';
+        if (mode === 'gamble') return 'Reckless Gamble';
+        return 'Limit Break';
+    }
+
+    /** Dual Tech's "name card" cutscene beat - a colored banner sweeps
+     *  across the screen with the combo's name, themed to the pair's own
+     *  colors (see DUAL_TECH_PAIRS). Deliberately lightweight (pure CSS,
+     *  no new art needed) but gives the moment real weight alongside the
+     *  dual hero lunge - see .dual-tech-banner* CSS for the animation. */
+    function playDualTechCutscene(pairInfo, techName, subtitleText) {
+        const banner = document.getElementById('dual-tech-banner');
+        const bar = document.getElementById('dual-tech-banner-bar');
+        const titleEl = document.getElementById('dual-tech-banner-title');
+        const subEl = document.getElementById('dual-tech-banner-subtitle');
+        if (!banner) return;
+        if (bar) {
+            bar.style.setProperty('--dt-color-a', pairInfo.colorA);
+            bar.style.setProperty('--dt-color-b', pairInfo.colorB);
+            bar.style.setProperty('--dt-banner-img', pairInfo.banner ? `url('${pairInfo.banner}')` : 'none');
+        }
+        if (titleEl) titleEl.textContent = techName;
+        if (subEl) subEl.textContent = subtitleText;
+        banner.classList.remove('active');
+        void banner.offsetWidth;
+        banner.classList.add('active');
+        setTimeout(() => banner.classList.remove('active'), 1150);
     }
 
     /** Converts a viewport-space getBoundingClientRect() into #battle-window's
