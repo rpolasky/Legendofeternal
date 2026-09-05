@@ -5076,7 +5076,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v133</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v135</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -7380,18 +7380,26 @@
                 { id: 'gate', x: 48, y: 58, w: 1, h: 1, icon: '🚪', label: 'Town Gate', action: 'exit' },
                 { id: 'house1', x: 63, y: 7, w: 6, h: 4, icon: '🏚️', label: 'Shade Cottage', action: null },
                 { id: 'house2', x: 24, y: 9, w: 5, h: 4, icon: '🏚️', label: 'Mourner\'s Rest', action: null },
-                { id: 'house3', x: 45, y: 19, w: 6, h: 4, icon: '🏚️', label: 'Shade Cottage', action: null },
+                // Repurposed for shop parity with Brighthollow (see
+                // executeDualTech-adjacent session notes / project memory
+                // "Duskmere/Sylvaris building parity") - same 4 functional
+                // buildings (Merchant/Gem Crafter/Spell Weaver/Apothecary),
+                // just reusing this town's own decorative house sprites and
+                // flavor names instead of Brighthollow's. All backend logic
+                // (enterGemCrafterShop() etc.) was already town-agnostic, so
+                // this is purely wiring - no script changes needed.
+                { id: 'house3', x: 45, y: 19, w: 6, h: 4, icon: '💰', label: 'Merchant', action: 'merchant' },
                 { id: 'house4', x: 59, y: 33, w: 5, h: 4, icon: '🏚️', label: 'Vigil House', action: null },
                 { id: 'house5', x: 46, y: 46, w: 5, h: 5, icon: '🏚️', label: 'Ashen House', action: null },
                 { id: 'house6', x: 36, y: 38, w: 6, h: 4, icon: '🏚️', label: 'Crypt House', action: null },
-                { id: 'house7', x: 6, y: 27, w: 6, h: 4, icon: '🏚️', label: 'Shade Cottage', action: null },
-                { id: 'house8', x: 23, y: 29, w: 5, h: 4, icon: '🏚️', label: 'Shade Cottage', action: null },
+                { id: 'house7', x: 6, y: 27, w: 6, h: 4, icon: '🔮', label: 'Spell Weaver', action: 'spellweaver' },
+                { id: 'house8', x: 23, y: 29, w: 5, h: 4, icon: '🧪', label: 'Apothecary', action: 'apothecary' },
                 { id: 'house9', x: 64, y: 14, w: 5, h: 5, icon: '🏚️', label: 'Mourner\'s Rest', action: null },
                 { id: 'house10', x: 16, y: 8, w: 5, h: 4, icon: '🏚️', label: 'Crypt House', action: null },
                 { id: 'house11', x: 82, y: 42, w: 5, h: 5, icon: '🏚️', label: 'Ashen House', action: null },
                 { id: 'house12', x: 85, y: 12, w: 6, h: 4, icon: '🏚️', label: 'Shade Cottage', action: null },
                 { id: 'house13', x: 39, y: 47, w: 5, h: 4, icon: '🏚️', label: 'Ashen House', action: null },
-                { id: 'house14', x: 15, y: 21, w: 6, h: 4, icon: '🏚️', label: 'Tomb Cottage', action: null }
+                { id: 'house14', x: 15, y: 21, w: 6, h: 4, icon: '💎', label: 'Gem Crafter', action: 'gemcrafter' }
             ],
             roadSegments: [
                 [[48,9],[48,58]], [[45,22],[51,22]], [[43,24],[53,24]], [[41,26],[55,26]], [[39,28],[57,28]], [[41,32],[55,32]], [[43,34],[53,34]], [[45,36],[51,36]], [[48,19],[48,22]], [[10,10],[86,10]], [[10,10],[10,50]], [[86,10],[86,50]], [[10,50],[86,50]], [[45,10],[45,10]], [[11,19],[11,22]], [[28,24],[28,22]], [[58,24],[58,22]], [[75,19],[75,22]], [[14,44],[14,50]], [[31,49],[31,50]], [[55,44],[55,50]], [[72,49],[72,50]], [[66,11],[66,10]], [[26,13],[26,10]], [[48,23],[48,22]], [[61,37],[61,36]], [[48,51],[48,50]], [[34,42],[34,36]], [[9,31],[9,36]], [[25,33],[25,36]], [[66,19],[66,22]], [[16,12],[16,10]], [[84,47],[84,50]], [[88,16],[88,10]], [[41,51],[41,50]], [[18,25],[18,22]]
@@ -7435,13 +7443,18 @@
                 { id: 'house4', x: 84, y: 43, w: 6, h: 4, icon: '🏠', label: 'Desert Villa', action: null },
                 { id: 'house5', x: 8, y: 28, w: 5, h: 4, icon: '🏠', label: 'Oasis Cottage', action: null },
                 { id: 'house6', x: 19, y: 26, w: 5, h: 4, icon: '🏠', label: 'Sandstone Home', action: null },
-                { id: 'house7', x: 87, y: 16, w: 5, h: 4, icon: '🏠', label: 'Palm House', action: null },
+                // Repurposed for shop parity with Brighthollow/Duskmere (see
+                // "Duskmere/Sylvaris building parity" in project notes) -
+                // same 4 functional buildings, reusing this town's own
+                // sprites/flavor names. Purely wiring - enterGemCrafterShop()
+                // etc. were already town-agnostic, no script changes needed.
+                { id: 'house7', x: 87, y: 16, w: 5, h: 4, icon: '💎', label: 'Gem Crafter', action: 'gemcrafter' },
                 { id: 'house8', x: 43, y: 45, w: 5, h: 4, icon: '🏠', label: 'Oasis Cottage', action: null },
-                { id: 'house9', x: 42, y: 22, w: 5, h: 4, icon: '🏠', label: 'Oasis Cottage', action: null },
+                { id: 'house9', x: 42, y: 22, w: 5, h: 4, icon: '💰', label: 'Merchant', action: 'merchant' },
                 { id: 'house10', x: 5, y: 9, w: 6, h: 4, icon: '🏠', label: 'Clay Home', action: null },
-                { id: 'house11', x: 67, y: 49, w: 5, h: 5, icon: '🏠', label: 'Oasis Cottage', action: null },
+                { id: 'house11', x: 67, y: 49, w: 5, h: 5, icon: '🧪', label: 'Apothecary', action: 'apothecary' },
                 { id: 'house12', x: 67, y: 10, w: 5, h: 4, icon: '🏠', label: 'Sandstone Home', action: null },
-                { id: 'house13', x: 67, y: 28, w: 5, h: 4, icon: '🏠', label: 'Adobe House', action: null },
+                { id: 'house13', x: 67, y: 28, w: 5, h: 4, icon: '🔮', label: 'Spell Weaver', action: 'spellweaver' },
                 { id: 'house14', x: 60, y: 44, w: 6, h: 4, icon: '🏠', label: 'Desert Villa', action: null }
             ],
             roadSegments: [
@@ -20106,7 +20119,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v133]');
+            console.log('Game starting... [build v135]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;

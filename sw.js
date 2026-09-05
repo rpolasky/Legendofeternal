@@ -5,7 +5,7 @@
 // shell (manifest + icons). Bump CACHE_VERSION any time you ship an
 // updated index.html so installed devices pick up the new build instead
 // of continuing to serve the stale cached copy.
-const CACHE_VERSION = 'legend-of-eternal-v133';
+const CACHE_VERSION = 'legend-of-eternal-v135';
 const CORE_ASSETS = [
     './',
     './index.html',
@@ -128,6 +128,13 @@ const CORE_ASSETS = [
     './assets/battle/bg_dungeon.jpg',
     './assets/battle/bg_grass.jpg',
     './assets/battle/bg_volcanic.jpg',
+
+    // --- Dual Tech / Limit Break name-card banners (see DUAL_TECH_PAIRS/
+    // LIMIT_BREAK_BANNER_COLORS in index.html) ---
+    './assets/battle/dualtech_blade_spellfire.png',
+    './assets/battle/dualtech_twin_blades_dawn.png',
+    './assets/battle/dualtech_hymn_storm.png',
+    './assets/battle/limitbreak_banner.png',
 
     // --- Shop screen backdrops ---
     './assets/shops/shop.jpg',
