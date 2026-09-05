@@ -2488,6 +2488,16 @@
             100% { transform: scale(1) rotate(0deg); opacity: 1; }
         }
 
+        .victory-chest-img {
+            display: block;
+            margin: 0 auto 10px;
+            max-width: 26vh;
+            max-height: 18vh;
+            width: auto;
+            height: auto;
+            filter: drop-shadow(0 8px 20px rgba(255, 200, 60, 0.35));
+        }
+
         @keyframes chestSparkle {
             0% { transform: translate(-50%, -50%) translate(0, 0) scale(0.5); opacity: 1; }
             100% { transform: translate(-50%, -50%) translate(var(--dx), var(--dy)) scale(1.3); opacity: 0; }
@@ -3773,6 +3783,16 @@
             max-height: 94vh;
             padding: 18px 30px;
             text-align: center;
+            /* Real riverside backdrop instead of the plain generic popup
+               background every other popup uses - matches the treatment
+               shops/Guild Hall already get. Dark scrim keeps the track/log
+               text readable over the art. CSS background-image fails
+               silently (unlike an <img> tag), so if the asset isn't there
+               yet this just shows the gradient scrim alone - no broken-
+               image risk either way. */
+            background-image: linear-gradient(rgba(8,14,20,0.72), rgba(8,14,20,0.8)), url('assets/town/fishing_hole.jpg');
+            background-size: cover;
+            background-position: center;
         }
 
         .fishing-instructions {
@@ -5139,7 +5159,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v139</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v142</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -9199,7 +9219,7 @@
         }
     };
 
-    // Balance pass (v139): original values (tiny/small/moderate/big/biggest
+    // Balance pass (v142): original values (tiny/small/moderate/big/biggest
     // = 0.35/0.65/0.95/1.25/1.5) left every damage-dealing Dual Tech doing
     // LESS damage than just using both heroes' solo Limit Breaks back to
     // back - the opposite of the intended "slightly more than combined"
@@ -12073,6 +12093,22 @@
     // exact convention the overworld already uses for towns/caves/NPCs -
     // walk onto the tile, press ENTER, the existing shop/inn/guild/king/
     // townsfolk functions fire unchanged.
+    /** Dynamic fish spawns (see TownMap.updateFishSpawns()/getFishSpawnNear()) -
+     *  replaces the old single fixed-position fishingSpot-you-stand-on with
+     *  fish that appear randomly on river tiles, sit for 30s, then despawn
+     *  and reroll elsewhere. Tier is rolled at spawn time and drives both
+     *  the visual "tell" (see the fish-spawn rendering pass in
+     *  renderTownMap) and the reward table it's gated to on a successful
+     *  catch (see rollFishingReward) - a golden-sparkle rare spawn is a
+     *  genuinely better catch, not just a cosmetic difference, so chasing
+     *  one across the pond before it disappears is a real choice with a
+     *  real payoff. */
+    const FISH_TIER_INFO = {
+        common: { weight: 0.65, color: '#bfe3ff', glow: '#8fc7ff' },
+        uncommon: { weight: 0.25, color: '#4dd2ff', glow: '#00aaff' },
+        rare: { weight: 0.10, color: '#ffe066', glow: '#ffd700' }
+    };
+
     class TownMap {
         constructor(townKey) {
             const key = TOWN_LAYOUTS[townKey] ? townKey : 'brighthollow';
@@ -12121,6 +12157,9 @@
             this.riverCollisionSet = new Set([...this.riverSet].filter(k => !this.roadSet.has(k)));
             this.playerX = layout.gate.x;
             this.playerY = layout.gate.y;
+            // See updateFishSpawns()/getFishSpawnNear() below.
+            this.activeFishSpawns = [];
+            this.lastFishSpawnRoll = 0;
         }
 
         movePlayer(dx, dy) {
@@ -12175,6 +12214,59 @@
 
         getFishingSpotAt(x, y) {
             return this.fishingSpots.find(f => f.x === x && f.y === y) || null;
+        }
+
+        rollFishTier() {
+            const r = Math.random();
+            let acc = 0;
+            for (const tier of Object.keys(FISH_TIER_INFO)) {
+                acc += FISH_TIER_INFO[tier].weight;
+                if (r < acc) return tier;
+            }
+            return 'common';
+        }
+
+        /** Called once per rendered frame while this town is on screen (see
+         *  Game.gameLoop()) - expires spawns older than 30s and, with room
+         *  available, occasionally rolls a new one onto a random river tile
+         *  that actually has a walkable land tile next to it (otherwise it'd
+         *  spawn somewhere no one could ever reach to fish it). Throttled to
+         *  roll at most once every 1.5s regardless of frame rate. */
+        updateFishSpawns() {
+            const now = Date.now();
+            this.activeFishSpawns = this.activeFishSpawns.filter(f => now - f.spawnedAt < 30000);
+            if (this.activeFishSpawns.length >= 2) return;
+            if (now - this.lastFishSpawnRoll < 1500) return;
+            this.lastFishSpawnRoll = now;
+            if (Math.random() > 0.12) return;
+            const occupied = new Set(this.activeFishSpawns.map(f => f.x + ',' + f.y));
+            const isLandWalkable = (x, y) => {
+                if (x < 0 || x >= this.width || y < 0 || y >= this.height) return false;
+                const b = this.getBuildingAt(x, y);
+                if (b && b.action !== 'exit') return false;
+                if (this.riverCollisionSet.has(x + ',' + y)) return false;
+                return true;
+            };
+            const candidates = this.river.filter(t => {
+                const key = t.x + ',' + t.y;
+                if (occupied.has(key)) return false;
+                if (!this.riverCollisionSet.has(key)) return false; // skip bridge tiles - those are walkable, not "in the water"
+                return [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => isLandWalkable(t.x + dx, t.y + dy));
+            });
+            if (!candidates.length) return;
+            const spot = candidates[Math.floor(Math.random() * candidates.length)];
+            this.activeFishSpawns.push({ x: spot.x, y: spot.y, tier: this.rollFishTier(), spawnedAt: now });
+        }
+
+        /** Orthogonal-adjacency check (Manhattan distance 1) - the player
+         *  stands on land next to the water now, not on the water tile
+         *  itself (which is solid - see movePlayer's river collision). */
+        getFishSpawnNear(x, y) {
+            return this.activeFishSpawns.find(f => Math.abs(f.x - x) + Math.abs(f.y - y) === 1) || null;
+        }
+
+        removeFishSpawn(spawn) {
+            this.activeFishSpawns = this.activeFishSpawns.filter(f => f !== spawn);
         }
     }
 
@@ -12440,14 +12532,13 @@
 
             // Scattered decorative trees on open grass tiles (skips roads/river/buildings/NPC spots)
             const npcTileSet = new Set(townMap.npcSpots.map(n => n.x + ',' + n.y));
-            const fishingTileSet = new Set((townMap.fishingSpots || []).map(f => f.x + ',' + f.y));
             ctx.font = `${Math.floor(ts * 0.85)}px "Courier New", monospace`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             for (let row = visRowStart; row < visRowEnd; row++) {
                 for (let col = visColStart; col < visColEnd; col++) {
                     const key = col + ',' + row;
-                    if (townMap.roadSet.has(key) || townMap.riverSet.has(key) || npcTileSet.has(key) || fishingTileSet.has(key)) continue;
+                    if (townMap.roadSet.has(key) || townMap.riverSet.has(key) || npcTileSet.has(key)) continue;
                     if (townMap.getBuildingAt(col, row)) continue;
                     if (townMap.decor && townMap.decor.x === col && townMap.decor.y === row) continue;
                     const hash = (col * 17 + row * 31 + col * row) % 100;
@@ -12725,18 +12816,46 @@
                 });
             }
 
-            // Fishing spots (interactive) - a gently bobbing rod/lure icon on a river tile
-            if (townMap.fishingSpots && townMap.fishingSpots.length) {
-                townMap.fishingSpots.forEach(spot => {
+            // Dynamic fish spawns (see TownMap.updateFishSpawns()) - a
+            // bobbing fish with a tier-colored glow and pulsing ripple ring,
+            // visually distinct per rarity (rare gets a bigger glow plus a
+            // sparkle accent) so the player can choose to chase a shinier
+            // spawn across the pond before it disappears. Caught from the
+            // adjacent land tile, not by standing on the water (see
+            // getFishSpawnNear()).
+            if (townMap.activeFishSpawns && townMap.activeFishSpawns.length) {
+                townMap.activeFishSpawns.forEach(spot => {
+                    const tierInfo = FISH_TIER_INFO[spot.tier] || FISH_TIER_INFO.common;
                     const fx = spot.x * ts + ts / 2;
                     const bob = Math.sin(time * 2 + spot.x) * 2;
                     const fy = spot.y * ts + ts / 2 + bob;
-                    ctx.shadowColor = '#66d0ff';
-                    ctx.shadowBlur = 12;
+                    const tierScale = spot.tier === 'rare' ? 1.3 : spot.tier === 'uncommon' ? 1.1 : 1;
+                    const pulsePhase = (time * 1.5 + spot.x * 0.7) % (Math.PI * 2);
+                    const rippleR = ts * (0.3 + 0.18 * tierScale * (0.5 + 0.5 * Math.sin(pulsePhase)));
+                    ctx.save();
+                    ctx.globalAlpha = 0.45;
+                    ctx.strokeStyle = tierInfo.glow;
+                    ctx.lineWidth = spot.tier === 'rare' ? 3 : 2;
+                    ctx.beginPath();
+                    ctx.arc(fx, fy + ts * 0.15, rippleR, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.restore();
+
+                    ctx.shadowColor = tierInfo.glow;
+                    ctx.shadowBlur = spot.tier === 'rare' ? 20 : spot.tier === 'uncommon' ? 14 : 10;
                     ctx.font = `${Math.floor(ts * 0.75)}px "Courier New", monospace`;
-                    ctx.fillStyle = '#ffffff';
-                    ctx.fillText('🎣', fx, fy);
+                    ctx.fillStyle = tierInfo.color;
+                    ctx.fillText('🐟', fx, fy);
                     ctx.shadowBlur = 0;
+
+                    if (spot.tier === 'rare') {
+                        const sparkleAngle = time * 3 + spot.x;
+                        const sx = fx + Math.cos(sparkleAngle) * ts * 0.5;
+                        const sy = fy + Math.sin(sparkleAngle) * ts * 0.35;
+                        ctx.font = `${Math.floor(ts * 0.35)}px "Courier New", monospace`;
+                        ctx.fillStyle = '#fff6c8';
+                        ctx.fillText('✨', sx, sy);
+                    }
                 });
             }
 
@@ -14200,6 +14319,7 @@
             this.autoBattleInterval = null;
             this.autoBattleSpeed = 4000;
             this.showingResults = false;
+            this.battleEndHandled = false;
             this.rewardsGranted = false;
             this.itemsUsedInBattle = false;
             this.magicOnlyBattle = true;
@@ -14221,6 +14341,7 @@
 
         startEncounter(party, location = 'world') {
             this.showingResults = false;
+            this.battleEndHandled = false;
             this.rewardsGranted = false;
             this.itemsUsedInBattle = false;
             this.magicOnlyBattle = true;
@@ -16638,7 +16759,19 @@
         }
 
         checkBattleEnd() {
+            // Guard against re-entry: with 11 call sites (auto-battle's
+            // self-scheduling loop chief among them) and executeAttack's
+            // damage/death resolving async inside an animation callback,
+            // it's easy for a second checkBattleEnd() call to land after
+            // the battle has already been declared over but before the
+            // player has dismissed the results/defeat screen - without
+            // this, that second call happily fires showBattleResults() (or
+            // schedules a second endBattle(true)) all over again. Once
+            // either outcome has been triggered once, every later call
+            // just reports "yes, already over" without repeating anything.
+            if (this.battleEndHandled) return true;
             if (this.party.isDefeated()) {
+                this.battleEndHandled = true;
                 this.log('Party defeated...');
                 showDefeatOverlay();
                 setTimeout(() => this.endBattle(true), 2000);
@@ -16646,6 +16779,7 @@
             }
             const livingMonsters = this.monsters.filter(m => m.isAlive());
             if (livingMonsters.length === 0) {
+                this.battleEndHandled = true;
                 this.log('Victory!');
                 window.game.audio.play('victory');
                 this.grantRewards();
@@ -16973,10 +17107,14 @@
                 delay += 500; // the item-reveal animation itself runs long; give it room before Continue shows
             }
 
+            const isSpecialVictory = !!rareBonus || this.monsters.some(m => m.isBoss);
+            const chestImageSrc = isSpecialVictory ? 'assets/treasure/horde_reveal.png' : 'assets/treasure/chest_reveal.png';
             const continueDelay = delay + 200;
 
             popup.innerHTML = `
-                <div style="font-size: 48px; margin-bottom: 10px; animation: chestOpen 0.5s;">📦</div>
+                <img class="victory-chest-img" src="${chestImageSrc}" alt=""
+                     onerror="if(this.dataset.fallback){this.style.display='none';}else{this.dataset.fallback='1';this.src='assets/treasure/chest_reveal.png';}"
+                     style="animation: chestOpen 0.5s;">
                 <h2 class="victory-title-glow" style="color: ${rareBonus ? '#ff3355' : 'var(--highlight)'}; margin-bottom: 14px; opacity: 0; animation: victoryRowIn 0.4s ease-out 250ms forwards, victoryTitleGlow 1.4s ease-in-out 650ms infinite;">${rareBonus ? '🌑 MENACING FOE DEFEATED!' : '🏆 VICTORY!'}</h2>
                 <div style="margin-bottom: 20px; text-align: left;">
                     ${rows.map(r => r.html).join('')}
@@ -17045,6 +17183,7 @@
             const dim = document.getElementById('victory-dim-overlay');
             if (dim) dim.remove();
             this.showingResults = false;
+            this.battleEndHandled = false;
             this.endBattle(false);
         }
 
@@ -17145,6 +17284,7 @@
             this.magicOnlyBattle = true;
             this.rewardsGranted = false;
             this.showingResults = false;
+            this.battleEndHandled = false;
             this.lastSpellElement = null;
             this.active = false;
             this.monsters = [];
@@ -20281,7 +20421,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v139]');
+            console.log('Game starting... [build v142]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
@@ -20680,8 +20820,14 @@
 
         startFishing() {
             if (!this.townMap) return;
+            const spawn = this.nearFishingSpot;
+            // Pull the spawn off the water immediately - it's "in play" now,
+            // so it shouldn't also expire mid-minigame or let someone else
+            // interact with the same spot a second time.
+            if (spawn && this.townMap.removeFishSpawn) this.townMap.removeFishSpawn(spawn);
             this.fishingState = {
                 townKey: this.townMap.key,
+                tier: spawn ? spawn.tier : 'common',
                 trackHeight: 280,
                 zoneHeight: 0,
                 zoneTop: 0,
@@ -20709,12 +20855,17 @@
             fs.trackHeight = trackHeight;
             // Slightly randomize difficulty each round: a narrower zone and/or
             // faster bob makes later attempts a bit harder, keeping it engaging
-            // rather than a guaranteed catch every time.
-            fs.zoneHeight = 55 + Math.random() * 35; // 55-90px window
+            // rather than a guaranteed catch every time. Rarer spawns (see
+            // startFishing()'s fs.tier) tighten the zone and quicken the bob
+            // further on top of that - the visual "tell" out on the water
+            // promises a better reward, and landing it takes a steadier hand
+            // to match, not just being in the right place at the right time.
+            const tierDifficulty = { common: 1, uncommon: 0.82, rare: 0.62 }[fs.tier] || 1;
+            fs.zoneHeight = (55 + Math.random() * 35) * tierDifficulty; // 55-90px window, tightened by tier
             fs.center = trackHeight / 2;
             fs.amplitude = Math.min(trackHeight / 2 - 10, 90 + Math.random() * 20);
             fs.zoneTop = Math.max(0, Math.min(trackHeight - fs.zoneHeight, fs.center - fs.zoneHeight / 2 + (Math.random() - 0.5) * 40));
-            fs.period = 1100 + Math.random() * 700; // ms per full bob cycle
+            fs.period = (1100 + Math.random() * 700) * tierDifficulty; // ms per full bob cycle, faster by tier
             fs.startTime = performance.now();
             fs.resolving = false;
 
@@ -20773,11 +20924,20 @@
             const resultEl = document.getElementById('fishing-result');
             let outcome;
             if (!success) {
-                outcome = { type: 'none', message: "🌊 The fish got away..." };
+                outcome = { type: 'none', message: "The fish got away..." };
             } else {
-                outcome = this.rollFishingReward(fs.townKey);
+                outcome = this.rollFishingReward(fs.townKey, fs.tier);
             }
-            if (resultEl) resultEl.textContent = outcome.message;
+            // Real item/gear/material icon (same lookup every shop/inventory
+            // screen uses) instead of a plain text line - a caught sword
+            // shows the actual sword icon, not just its name. Gold/junk/no-
+            // bite outcomes have no single item to show, so they keep their
+            // emoji instead.
+            if (resultEl) {
+                const iconHTML = outcome.item ? itemIconHTML(outcome.item, 32) : '';
+                const emojiPrefix = { gold: '💰 ', junk: '🗑️ ', none: '🌊 ' }[outcome.type] || '';
+                resultEl.innerHTML = iconHTML + emojiPrefix + outcome.message;
+            }
             this.logFishingCatch(outcome);
             if (window.game && window.game.audio) {
                 window.game.audio.play(outcome.type === 'rare' ? 'victory' : (outcome.type === 'none' ? 'step' : 'coin'));
@@ -20795,12 +20955,19 @@
             if (!log) return;
             const entry = document.createElement('div');
             entry.className = 'entry ' + (outcome.type === 'none' ? 'miss' : outcome.type);
-            entry.textContent = outcome.message.replace(/^[^\w]+/, '');
+            const iconHTML = outcome.item ? itemIconHTML(outcome.item, 16) : '';
+            entry.innerHTML = iconHTML + outcome.message.replace(/^[^\w]+/, '');
             log.insertBefore(entry, log.firstChild);
             while (log.children.length > 12) log.removeChild(log.lastChild);
         }
 
-        rollFishingReward(townKey) {
+        /** Reward table is now gated by the spawn's tier (see
+         *  TownMap.rollFishTier()/startFishing()) - tier='common' keeps the
+         *  exact odds this always had, uncommon/rare bias progressively
+         *  toward better outcomes and drop junk/no-bite entirely once
+         *  they're rare, so the golden-sparkle tell out on the water is a
+         *  genuinely better catch, not just a different color. */
+        rollFishingReward(townKey, tier = 'common') {
             const key = LOOT_TABLES[townKey] ? townKey : 'brighthollow';
             const table = LOOT_TABLES[key];
             const equipTypes = ['weapon', 'armor', 'shield', 'jewelry'];
@@ -20810,34 +20977,46 @@
                 this.party.gold += 10;
                 return { type: 'junk', message: msg || '🗑️ Just junk. Sold for 💰10 G.' };
             };
-
-            if (roll < 40) {
-                return junkFallback('🗑️ You reel in a pile of junk. Sold for 💰10 G.');
-            } else if (roll < 60) {
+            const goldCatch = (min, max) => {
+                const goldAmt = min + Math.floor(Math.random() * (max - min + 1));
+                this.party.gold += goldAmt;
+                return { type: 'gold', message: `💰 Fished up a coin pouch! +${goldAmt} G` };
+            };
+            const materialCatch = () => {
                 const materials = (table.rare || []).filter(i => i.type === 'material');
                 if (!materials.length) return junkFallback();
                 const mat = materials[Math.floor(Math.random() * materials.length)];
                 this.party.addMaterial(mat.name, 1);
-                return { type: 'material', message: `🧱 Caught a material: ${mat.name}!` };
-            } else if (roll < 75) {
-                return { type: 'none', message: '🌊 Nothing on the line this time...' };
-            } else if (roll < 85) {
-                const goldAmt = 15 + Math.floor(Math.random() * 26);
-                this.party.gold += goldAmt;
-                return { type: 'gold', message: `💰 Fished up a coin pouch! +${goldAmt} G` };
-            } else if (roll < 95) {
-                const pool = (table.uncommon || []).filter(i => equipTypes.includes(i.type));
+                return { type: 'material', message: `Caught a material: ${mat.name}!`, item: { type: 'material', name: mat.name } };
+            };
+            const equipmentCatch = (poolKey, label) => {
+                const pool = (table[poolKey] || []).filter(i => equipTypes.includes(i.type));
                 if (!pool.length) return junkFallback();
                 const item = pool[Math.floor(Math.random() * pool.length)];
                 this.party.addItem(item);
-                return { type: 'equipment', message: `⚔️ Reeled in equipment: ${item.name}!` };
-            } else {
-                const pool = (table.rare || []).filter(i => equipTypes.includes(i.type));
-                if (!pool.length) return junkFallback();
-                const item = pool[Math.floor(Math.random() * pool.length)];
-                this.party.addItem(item);
-                return { type: 'rare', message: `🌟 RARE CATCH! ${item.name}!!` };
+                return { type: poolKey === 'rare' ? 'rare' : 'equipment', message: label(item), item };
+            };
+
+            if (tier === 'rare') {
+                if (roll < 35) return equipmentCatch('rare', item => `RARE CATCH! ${item.name}!!`);
+                if (roll < 75) return equipmentCatch('uncommon', item => `Reeled in equipment: ${item.name}!`);
+                if (roll < 90) return materialCatch();
+                return goldCatch(40, 90);
             }
+            if (tier === 'uncommon') {
+                if (roll < 10) return equipmentCatch('rare', item => `RARE CATCH! ${item.name}!!`);
+                if (roll < 35) return equipmentCatch('uncommon', item => `Reeled in equipment: ${item.name}!`);
+                if (roll < 60) return materialCatch();
+                if (roll < 85) return goldCatch(20, 45);
+                return { type: 'none', message: '🌊 Nothing on the line this time...' };
+            }
+            // common - unchanged odds from the original table.
+            if (roll < 40) return junkFallback('🗑️ You reel in a pile of junk. Sold for 💰10 G.');
+            if (roll < 60) return materialCatch();
+            if (roll < 75) return { type: 'none', message: '🌊 Nothing on the line this time...' };
+            if (roll < 85) return goldCatch(15, 40);
+            if (roll < 95) return equipmentCatch('uncommon', item => `Reeled in equipment: ${item.name}!`);
+            return equipmentCatch('rare', item => `RARE CATCH! ${item.name}!!`);
         }
 
         cancelFishing() {
@@ -21972,7 +22151,7 @@
             const onTileBuilding = this.townMap.getBuildingAt(this.townMap.playerX, this.townMap.playerY);
             const building = doorstepBuilding || (onTileBuilding && onTileBuilding.action === 'exit' ? onTileBuilding : null);
             const npcSpot = building ? null : this.townMap.getNPCSpotAt(this.townMap.playerX, this.townMap.playerY);
-            const fishingSpot = (building || npcSpot) ? null : this.townMap.getFishingSpotAt(this.townMap.playerX, this.townMap.playerY);
+            const fishingSpot = (building || npcSpot) ? null : this.townMap.getFishSpawnNear(this.townMap.playerX, this.townMap.playerY);
             if (!indicator) return;
             if (building) {
                 indicator.style.display = 'block';
@@ -21996,7 +22175,13 @@
                 this.nearFishingSpot = null;
             } else if (fishingSpot) {
                 indicator.style.display = 'block';
-                indicator.textContent = '🎣 Press ✋ to fish';
+                // A little extra anticipation for the tell that's worth
+                // chasing - matches the visual glow/sparkle rendered on the
+                // spawn itself (see renderTownMap's fish-spawn pass).
+                const tierPrompt = fishingSpot.tier === 'rare' ? '✨ Press ✋ to fish (something rare!)'
+                    : fishingSpot.tier === 'uncommon' ? '🎣 Press ✋ to fish (looks promising!)'
+                    : '🎣 Press ✋ to fish';
+                indicator.textContent = tierPrompt;
                 this.nearBuilding = null;
                 this.nearTownNPC = null;
                 this.nearFishingSpot = fishingSpot;
@@ -26163,6 +26348,7 @@
                 }
             }
             else if (this.state.currentScreen === 'town' && this.townRenderer && this.townMap) {
+                this.townMap.updateFishSpawns();
                 const townName = document.getElementById('town-info').textContent.replace('Welcome to ', '');
                 this.townRenderer.renderTownMap(this.townMap, townName);
                 if (this.ui) this.ui.renderPartyMini('location-party-status-mini', this.party);
