@@ -5139,7 +5139,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v138</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v139</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -9199,7 +9199,7 @@
         }
     };
 
-    // Balance pass (v138): original values (tiny/small/moderate/big/biggest
+    // Balance pass (v139): original values (tiny/small/moderate/big/biggest
     // = 0.35/0.65/0.95/1.25/1.5) left every damage-dealing Dual Tech doing
     // LESS damage than just using both heroes' solo Limit Breaks back to
     // back - the opposite of the intended "slightly more than combined"
@@ -12111,6 +12111,14 @@
             }));
             this.roadSet = new Set(this.roads.map(t => t.x + ',' + t.y));
             this.riverSet = new Set(this.river.map(t => t.x + ',' + t.y));
+            // Wherever a road tile and a river tile coincide, real bridge art
+            // already renders there (see the bridge-drawing pass in
+            // renderTownMap) - those tiles need to stay walkable as
+            // collision now blocks river tiles, or every bridge in the game
+            // would silently become an invisible wall. riverSet itself is
+            // left alone (still needed for rendering/bridge-detection); this
+            // is a separate set specifically for movePlayer's collision.
+            this.riverCollisionSet = new Set([...this.riverSet].filter(k => !this.roadSet.has(k)));
             this.playerX = layout.gate.x;
             this.playerY = layout.gate.y;
         }
@@ -12119,6 +12127,18 @@
             const nx = this.playerX + dx;
             const ny = this.playerY + dy;
             if (nx < 0 || nx >= this.width || ny < 0 || ny >= this.height) return false;
+            // Collision: buildings and water are solid. Buildings are
+            // entered/inspected from their doorstep tile (see
+            // getBuildingByDoorstep below) rather than by walking into their
+            // footprint, so blocking the whole footprint here doesn't trap
+            // anyone - the doorstep tile itself was never part of the
+            // footprint to begin with. The Town Gate is exempt: it's a 1x1
+            // map-edge marker the player already spawns standing on and
+            // walks directly onto to leave, not a real walled building with
+            // its own door - it stays walkable like before.
+            const blocker = this.getBuildingAt(nx, ny);
+            if (blocker && blocker.action !== 'exit') return false;
+            if (this.riverCollisionSet.has(nx + ',' + ny)) return false;
             this.playerX = nx;
             this.playerY = ny;
             if (dy < 0) this.facing = 'up';
@@ -12131,6 +12151,22 @@
 
         getBuildingAt(x, y) {
             return this.buildings.find(b => x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h) || null;
+        }
+
+        /** The tile just outside a building's bottom-center door (matches
+         *  where the door/signpost actually render - see
+         *  drawShopSignpost()/the door-rect fallback in renderTownMap()).
+         *  Building interaction now triggers from here instead of from
+         *  inside the (now-solid) footprint. */
+        getDoorstepTile(building) {
+            return { x: building.x + Math.floor(building.w / 2), y: building.y + building.h };
+        }
+
+        getBuildingByDoorstep(x, y) {
+            return this.buildings.find(b => {
+                const d = this.getDoorstepTile(b);
+                return d.x === x && d.y === y;
+            }) || null;
         }
 
         getNPCSpotAt(x, y) {
@@ -20245,7 +20281,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v138]');
+            console.log('Game starting... [build v139]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
@@ -21910,19 +21946,31 @@
             return false;
         }
 
-        /** Tile-walkability test used by the tap-to-walk pathfinder for towns
-         *  (towns have no interior wall collision - just map bounds, matching
-         *  TownMap.movePlayer above). */
+        /** Tile-walkability test used by the tap-to-walk pathfinder for towns -
+         *  now matches TownMap.movePlayer's real collision (buildings/water
+         *  solid, Town Gate exempt) instead of just checking map bounds, so
+         *  tap-to-walk never tries to route through a wall or a river. */
         isTownTileWalkable(x, y) {
             if (!this.townMap) return false;
-            return x >= 0 && x < this.townMap.width && y >= 0 && y < this.townMap.height;
+            if (x < 0 || x >= this.townMap.width || y < 0 || y >= this.townMap.height) return false;
+            const blocker = this.townMap.getBuildingAt(x, y);
+            if (blocker && blocker.action !== 'exit') return false;
+            if (this.townMap.riverCollisionSet.has(x + ',' + y)) return false;
+            return true;
         }
 
         /** Updates the touch "press to interact" indicator when standing on a building/NPC tile in town. */
         checkTownProximity() {
             if (!this.townMap) return;
             const indicator = document.getElementById('town-location-indicator');
-            const building = this.townMap.getBuildingAt(this.townMap.playerX, this.townMap.playerY);
+            // Buildings are now solid (see movePlayer's collision), so
+            // detection uses the doorstep tile just outside the door rather
+            // than the (now unreachable) interior footprint. The Town Gate
+            // is still checked directly on its own tile, matching how it's
+            // still walked onto (see movePlayer's exit exemption).
+            const doorstepBuilding = this.townMap.getBuildingByDoorstep(this.townMap.playerX, this.townMap.playerY);
+            const onTileBuilding = this.townMap.getBuildingAt(this.townMap.playerX, this.townMap.playerY);
+            const building = doorstepBuilding || (onTileBuilding && onTileBuilding.action === 'exit' ? onTileBuilding : null);
             const npcSpot = building ? null : this.townMap.getNPCSpotAt(this.townMap.playerX, this.townMap.playerY);
             const fishingSpot = (building || npcSpot) ? null : this.townMap.getFishingSpotAt(this.townMap.playerX, this.townMap.playerY);
             if (!indicator) return;
