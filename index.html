@@ -3801,6 +3801,14 @@
             margin-bottom: 12px;
         }
 
+        .fishing-casts-remaining {
+            color: #ffd700;
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            letter-spacing: 0.5px;
+        }
+
         .fishing-layout {
             display: flex;
             gap: 24px;
@@ -5159,7 +5167,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v142</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v143</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -5704,6 +5712,7 @@
             <div class="popup-box fishing-box">
                 <h3>🎣 Fishing Hole</h3>
                 <div class="fishing-instructions">Click <strong>REEL!</strong> when the bobber is inside the glowing zone.</div>
+                <div class="fishing-casts-remaining" id="fishing-casts-remaining"></div>
                 <div class="fishing-layout">
                     <div class="fishing-track" id="fishing-track">
                         <div class="fishing-zone" id="fishing-zone"></div>
@@ -9219,7 +9228,7 @@
         }
     };
 
-    // Balance pass (v142): original values (tiny/small/moderate/big/biggest
+    // Balance pass (v143): original values (tiny/small/moderate/big/biggest
     // = 0.35/0.65/0.95/1.25/1.5) left every damage-dealing Dual Tech doing
     // LESS damage than just using both heroes' solo Limit Breaks back to
     // back - the opposite of the intended "slightly more than combined"
@@ -20421,7 +20430,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v142]');
+            console.log('Game starting... [build v143]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
@@ -20825,9 +20834,17 @@
             // so it shouldn't also expire mid-minigame or let someone else
             // interact with the same spot a second time.
             if (spawn && this.townMap.removeFishSpawn) this.townMap.removeFishSpawn(spawn);
+            const tier = spawn ? spawn.tier : 'common';
             this.fishingState = {
                 townKey: this.townMap.key,
-                tier: spawn ? spawn.tier : 'common',
+                tier,
+                // Caps how many casts one spawn is worth before the session
+                // ends on its own - without this, a single rare spot could
+                // be reeled all day for unlimited guaranteed-good catches.
+                // Rare is capped tighter than common/uncommon since each
+                // cast there is worth more.
+                maxAttempts: tier === 'rare' ? 3 : 5,
+                attemptsUsed: 0,
                 trackHeight: 280,
                 zoneHeight: 0,
                 zoneTop: 0,
@@ -20860,7 +20877,7 @@
             // further on top of that - the visual "tell" out on the water
             // promises a better reward, and landing it takes a steadier hand
             // to match, not just being in the right place at the right time.
-            const tierDifficulty = { common: 1, uncommon: 0.82, rare: 0.62 }[fs.tier] || 1;
+            const tierDifficulty = { common: 1, uncommon: 0.82, rare: 0.74 }[fs.tier] || 1;
             fs.zoneHeight = (55 + Math.random() * 35) * tierDifficulty; // 55-90px window, tightened by tier
             fs.center = trackHeight / 2;
             fs.amplitude = Math.min(trackHeight / 2 - 10, 90 + Math.random() * 20);
@@ -20873,6 +20890,11 @@
             if (zoneEl) {
                 zoneEl.style.top = fs.zoneTop + 'px';
                 zoneEl.style.height = fs.zoneHeight + 'px';
+            }
+            const castsEl = document.getElementById('fishing-casts-remaining');
+            if (castsEl) {
+                const tierLabel = fs.tier === 'rare' ? ' (rare spot)' : '';
+                castsEl.textContent = `🪝 Cast ${fs.attemptsUsed + 1} of ${fs.maxAttempts}${tierLabel}`;
             }
             const resultEl = document.getElementById('fishing-result');
             if (resultEl) resultEl.innerHTML = '&nbsp;';
@@ -20945,9 +20967,24 @@
             this.updateGoldDisplays();
             if (this.achievements) this.achievements.report('fish_caught', { type: outcome.type, town: fs.townKey });
 
-            setTimeout(() => {
-                if (this.fishingState && this.fishingState.active) this.startFishingRound();
-            }, 1600);
+            fs.attemptsUsed++;
+            const castsEl = document.getElementById('fishing-casts-remaining');
+            if (fs.attemptsUsed >= fs.maxAttempts) {
+                // Spot's fished out for this session - end it automatically
+                // rather than starting another round, so a rare spawn (or
+                // any spawn) can't be reeled indefinitely. Leave the last
+                // result on screen for a moment before closing, same pacing
+                // as a normal round transition, then auto-close like
+                // clicking Leave.
+                if (castsEl) castsEl.textContent = "🐟 That spot's fished out for now.";
+                setTimeout(() => {
+                    if (this.fishingState) this.cancelFishing();
+                }, 1800);
+            } else {
+                setTimeout(() => {
+                    if (this.fishingState && this.fishingState.active) this.startFishingRound();
+                }, 1600);
+            }
         }
 
         logFishingCatch(outcome) {
