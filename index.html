@@ -438,7 +438,7 @@
         .movement-style-toggle {
             position: absolute;
             top: -6px;
-            right: -6px;
+            left: -6px;
             width: 30px;
             height: 30px;
             border-radius: 50%;
@@ -5448,7 +5448,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v148</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v149</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -8755,7 +8755,7 @@
         if (!isShrine) {
             const quadrant = getCurrentWorldQuadrant();
             const quadrantData = QUADRANTS[quadrant] || QUADRANTS.CORNELIA;
-            const spawnCount = Math.min(3 + floorIndex, Math.max(2, Math.floor(reachable.length / 18)));
+            const spawnCount = Math.min(4 + floorIndex, Math.max(3, Math.floor(reachable.length / 16))); // was min(3+floorIndex, max(2, /18)) - Ray asked for ~15% more dungeon spawns
             let attempts = 0;
             while (monsterSpawns.length < spawnCount && attempts < reachable.length) {
                 // Walk the same shuffled list chests used, but from the far
@@ -8968,7 +8968,7 @@
     const FIELD_MONSTER_BREAK_RADIUS = FIELD_MONSTER_AGGRO_RADIUS * 2; // red -> patrol (Ray: "double the aggro range")
     const FIELD_MONSTER_CHASE_SPEED = 0.65;  // fraction of a player-step per player-step while chasing
     const FIELD_MONSTER_PATROL_SPEED = 0.35; // slower, aimless wander speed
-    const FIELD_MONSTER_LEASH_RADIUS = 4;    // patrol wander never strays further than this from spawn
+    const FIELD_MONSTER_LEASH_RADIUS = 6;    // patrol wander never strays further than this from spawn (was 4 - a bit more roaming range so standing in a general area is more likely to actually cross paths with one)
     const FIELD_MONSTER_ALERT_FLASH_MS = 2000; // the "!" flash when yellow->red triggers
     const FIELD_MONSTER_RESPAWN_MIN_MS = 5000;
     const FIELD_MONSTER_RESPAWN_MAX_MS = 10000;
@@ -9157,17 +9157,28 @@
                 m.moveBudget += FIELD_MONSTER_CHASE_SPEED;
                 if (m.moveBudget >= 1) {
                     m.moveBudget -= 1;
-                    const dx = Math.sign(playerX - m.x), dy = Math.sign(playerY - m.y);
-                    // Greedy step: prefer whichever axis has more ground to
-                    // cover, fall back to the other axis, then give up for
-                    // this tick rather than squeezing diagonally through a
-                    // wall corner.
-                    const tryOrder = Math.abs(playerX - m.x) >= Math.abs(playerY - m.y)
-                        ? [[dx, 0], [0, dy]] : [[0, dy], [dx, 0]];
-                    for (const [tx, ty] of tryOrder) {
-                        if ((tx || ty) && walkable(m.x + tx, m.y + ty)) {
-                            m.x += tx; m.y += ty;
-                            m.facing = directionToFacing(tx, ty) || m.facing;
+                    // Greedy step, but ranked across all 4 cardinal
+                    // directions by how much each one actually closes the
+                    // distance to the player, not just "try the primary
+                    // axis, then the secondary axis, then give up." The old
+                    // 2-candidate version could stall completely at an L-
+                    // shaped bend in a dungeon corridor - if the direct
+                    // route was blocked by the wall around the corner, its
+                    // only fallback was the other axis, which is often ALSO
+                    // blocked at exactly that kind of turn, leaving the
+                    // monster stuck oscillating in place. Trying all 4 in
+                    // best-first order almost always finds "the way around"
+                    // without needing full pathfinding.
+                    const candidates = [[1, 0], [-1, 0], [0, 1], [0, -1]]
+                        .map(([tx, ty]) => ({
+                            tx, ty,
+                            dist: Math.max(Math.abs((m.x + tx) - playerX), Math.abs((m.y + ty) - playerY))
+                        }))
+                        .sort((a, b) => a.dist - b.dist);
+                    for (const c of candidates) {
+                        if (walkable(m.x + c.tx, m.y + c.ty)) {
+                            m.x += c.tx; m.y += c.ty;
+                            m.facing = directionToFacing(c.tx, c.ty) || m.facing;
                             break;
                         }
                     }
@@ -11379,7 +11390,7 @@
         generateWorldMonsterSpawns() {
             const rng = mulberry32(hashStringToSeed('world_field_monsters_v1'));
             const spawns = [];
-            const targetCount = 90;
+            const targetCount = 113; // was 90 - Ray asked for ~25% more world spawns
             let attempts = 0;
             while (spawns.length < targetCount && attempts < 6000) {
                 attempts++;
@@ -15132,14 +15143,19 @@
                 const my = (m.y - startRow) * ts + ts / 2;
                 const tagColor = m.isRare ? '#c060ff' : (m.isElite ? '#4aa8ff' : null);
                 const aggroColor = m.state === 'red' ? '#ff4444' : (m.state === 'yellow' ? '#ffdd33' : null);
+                // 2x the sprite/ring sizes used in dungeons - the world map
+                // is much busier visually (terrain art, trees, buildings),
+                // so monsters need to read at a glance against all of that
+                // in a way they don't need to inside a plainer dungeon
+                // corridor.
                 if (tagColor) {
                     ctx.save();
                     ctx.strokeStyle = tagColor;
-                    ctx.lineWidth = 2;
+                    ctx.lineWidth = 3;
                     ctx.shadowColor = tagColor;
-                    ctx.shadowBlur = 8;
+                    ctx.shadowBlur = 10;
                     ctx.beginPath();
-                    ctx.arc(mx, my, ts * 0.32, 0, Math.PI * 2);
+                    ctx.arc(mx, my, ts * 0.64, 0, Math.PI * 2);
                     ctx.stroke();
                     ctx.restore();
                 }
@@ -15147,27 +15163,27 @@
                     ctx.save();
                     const pulse = 0.85 + Math.sin(nowTsWorld / 150) * 0.15;
                     ctx.strokeStyle = aggroColor;
-                    ctx.lineWidth = m.state === 'red' ? 3 : 2;
+                    ctx.lineWidth = m.state === 'red' ? 4 : 3;
                     ctx.shadowColor = aggroColor;
-                    ctx.shadowBlur = m.state === 'red' ? 14 : 8;
+                    ctx.shadowBlur = m.state === 'red' ? 18 : 10;
                     ctx.globalAlpha = pulse;
                     ctx.beginPath();
-                    ctx.arc(mx, my, ts * 0.44, 0, Math.PI * 2);
+                    ctx.arc(mx, my, ts * 0.88, 0, Math.PI * 2);
                     ctx.stroke();
                     ctx.restore();
                 }
                 const template = findMonsterTemplateByName(m.speciesName);
-                ctx.font = `${Math.floor(ts * 0.7)}px 'Segoe UI Emoji', sans-serif`;
+                ctx.font = `${Math.floor(ts * 1.4)}px 'Segoe UI Emoji', sans-serif`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillText((template && template.sprite) || '❓', mx, my);
                 if (m.alertUntil && nowTsWorld < m.alertUntil) {
                     ctx.save();
-                    ctx.font = `bold ${Math.floor(ts * 0.6)}px 'Courier New', monospace`;
+                    ctx.font = `bold ${Math.floor(ts * 1.0)}px 'Courier New', monospace`;
                     ctx.fillStyle = '#ff4444';
                     ctx.shadowColor = '#000';
                     ctx.shadowBlur = 4;
-                    ctx.fillText('!', mx, my - ts * 0.8);
+                    ctx.fillText('!', mx, my - ts * 1.3);
                     ctx.restore();
                 }
             });
@@ -21714,7 +21730,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v148]');
+            console.log('Game starting... [build v149]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
