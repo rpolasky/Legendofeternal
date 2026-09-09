@@ -372,6 +372,19 @@
             position: relative;
             width: 144px;
             height: 144px;
+            /* The 4 buttons only cover a "+" shape within this 144x144 box -
+               the corners and the dead center square were previously NOT
+               covered by any pointer-events:auto element, so a tap that
+               missed a button by a few px (or landed on the decorative
+               center square) fell straight through this whole rail's
+               pointer-events:none to the game canvas underneath and
+               registered as a tap-to-move click, sending the party walking
+               off in whatever direction that screen point happened to map
+               to. Re-enabling pointer-events on the WHOLE d-pad box (not
+               just the buttons) makes it a dead zone instead - any tap
+               anywhere in this square is consumed here and simply does
+               nothing unless it actually lands on a real .dpad-btn. */
+            pointer-events: auto;
         }
         /* Translucent with a clearly visible border, per request, so the
            D-pad reads as "there" without blocking the view behind it. */
@@ -401,6 +414,23 @@
         .dpad-down { left: 48px; top: 96px; }
         .dpad-left { left: 0; top: 48px; }
         .dpad-right { left: 96px; top: 48px; }
+        /* Diagonal buttons sit in the 4 corner squares the cardinal buttons
+           don't cover - those used to be dead space that a stray tap could
+           fall through into the canvas underneath (see .dpad's own
+           pointer-events fix above); now they're real omnidirectional
+           movement buttons instead of just being closed off. Slightly
+           smaller than the cardinal buttons since the corner square they
+           sit in is the same 48x48 size but a diagonal input is a "bonus,"
+           not the primary way to move. */
+        .dpad-btn.dpad-diag {
+            width: 40px;
+            height: 40px;
+            font-size: 14px;
+        }
+        .dpad-up-left { left: 4px; top: 4px; }
+        .dpad-up-right { left: 100px; top: 4px; }
+        .dpad-down-left { left: 4px; top: 100px; }
+        .dpad-down-right { left: 100px; top: 100px; }
         .dpad-center {
             position: absolute;
             left: 48px;
@@ -1650,11 +1680,14 @@
             transform: translateX(-50%);
             z-index: 12;
             width: auto;
+            max-width: calc(100vw - 20px);
             background: rgba(0,0,0,0.85);
             border: 2px solid var(--border-color);
             border-radius: 16px;
             padding: 8px 10px;
             display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
             backdrop-filter: blur(5px);
             box-shadow: 0 4px 16px rgba(0,0,0,0.5);
         }
@@ -1908,6 +1941,8 @@
            the icons themselves. */
         .battle-commands {
             display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
             align-items: center;
             gap: 8px;
         }
@@ -2148,7 +2183,12 @@
             position: absolute;
             inset: 0;
             display: flex;
-            align-items: center;
+            align-items: flex-start;
+            /* Ray: keep the sweep exactly as-is, just move it up so it
+               doesn't cover the center of the battlefield where the actual
+               action is happening - lands the bar in the top third instead
+               of dead center. */
+            padding-top: 20%;
             justify-content: center;
             pointer-events: none;
             z-index: 500;
@@ -5327,7 +5367,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v146</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v147</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -5375,6 +5415,10 @@
                 <button type="button" class="dpad-btn dpad-down" data-dir="down" aria-label="Move down">▼</button>
                 <button type="button" class="dpad-btn dpad-left" data-dir="left" aria-label="Move left">◀</button>
                 <button type="button" class="dpad-btn dpad-right" data-dir="right" aria-label="Move right">▶</button>
+                <button type="button" class="dpad-btn dpad-diag dpad-up-left" data-dir="up-left" aria-label="Move up-left">◤</button>
+                <button type="button" class="dpad-btn dpad-diag dpad-up-right" data-dir="up-right" aria-label="Move up-right">◥</button>
+                <button type="button" class="dpad-btn dpad-diag dpad-down-left" data-dir="down-left" aria-label="Move down-left">◣</button>
+                <button type="button" class="dpad-btn dpad-diag dpad-down-right" data-dir="down-right" aria-label="Move down-right">◢</button>
                 <div class="dpad-center"></div>
             </div>
         </div>
@@ -6448,7 +6492,11 @@
             g.cancelAutoWalk();
             const moveFn = currentMoveFn();
             if (!moveFn) return;
-            const deltas = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
+            const deltas = {
+                up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0],
+                'up-left': [-1, -1], 'up-right': [1, -1],
+                'down-left': [-1, 1], 'down-right': [1, 1]
+            };
             const [dx, dy] = deltas[dir];
             moveFn(dx, dy);
         }
@@ -8603,12 +8651,85 @@
             placed++;
         }
 
+        // Field monster spawn points - fixed per floor (same seeded rng as
+        // everything else here), so re-entering a floor shows the same
+        // creatures in the same spots rather than reshuffling every visit.
+        // Species/elite/rare status are locked in now, at world-gen time;
+        // level still gets rolled fresh at actual battle-start (see
+        // Battle.generateMonsters()), same as it always has, so an area's
+        // look stays consistent but its difficulty still scales as the
+        // party levels up instead of going stale. See FieldMonsters.
+        const monsterSpawns = [];
+        if (!isShrine) {
+            const quadrant = getCurrentWorldQuadrant();
+            const quadrantData = QUADRANTS[quadrant] || QUADRANTS.CORNELIA;
+            const spawnCount = Math.min(3 + floorIndex, Math.max(2, Math.floor(reachable.length / 18)));
+            let attempts = 0;
+            while (monsterSpawns.length < spawnCount && attempts < reachable.length) {
+                // Walk the same shuffled list chests used, but from the far
+                // end - keeps spawn points from clustering on the exact same
+                // early-shuffle tiles chests already claimed.
+                const t = reachable[reachable.length - 1 - attempts];
+                attempts++;
+                const distFromExit = Math.max(Math.abs(t.x - far.x), Math.abs(t.y - far.y));
+                const distFromEntrance = Math.max(Math.abs(t.x - entrance.x), Math.abs(t.y - entrance.y));
+                if (distFromExit < 4 || distFromEntrance < 3) continue;
+                let tooClose = false;
+                for (const s of monsterSpawns) {
+                    if (Math.max(Math.abs(t.x - s.x), Math.abs(t.y - s.y)) < 6) { tooClose = true; break; }
+                }
+                if (tooClose) continue;
+                for (const c of chests) {
+                    if (Math.max(Math.abs(t.x - c.x), Math.abs(t.y - c.y)) < 3) { tooClose = true; break; }
+                }
+                if (tooClose) continue;
+                // Elite/rare status locked in at world-gen too, sparse enough
+                // that spotting a purple tag actually feels like a find.
+                const roll = rng();
+                const isRareSpawn = roll < 0.06;
+                const isEliteSpawn = !isRareSpawn && roll < 0.28;
+                let pool = quadrantData.monsters;
+                if (isRareSpawn || isEliteSpawn) {
+                    const eliteCandidates = quadrantData.monsters.filter(m => m.isElite);
+                    if (eliteCandidates.length > 0) pool = eliteCandidates;
+                } else {
+                    const regular = quadrantData.monsters.filter(m => !m.isElite);
+                    if (regular.length > 0) pool = regular;
+                }
+                // Avoid repeating either of the last 2 spawns' species, so a
+                // stretch of corridor doesn't read as "spider, spider, spider".
+                let template = null;
+                for (let tries = 0; tries < 5; tries++) {
+                    const candidate = pool[Math.floor(rng() * pool.length)];
+                    const recentNames = monsterSpawns.slice(-2).map(s => s.speciesName);
+                    if (!recentNames.includes(candidate.name) || pool.length <= recentNames.length) {
+                        template = candidate;
+                        break;
+                    }
+                }
+                if (!template) template = pool[Math.floor(rng() * pool.length)];
+                monsterSpawns.push({
+                    id: 'spawn_' + monsterSpawns.length,
+                    x: t.x, y: t.y,
+                    speciesName: template.name,
+                    isElite: isEliteSpawn,
+                    isRare: isRareSpawn
+                });
+            }
+        }
+
         return {
             grid, width: DUNGEON_FLOOR_WIDTH, height: DUNGEON_FLOOR_HEIGHT,
             entrance, exitTile: far, exitRoom,
             exitType,
             chests, floorIndex, vaultOpened: false, bossDefeated: false,
-            roomTileSet: buildRoomTileSet(exitRoom, chests)
+            roomTileSet: buildRoomTileSet(exitRoom, chests),
+            monsterSpawns,
+            // Live per-visit monster state (position/aggro/respawn) - kept
+            // separate from monsterSpawns above so the spawn DEFINITIONS stay
+            // fixed forever while the LIVE state can freely reset. Populated
+            // by DungeonState's constructor right after this returns.
+            liveMonsters: []
         };
     }
 
@@ -8626,6 +8747,32 @@
     }
 
     /** Holds all generated floors + current position for one dungeon visit. Cached per-location on the Game object so opened chests/layout persist for the session. */
+    // =====================================================================
+    //           DIAGONAL KEYBOARD MOVEMENT (held-key tracking)
+    // =====================================================================
+    // Arrow-key/WASD movement used to be a plain per-keydown switch (press
+    // Up, move up; press Right, move right) with no way to combine two keys
+    // into a diagonal - the D-pad's diagonal buttons (see the corner
+    // .dpad-btn-diag buttons) needed a keyboard equivalent for parity, and
+    // this is the whole mechanism: track every movement key currently held
+    // down, and recompute the combined direction on every keydown/keyup
+    // rather than acting on a single key in isolation.
+    const MOVE_KEY_DELTAS = {
+        ArrowUp: [0, -1], w: [0, -1], W: [0, -1],
+        ArrowDown: [0, 1], s: [0, 1], S: [0, 1],
+        ArrowLeft: [-1, 0], a: [-1, 0], A: [-1, 0],
+        ArrowRight: [1, 0], d: [1, 0], D: [1, 0]
+    };
+    const heldMoveKeys = new Set();
+    function getHeldMoveDelta() {
+        let dx = 0, dy = 0;
+        heldMoveKeys.forEach(k => {
+            const d = MOVE_KEY_DELTAS[k];
+            if (d) { dx += d[0]; dy += d[1]; }
+        });
+        return { dx: Math.max(-1, Math.min(1, dx)), dy: Math.max(-1, Math.min(1, dy)) };
+    }
+
     class DungeonState {
         constructor(locationName) {
             const config = DUNGEON_LOCATIONS[locationName] || { type: 'cave', floors: 2 };
@@ -8639,7 +8786,9 @@
             for (let f = 1; f <= this.totalFloors; f++) {
                 const isLast = f === this.totalFloors;
                 this.floors[f] = generateDungeonFloor(locationName, f, this.type, isLast, this.hasBoss, this.isShrine);
+                initFieldMonsterLiveState(this.floors[f]);
             }
+            applySavedDungeonProgress(locationName, this.floors);
             this.resetToEntrance();
         }
 
@@ -8659,7 +8808,15 @@
 
         movePlayer(dx, dy) {
             const nx = this.playerX + dx, ny = this.playerY + dy;
-            if (this.isWall(nx, ny)) return false;
+            if (dx !== 0 && dy !== 0) {
+                // Diagonal step - also block if either of the two cardinal
+                // "corners" it cuts across is a wall, so you can't squeeze
+                // diagonally through a wall corner that a straight step
+                // couldn't pass through either way.
+                if (this.isWall(nx, ny) || this.isWall(this.playerX, ny) || this.isWall(nx, this.playerY)) return false;
+            } else if (this.isWall(nx, ny)) {
+                return false;
+            }
             this.playerX = nx;
             this.playerY = ny;
             if (dy < 0) this.facing = 'up';
@@ -8688,6 +8845,249 @@
             this.playerY = this.floor.entrance.y;
             return true;
         }
+
+        /** Advances every live field monster on the CURRENT floor one step -
+         *  called once per player move (see Game.attemptDungeonMove()).
+         *  Floors are small (49x39) and only ever hold a handful of spawns,
+         *  so there's no need for the world map's distance-gated activation
+         *  - everything on the current floor just simulates every step. */
+        updateFieldMonsters() {
+            updateFieldMonstersOnFloor(this.floor, this.playerX, this.playerY);
+        }
+
+        /** Alive field monster currently standing on (x,y), or null. */
+        getFieldMonsterAt(x, y) {
+            return (this.floor.liveMonsters || []).find(m => m.alive && m.x === x && m.y === y) || null;
+        }
+    }
+
+    // =====================================================================
+    //                    FIELD MONSTERS (visible dungeon mobs)
+    // =====================================================================
+    // Replaces the old per-step "14% chance of a random fight" model
+    // (checkDungeonRandomEncounter) with visible, walking monsters: what you
+    // see on the floor is what you fight, tagged as elite (blue) or rare
+    // (purple) if applicable - "What you see is what you fight" per Ray's
+    // spec. State machine per monster is patrol -> yellow (noticed, not yet
+    // aggro'd) -> red (actively chasing), gated by both distance AND line of
+    // sight so corners/walls are a real way to avoid or lose a chaser.
+    const FIELD_MONSTER_NOTICE_RADIUS = 6;   // patrol -> yellow
+    const FIELD_MONSTER_AGGRO_RADIUS = 3;    // yellow -> red
+    const FIELD_MONSTER_BREAK_RADIUS = FIELD_MONSTER_AGGRO_RADIUS * 2; // red -> patrol (Ray: "double the aggro range")
+    const FIELD_MONSTER_CHASE_SPEED = 0.65;  // fraction of a player-step per player-step while chasing
+    const FIELD_MONSTER_PATROL_SPEED = 0.35; // slower, aimless wander speed
+    const FIELD_MONSTER_LEASH_RADIUS = 4;    // patrol wander never strays further than this from spawn
+    const FIELD_MONSTER_ALERT_FLASH_MS = 2000; // the "!" flash when yellow->red triggers
+    const FIELD_MONSTER_RESPAWN_MIN_MS = 5000;
+    const FIELD_MONSTER_RESPAWN_MAX_MS = 10000;
+
+    /** Builds floor.liveMonsters from floor.monsterSpawns, if not already
+     *  built. Safe to call repeatedly (e.g. every time a floor becomes
+     *  current) since it no-ops once populated. */
+    function initFieldMonsterLiveState(floor) {
+        if (!floor || !floor.monsterSpawns) return;
+        if (floor.liveMonsters && floor.liveMonsters.length === floor.monsterSpawns.length) return;
+        floor.liveMonsters = floor.monsterSpawns.map(spawn => ({
+            spawnId: spawn.id,
+            spawnX: spawn.x, spawnY: spawn.y,
+            x: spawn.x, y: spawn.y,
+            speciesName: spawn.speciesName,
+            isElite: spawn.isElite,
+            isRare: spawn.isRare,
+            alive: true,
+            state: 'patrol', // 'patrol' | 'yellow' | 'red'
+            facing: 'down',
+            moveBudget: 0,
+            alertUntil: 0,
+            respawnAt: null
+        }));
+    }
+
+    /** Stamps a save's dungeonProgress snapshot (see Game.saveGame()) back
+     *  onto a just-regenerated set of floors. Floors themselves aren't
+     *  saved data - they regenerate identically every time from the same
+     *  seeded RNG (locationName + floor index) - only which chests/vault/
+     *  boss/field-monsters were already dealt with needs to travel with the
+     *  save. Called once, right after a DungeonState finishes generating
+     *  every floor for a location. */
+    function applySavedDungeonProgress(locationName, floors) {
+        const saved = window.game && window.game.dungeonProgress && window.game.dungeonProgress[locationName];
+        if (!saved) return;
+        for (const fIdx in floors) {
+            const savedFloor = saved[fIdx];
+            if (!savedFloor) continue;
+            const floor = floors[fIdx];
+            if (savedFloor.chestsOpened) {
+                floor.chests.forEach((c, i) => { if (savedFloor.chestsOpened[i]) c.opened = true; });
+            }
+            if (savedFloor.vaultOpened) floor.vaultOpened = true;
+            if (savedFloor.bossDefeated) floor.bossDefeated = true;
+            if (savedFloor.monstersAlive && floor.liveMonsters) {
+                floor.liveMonsters.forEach((m, i) => {
+                    if (savedFloor.monstersAlive[i] === false) { m.alive = false; m.respawnAt = null; }
+                });
+            }
+        }
+    }
+
+    /** Bresenham line-of-sight check against a dungeon floor's wall grid -
+     *  true only if every tile between (and including) the two points is
+     *  open floor, so a monster can't "see" the player through a wall even
+     *  if they're technically within notice range. */
+    function dungeonHasLineOfSight(floor, x0, y0, x1, y1) {
+        let dx = Math.abs(x1 - x0), dy = Math.abs(y1 - y0);
+        const sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
+        let err = dx - dy;
+        let x = x0, y = y0;
+        for (let guard = 0; guard < 200; guard++) {
+            if (!floor.grid[y] || floor.grid[y][x] === undefined || floor.grid[y][x] === 0) return false;
+            if (x === x1 && y === y1) return true;
+            const e2 = 2 * err;
+            if (e2 > -dy) { err -= dy; x += sx; }
+            if (e2 < dx) { err += dx; y += sy; }
+        }
+        return true;
+    }
+
+    function dungeonTileWalkable(floor, x, y) {
+        if (x < 0 || y < 0 || x >= floor.width || y >= floor.height) return false;
+        return floor.grid[y][x] !== 0;
+    }
+
+    /** Finds a monster template by name across every quadrant's pool - used
+     *  to look up a field monster's sprite/stats for rendering and for
+     *  seeding the actual battle. Searches all quadrants rather than just
+     *  the current one since it's cheap and avoids ever failing to find a
+     *  species that got locked in at floor-gen time under a different
+     *  quadrant read. */
+    function findMonsterTemplateByName(name) {
+        for (const key in QUADRANTS) {
+            const found = QUADRANTS[key].monsters.find(m => m.name === name);
+            if (found) return found;
+        }
+        return null;
+    }
+
+    function directionToFacing(dx, dy) {
+        if (dy < 0) return 'up';
+        if (dy > 0) return 'down';
+        if (dx < 0) return 'left';
+        if (dx > 0) return 'right';
+        return null;
+    }
+
+    /** The actual per-step brain for one floor's worth of monsters. Handles
+     *  respawns, aggro state transitions (with LOS gating both ways - a
+     *  monster can't notice you through a wall, and loses a chase the
+     *  instant it can't see you anymore, same as breaking off by distance),
+     *  and movement (patrol = slow aimless wander on a short leash, red =
+     *  greedy step toward the player at reduced speed via a fractional
+     *  move-budget so "60-70% of player speed" works in a tile-stepped
+     *  world). */
+    function updateFieldMonstersOnFloor(floor, playerX, playerY) {
+        if (!floor || !floor.liveMonsters) return;
+        const now = Date.now();
+        floor.liveMonsters.forEach(m => {
+            if (!m.alive) {
+                if (m.respawnAt !== null && now >= m.respawnAt) {
+                    m.alive = true;
+                    m.x = m.spawnX; m.y = m.spawnY;
+                    m.state = 'patrol';
+                    m.moveBudget = 0;
+                    m.alertUntil = 0;
+                    m.respawnAt = null;
+                }
+                return;
+            }
+            const dist = Math.max(Math.abs(m.x - playerX), Math.abs(m.y - playerY));
+            const los = dist <= FIELD_MONSTER_NOTICE_RADIUS && dungeonHasLineOfSight(floor, m.x, m.y, playerX, playerY);
+
+            if (m.state === 'red') {
+                if (dist > FIELD_MONSTER_BREAK_RADIUS || !los) {
+                    m.state = 'patrol';
+                }
+            } else if (m.state === 'yellow') {
+                if (dist <= FIELD_MONSTER_AGGRO_RADIUS && los) {
+                    m.state = 'red';
+                    m.alertUntil = now + FIELD_MONSTER_ALERT_FLASH_MS;
+                } else if (dist > FIELD_MONSTER_NOTICE_RADIUS || !los) {
+                    // Ray: once yellow breaks, revert straight to regular -
+                    // no lingering half-state.
+                    m.state = 'patrol';
+                }
+            } else if (m.state === 'patrol') {
+                if (dist <= FIELD_MONSTER_NOTICE_RADIUS && los) {
+                    m.state = 'yellow';
+                }
+            }
+
+            if (m.state === 'red') {
+                m.moveBudget += FIELD_MONSTER_CHASE_SPEED;
+                if (m.moveBudget >= 1) {
+                    m.moveBudget -= 1;
+                    const dx = Math.sign(playerX - m.x), dy = Math.sign(playerY - m.y);
+                    // Greedy step: prefer whichever axis has more ground to
+                    // cover, fall back to the other axis, then give up for
+                    // this tick rather than squeezing diagonally through a
+                    // wall corner.
+                    const tryOrder = Math.abs(playerX - m.x) >= Math.abs(playerY - m.y)
+                        ? [[dx, 0], [0, dy]] : [[0, dy], [dx, 0]];
+                    for (const [tx, ty] of tryOrder) {
+                        if ((tx || ty) && dungeonTileWalkable(floor, m.x + tx, m.y + ty)) {
+                            m.x += tx; m.y += ty;
+                            m.facing = directionToFacing(tx, ty) || m.facing;
+                            break;
+                        }
+                    }
+                }
+            } else if (m.state === 'patrol') {
+                m.moveBudget += FIELD_MONSTER_PATROL_SPEED;
+                if (m.moveBudget >= 1) {
+                    m.moveBudget -= 1;
+                    if (Math.random() < 0.5) {
+                        const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+                        const [tx, ty] = dirs[Math.floor(Math.random() * dirs.length)];
+                        const nx = m.x + tx, ny = m.y + ty;
+                        const withinLeash = Math.max(Math.abs(nx - m.spawnX), Math.abs(ny - m.spawnY)) <= FIELD_MONSTER_LEASH_RADIUS;
+                        if (withinLeash && dungeonTileWalkable(floor, nx, ny)) {
+                            m.x = nx; m.y = ny;
+                            m.facing = directionToFacing(tx, ty) || m.facing;
+                        }
+                    }
+                }
+            }
+            // 'yellow' holds position entirely - it reads as "it's noticed
+            // you and is watching," not yet committed to closing the gap.
+        });
+    }
+
+    /** Marks a field monster cleared (won or fled from) and starts its
+     *  5-10s respawn timer, per Ray's spec. */
+    function clearFieldMonster(monster) {
+        if (!monster) return;
+        monster.alive = false;
+        monster.respawnAt = Date.now() + FIELD_MONSTER_RESPAWN_MIN_MS +
+            Math.random() * (FIELD_MONSTER_RESPAWN_MAX_MS - FIELD_MONSTER_RESPAWN_MIN_MS);
+    }
+
+    /** Who gets the jump on a field contact. `moverFacing`/`moverDx,moverDy`
+     *  describe whoever's MOVEMENT caused the tiles to overlap (the chasing
+     *  monster stepping onto the player, or the player walking into a
+     *  patrolling monster) and `defenderFacing` is the other party's facing
+     *  at that instant. Approaching from squarely behind the defender (the
+     *  defender is facing the same direction the attacker came from - i.e.
+     *  facing away from them) is a guaranteed jump; anything else is a
+     *  coin flip between the two, per Ray's spec ("met head on, 50/50"). */
+    function resolveFieldEncounterAdvantage(moverDx, moverDy, defenderFacing, moverIsMonster) {
+        const facingVec = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[defenderFacing] || [0, 1];
+        const dot = facingVec[0] * moverDx + facingVec[1] * moverDy;
+        if (dot > 0) {
+            // Defender is facing the same way the attacker came from -
+            // their back was turned. Guaranteed jump for whoever moved.
+            return moverIsMonster ? 'surprise' : 'preemptive';
+        }
+        // Head-on or a side approach - coin flip on who gets the opening.
+        return Math.random() < 0.5 ? 'preemptive' : 'surprise';
     }
 
     class DungeonWalkRenderer {
@@ -9002,6 +9402,60 @@
                     ctx.shadowBlur = c.opened ? 0 : 12;
                     ctx.fillText(c.opened ? '📭' : '🎁', cPos.x, cPos.y);
                     ctx.shadowBlur = 0;
+                }
+            });
+
+            // Field monsters - visible, walking mobs (replaces the old
+            // invisible per-step random-encounter roll). Glow ring layers:
+            // an inner tag ring for elite (blue) / rare (purple) - purely
+            // cosmetic, per Ray - and an outer aggro ring for yellow
+            // (noticed) / red (chasing), drawn on TOP of the tag ring so
+            // both are visible at once. A "!" flashes briefly the instant
+            // yellow escalates to red.
+            const nowTs = Date.now();
+            (f.liveMonsters || []).forEach(m => {
+                if (!m.alive) return;
+                if (m.x < startCol - 1 || m.x > startCol + tilesW || m.y < startRow - 1 || m.y > startRow + tilesH) return;
+                const mPos = toScreen(m.x, m.y);
+                const tagColor = m.isRare ? '#c060ff' : (m.isElite ? '#4aa8ff' : null);
+                const aggroColor = m.state === 'red' ? '#ff4444' : (m.state === 'yellow' ? '#ffdd33' : null);
+                if (tagColor) {
+                    ctx.save();
+                    ctx.strokeStyle = tagColor;
+                    ctx.lineWidth = 2;
+                    ctx.shadowColor = tagColor;
+                    ctx.shadowBlur = 8;
+                    ctx.beginPath();
+                    ctx.arc(mPos.x, mPos.y, ts * 0.32, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+                if (aggroColor) {
+                    ctx.save();
+                    const pulse = 0.85 + Math.sin(nowTs / 150) * 0.15;
+                    ctx.strokeStyle = aggroColor;
+                    ctx.lineWidth = m.state === 'red' ? 3 : 2;
+                    ctx.shadowColor = aggroColor;
+                    ctx.shadowBlur = m.state === 'red' ? 14 : 8;
+                    ctx.globalAlpha = pulse;
+                    ctx.beginPath();
+                    ctx.arc(mPos.x, mPos.y, ts * 0.44, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+                const template = findMonsterTemplateByName(m.speciesName);
+                ctx.font = `${Math.floor(ts * 0.7)}px 'Segoe UI Emoji', sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText((template && template.sprite) || '❓', mPos.x, mPos.y);
+                if (m.alertUntil && nowTs < m.alertUntil) {
+                    ctx.save();
+                    ctx.font = `bold ${Math.floor(ts * 0.6)}px 'Courier New', monospace`;
+                    ctx.fillStyle = '#ff4444';
+                    ctx.shadowColor = '#000';
+                    ctx.shadowBlur = 4;
+                    ctx.fillText('!', mPos.x, mPos.y - ts * 0.8);
+                    ctx.restore();
                 }
             });
 
@@ -11748,20 +12202,25 @@
         movePlayer(dx, dy) {
             const newX = this.playerX + dx;
             const newY = this.playerY + dy;
-
-            if (newX >= 0 && newX < this.width && newY >= 0 && newY < this.height) {
-                const terrain = this.tiles[newY][newX];
-                // Lava wasn't actually in this blocklist before - only water and
-                // mountain were. That meant every lava field on the map (including
-                // the new Fire Grotto ring) was walkable in practice, which defeats
-                // the point of a causeway players have to actually follow.
-                if (terrain !== CONFIG.TERRAIN.WATER && terrain !== CONFIG.TERRAIN.MOUNTAIN && terrain !== CONFIG.TERRAIN.LAVA) {
-                    this.playerX = newX;
-                    this.playerY = newY;
-                    return true;
-                }
+            // Lava wasn't actually in this blocklist before - only water and
+            // mountain were. That meant every lava field on the map (including
+            // the new Fire Grotto ring) was walkable in practice, which defeats
+            // the point of a causeway players have to actually follow.
+            const isOpen = (x, y) => {
+                if (x < 0 || x >= this.width || y < 0 || y >= this.height) return false;
+                const terrain = this.tiles[y][x];
+                return terrain !== CONFIG.TERRAIN.WATER && terrain !== CONFIG.TERRAIN.MOUNTAIN && terrain !== CONFIG.TERRAIN.LAVA;
+            };
+            if (dx !== 0 && dy !== 0) {
+                // Diagonal step - also require both cardinal "corners" open,
+                // so you can't cut diagonally across a mountain/water corner.
+                if (!isOpen(newX, newY) || !isOpen(this.playerX, newY) || !isOpen(newX, this.playerY)) return false;
+            } else if (!isOpen(newX, newY)) {
+                return false;
             }
-            return false;
+            this.playerX = newX;
+            this.playerY = newY;
+            return true;
         }
 
         getTerrainAt(x, y) {
@@ -14536,7 +14995,12 @@
             this.heroTurnConsumed = new Set();
         }
 
-        startEncounter(party, location = 'world') {
+        /** `ambushType` ('preemptive'|'surprise'|null) and `fieldAnchor`
+         *  ({speciesName, isElite, isRare}) are only ever set by a visible
+         *  field-monster contact (see Game.checkFieldMonsterEncounter()) -
+         *  every other caller (random world encounters, boss doors, etc.)
+         *  just omits them and behaves exactly as before. */
+        startEncounter(party, location = 'world', ambushType = null, fieldAnchor = null) {
             this.showingResults = false;
             this.battleEndHandled = false;
             this.rewardsGranted = false;
@@ -14544,6 +15008,7 @@
             this.magicOnlyBattle = true;
             this.lastMaterialsFound = [];
             this.lastRareEncounterBonus = null;
+            this.pendingAmbush = ambushType;
             
             const existingPopup = document.getElementById('battle-results-popup');
             if (existingPopup) existingPopup.remove();
@@ -14566,8 +15031,12 @@
             this.runAttempts = 0;
             this.deathAnimPlayed = new Set();
             this.heroTurnConsumed = new Set();
+            // Milo's Charm (any tier) can be used once per battle as a free
+            // party pick-me-up without being consumed - reset that gate for
+            // every hero at the start of each fresh fight.
+            party.heroes.forEach(h => { h.charmUsedThisBattle = false; });
 
-            this.generateMonsters(location, party.getAverageLevel());
+            this.generateMonsters(location, party.getAverageLevel(), fieldAnchor);
             // Single source of truth for battle music: whatever any call
             // site played in the lead-up (pre-battle boss dialogue, a random
             // encounter roll, etc.) gets confirmed/corrected here based on
@@ -14605,12 +15074,69 @@
             } else {
                 this.log(`Encounter started! ${this.monsters.length} enemies appear!`);
             }
+
+            if (ambushType === 'preemptive') {
+                this.log('⚔️ You caught them off guard! You get a free round before they can react.');
+            } else if (ambushType === 'surprise') {
+                this.log('⚠️ Ambushed! They get the first move.');
+            }
             
-            this.nextTurn();
+            if (ambushType === 'surprise') {
+                // Skip the heroes' first turn entirely and let the enemies
+                // swing first - enemyPhase() handles clearing pendingAmbush
+                // and the eventual hand-back to nextTurn() itself.
+                this.enemyPhase();
+            } else {
+                this.nextTurn();
+            }
             return true;
         }
 
-        generateMonsters(location, partyLevel) {
+        generateMonsters(location, partyLevel, fieldAnchor = null) {
+            // A visible field-monster contact (dungeon walk or, later, the
+            // world map) always overrides the normal random roll below -
+            // "what you see is what you fight" per Ray's spec. The anchor
+            // monster is exactly what was standing on the map; any extra
+            // pack-mates still get rolled randomly same as a normal
+            // cave/ruins fight, unless it's a rare/mini-boss spawn, which
+            // (like today's world_rare ambush) stays a solo threat.
+            if (fieldAnchor) {
+                const quadrant = getCurrentWorldQuadrant();
+                const quadrantData = QUADRANTS[quadrant] || QUADRANTS.CORNELIA;
+                let template = quadrantData.monsters.find(m => m.name === fieldAnchor.speciesName);
+                if (!template) template = quadrantData.monsters[0];
+                const anchorMonster = new Monster(template, false);
+                if (fieldAnchor.isRare) {
+                    anchorMonster.name = `Menacing ${anchorMonster.name.replace(/^Elite /, '')}`;
+                    anchorMonster.maxHp = Math.floor(anchorMonster.maxHp * 2.4);
+                    anchorMonster.currentHp = anchorMonster.maxHp;
+                    anchorMonster.attack = Math.floor(anchorMonster.attack * 1.8);
+                    anchorMonster.defense = Math.floor(anchorMonster.defense * 1.6);
+                    anchorMonster.expReward = Math.floor(anchorMonster.expReward * 4);
+                    anchorMonster.goldReward = Math.floor(anchorMonster.goldReward * 4.5);
+                    anchorMonster.isElite = true;
+                    anchorMonster.isRareEncounter = true;
+                } else if (fieldAnchor.isElite && !anchorMonster.isElite) {
+                    anchorMonster.name = `Elite ${anchorMonster.name}`;
+                    anchorMonster.maxHp = Math.floor(anchorMonster.maxHp * 1.8);
+                    anchorMonster.currentHp = anchorMonster.maxHp;
+                    anchorMonster.attack = Math.floor(anchorMonster.attack * 1.5);
+                    anchorMonster.defense = Math.floor(anchorMonster.defense * 1.4);
+                    anchorMonster.expReward = Math.floor(anchorMonster.expReward * 3);
+                    anchorMonster.goldReward = Math.floor(anchorMonster.goldReward * 3.5);
+                    anchorMonster.isElite = true;
+                }
+                this.monsters.push(anchorMonster);
+                if (!fieldAnchor.isRare) {
+                    const extraCount = Math.floor(Math.random() * 2) + 1;
+                    for (let i = 0; i < extraCount; i++) {
+                        const regular = quadrantData.monsters.filter(m => !m.isElite);
+                        const t = regular.length > 0 ? regular[Math.floor(Math.random() * regular.length)] : quadrantData.monsters[0];
+                        this.monsters.push(new Monster(t, false));
+                    }
+                }
+                return;
+            }
             const isBoss = location === 'castle';
             const isElite = location === 'cave_elite';
             const isRareWorldEncounter = location === 'world_rare';
@@ -15719,7 +16245,14 @@
             // item list (they're still usable from the main menu).
             const overworldOnlyEffects = ['loot_boost', 'gold_boost', 'xp_boost', 'travel', 'encounter_ward', 'elemental_ward'];
             const usableItems = this.party.inventory.items.filter(i => i.type === 'consumable' && !overworldOnlyEffects.includes(i.effect));
-            if (usableItems.length === 0) {
+            // Milo's Charm (any tier, see MILO_CHARM_TIERS) - a keepsake
+            // accessory that doubles as a free, non-consumed party pick-me-up
+            // once per battle. It never leaves this list and never gets
+            // unequipped from using it - just greys out until the NEXT fight
+            // (charmUsedThisBattle resets in startEncounter()).
+            const charm = hero.equipment && hero.equipment.jewelry;
+            const charmTier = charm && MILO_CHARM_TIERS[charm.name];
+            if (usableItems.length === 0 && !charmTier) {
                 this.log('No usable items!');
                 setTimeout(() => this.renderMainCommands(), 1500);
                 return;
@@ -15730,6 +16263,19 @@
             if (!overlay || !list) return;
             title.textContent = '🎒 Item';
             list.innerHTML = '';
+            if (charmTier) {
+                const used = !!hero.charmUsedThisBattle;
+                const btn = document.createElement('button');
+                btn.className = 'battle-action-option' + (used ? ' disabled' : '');
+                btn.innerHTML = `<span class="battle-action-name">✨ ${charm.name}<span class="spell-scope-badge scope-all">Whole Party</span></span><span class="battle-action-cost">${used ? 'Used' : 'Free'}</span>`;
+                if (!used) {
+                    btn.onclick = () => {
+                        overlay.classList.remove('active');
+                        this.executeCharmAbility(hero, charmTier, charm.name);
+                    };
+                }
+                list.appendChild(btn);
+            }
             usableItems.forEach((item) => {
                 const btn = document.createElement('button');
                 btn.className = 'battle-action-option';
@@ -15750,6 +16296,36 @@
                 list.appendChild(btn);
             });
             overlay.classList.add('active');
+        }
+
+        /** Milo's Charm's free once-per-battle ability - heals the whole
+         *  party and restores MP to whoever used it (amounts per tier, see
+         *  MILO_CHARM_TIERS). Doesn't touch inventory or equipment at all -
+         *  only charmUsedThisBattle gates it, so it's ready again next
+         *  fight automatically. */
+        executeCharmAbility(hero, charmTier, charmName) {
+            hero.charmUsedThisBattle = true;
+            this.party.heroes.forEach(h => {
+                if (h.isDead) return;
+                const oldHp = h.currentHp;
+                h.heal(charmTier.heal);
+                const healed = h.currentHp - oldHp;
+                if (healed > 0) {
+                    healSparkle(h);
+                    this.showDamage(h, healed, true);
+                }
+            });
+            const oldMp = hero.currentMp;
+            hero.currentMp = Math.min(hero.baseStats.maxMp, hero.currentMp + charmTier.mp);
+            const restoredMp = hero.currentMp - oldMp;
+            window.game.audio.play('heal');
+            this.log(`${hero.name} calls on ${charmName} - the whole party feels lighter!`);
+            if (restoredMp > 0) {
+                this.log(`${hero.name} also recovers ${restoredMp} MP.`);
+            }
+            this.updatePartyDisplay();
+            if (this.checkBattleEnd()) return;
+            this.nextHero();
         }
 
 
@@ -16766,6 +17342,25 @@
 
         enemyPhase() {
             if (!this.active) return;
+            // A "preemptive" field-monster ambush (see
+            // Game.checkFieldMonsterEncounter()) means the party gets a
+            // whole free round before the enemy ever acts - skip straight
+            // back to a fresh hero round without any monster attacking.
+            // ('surprise' needs no special handling here: startEncounter()
+            // calls enemyPhase() directly for that case instead of
+            // nextTurn(), so by the time we're here it's just a normal
+            // enemy phase.)
+            if (this.pendingAmbush === 'preemptive') {
+                this.pendingAmbush = null;
+                this.log("They never saw you coming - your turn again!");
+                this.currentTurn = 0;
+                this.selectedHeroIndex = 0;
+                this.heroTurnConsumed = new Set();
+                this.updatePartyDisplay();
+                this.renderMainCommands();
+                return;
+            }
+            this.pendingAmbush = null;
             const heroesHitThisPhase = [];
             const livingMonsters = this.monsters.filter(m => m.isAlive());
             // Each monster's swing starts STAGGER_MS after the previous one
@@ -17073,6 +17668,14 @@
                 this.battleEndHandled = true;
                 this.log('Victory!');
                 window.game.audio.play('battleWin');
+                // Won a fight that started from a visible field monster -
+                // clear its sprite and start its 5-10s respawn timer at its
+                // original spawn point (Ray's spec). Fleeing or losing
+                // deliberately does NOT clear it - it's still there waiting.
+                if (window.game.activeFieldMonster) {
+                    clearFieldMonster(window.game.activeFieldMonster);
+                    window.game.activeFieldMonster = null;
+                }
                 this.grantRewards();
                 this.showingResults = true;
                 this.showBattleResults();
@@ -17484,6 +18087,12 @@
                 clearTimeout(this.autoBattleInterval);
                 this.autoBattleInterval = null;
             }
+            // Catch-all cleanup for a field-monster-triggered fight that was
+            // fled or lost rather than won - checkBattleEnd() already
+            // cleared it (and started its respawn timer) on an actual win,
+            // so this is just making sure a stale reference never lingers
+            // into some later, unrelated encounter.
+            if (window.game) window.game.activeFieldMonster = null;
             // Captured before this.monsters is cleared below - used after the fight to mark
             // a dungeon boss as defeated so its tile doesn't just re-trigger the fight again.
             const wasBossFight = !defeat && this.monsters.some(m => m.isBoss);
@@ -17536,6 +18145,12 @@
                     // that happened anywhere else in the region.
                     if (monster.name === 'Shadow Stalker' || monster.name === 'Elite Shadow Stalker') {
                         window.game.updateQuestProgress('special_location', 1, null, { location: 'Shadow Grove', subtype: 'stalker' });
+                    }
+                    // Milo's Charm upgrades one tier per first-3-story-boss
+                    // kill (see MILO_CHARM_TIERS) - no separate quest chain
+                    // needed since this ladder already exists.
+                    if (monster.isBoss && MILO_CHARM_UPGRADE_BOSSES.includes(monster.name)) {
+                        window.game.upgradeMiloCharmIfHeld();
                     }
                     if (this.lastSpellElement) {
                         window.game.trackElementalKill(this.lastSpellElement);
@@ -20725,6 +21340,7 @@
             this.ruinsRenderer = new DungeonWalkRenderer('ruins-canvas');
             this.dungeonMap = null;
             this.dungeonStates = {};
+            this.dungeonProgress = {};
             this.nearDungeonFeature = null;
             this.springRenderer = new SpringRenderer('spring-canvas');
             this.battle = new BattleSystem();
@@ -20835,7 +21451,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v146]');
+            console.log('Game starting... [build v147]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
@@ -21092,6 +21708,36 @@
             if (this.state) this.state.resume();
         }
 
+        /** Finds Milo's Charm (any tier) equipped on a hero or sitting in
+         *  inventory and bumps it to the next tier - see MILO_CHARM_TIERS/
+         *  MILO_CHARM_UPGRADE_BOSSES. Equipped takes priority since that's
+         *  the far more likely place for it to be sitting once someone's
+         *  actually using the battle ability. No-ops quietly if the party
+         *  never picked up (or already maxed) the charm - most parties
+         *  will only ever see the upgrade popup if they actually have it. */
+        upgradeMiloCharmIfHeld() {
+            const tierOrder = Object.keys(MILO_CHARM_TIERS);
+            for (const hero of this.party.heroes) {
+                const current = hero.equipment && hero.equipment.jewelry;
+                const tier = current && MILO_CHARM_TIERS[current.name];
+                if (tier && tier.next) {
+                    hero.equipment.jewelry = { name: tier.next, ...QUEST_REWARD_ITEMS[tier.next] };
+                    this.ui.showPopup('Charm Upgraded!', `${current.name} shimmers and transforms into ${tier.next}!`);
+                    return;
+                }
+            }
+            const jewelryInv = this.party.inventory.jewelry || [];
+            const invIdx = jewelryInv.findIndex(i => MILO_CHARM_TIERS[i.name]);
+            if (invIdx !== -1) {
+                const current = jewelryInv[invIdx];
+                const tier = MILO_CHARM_TIERS[current.name];
+                if (tier && tier.next) {
+                    jewelryInv[invIdx] = { name: tier.next, ...QUEST_REWARD_ITEMS[tier.next] };
+                    this.ui.showPopup('Charm Upgraded!', `${current.name} shimmers and transforms into ${tier.next}!`);
+                }
+            }
+        }
+
         openDualTechGuide() {
             const content = document.getElementById('dualtech-guide-content');
             if (content) content.innerHTML = renderDualTechGuideContent(this);
@@ -21189,6 +21835,21 @@
                     this.handleBattleInput(e);
                 }
             });
+            // Diagonal keyboard movement: holding two arrow/WASD keys at once
+            // (e.g. Up+Right) now moves diagonally instead of only ever
+            // registering whichever key's native OS key-repeat happened to
+            // fire last - see MOVE_KEY_DELTAS/getHeldMoveDelta() and each
+            // handle*Input()'s use of them below. keyup just needs to drop
+            // the key from the held set; screen-specific logic all lives in
+            // the keydown handlers already.
+            document.addEventListener('keyup', (e) => {
+                heldMoveKeys.delete(e.key);
+            });
+            // Held keys should never survive a screen change/tab blur -
+            // otherwise letting go of a key while, say, a popup had focus
+            // could leave it "stuck" held and the party drifting diagonally
+            // forever on the next real keypress.
+            window.addEventListener('blur', () => heldMoveKeys.clear());
         }
 
         updateLocationPartyStatus() {
@@ -22349,7 +23010,6 @@
         }
 
         handleWorldInput(e) {
-            let dx = 0, dy = 0;
             if (e.key === 'm' || e.key === 'M') {
                 e.preventDefault();
                 this.toggleMenu();
@@ -22360,21 +23020,18 @@
                 this.toggleMenu();
                 return;
             }
-            switch(e.key) {
-                case 'ArrowUp': case 'w': case 'W': dy = -1; break;
-                case 'ArrowDown': case 's': case 'S': dy = 1; break;
-                case 'ArrowLeft': case 'a': case 'A': dx = -1; break;
-                case 'ArrowRight': case 'd': case 'D': dx = 1; break;
-                case 'Enter':
-                    if (this.nearLocation) {
-                        this.enterLocation(this.nearLocation);
-                    } else if (this.nearNPC) {
-                        this.showNPCPopup(this.nearNPC);
-                    }
-                    return;
+            if (e.key === 'Enter') {
+                if (this.nearLocation) {
+                    this.enterLocation(this.nearLocation);
+                } else if (this.nearNPC) {
+                    this.showNPCPopup(this.nearNPC);
+                }
+                return;
             }
-            if (dx !== 0 || dy !== 0) {
-                this.attemptWorldMove(dx, dy);
+            if (MOVE_KEY_DELTAS[e.key]) {
+                heldMoveKeys.add(e.key);
+                const { dx, dy } = getHeldMoveDelta();
+                if (dx !== 0 || dy !== 0) this.attemptWorldMove(dx, dy);
             }
         }
 
@@ -22385,29 +23042,28 @@
         attemptWorldMove(dx, dy) {
             const newX = this.world.playerX + dx;
             const newY = this.world.playerY + dy;
-            if (newX >= 0 && newX < this.world.width && newY >= 0 && newY < this.world.height) {
-                const terrain = this.world.tiles[newY][newX];
-                if (terrain !== CONFIG.TERRAIN.WATER && terrain !== CONFIG.TERRAIN.MOUNTAIN) {
-                    const prevQuadrant = getCurrentWorldQuadrant();
-                    this.world.playerX = newX;
-                    this.world.playerY = newY;
-                    if (dy < 0) this.world.facing = 'up';
-                    else if (dy > 0) this.world.facing = 'down';
-                    else if (dx < 0) this.world.facing = 'left';
-                    else if (dx > 0) this.world.facing = 'right';
-                    this.world.lastMoveTime = Date.now();
-                    this.party.updatePositions(newX, newY);
-                    this.party.stepCounter++;
-                    // Crossing into a new biome quadrant while walking swaps
-                    // the looping overworld track to match, rather than only
-                    // updating on screen entry/exit.
-                    if (getCurrentWorldQuadrant() !== prevQuadrant && this.audio) {
-                        this.audio.playMusic('overworld', getBattleEnvironment('world').scene);
-                    }
-                    this.checkRandomEncounter();
-                    this.checkLocationProximity();
-                    return true;
+            const diagonalBlocked = dx !== 0 && dy !== 0 &&
+                (!this.isWorldTileWalkable(this.world.playerX, newY) || !this.isWorldTileWalkable(newX, this.world.playerY));
+            if (!diagonalBlocked && this.isWorldTileWalkable(newX, newY)) {
+                const prevQuadrant = getCurrentWorldQuadrant();
+                this.world.playerX = newX;
+                this.world.playerY = newY;
+                if (dy < 0) this.world.facing = 'up';
+                else if (dy > 0) this.world.facing = 'down';
+                else if (dx < 0) this.world.facing = 'left';
+                else if (dx > 0) this.world.facing = 'right';
+                this.world.lastMoveTime = Date.now();
+                this.party.updatePositions(newX, newY);
+                this.party.stepCounter++;
+                // Crossing into a new biome quadrant while walking swaps
+                // the looping overworld track to match, rather than only
+                // updating on screen entry/exit.
+                if (getCurrentWorldQuadrant() !== prevQuadrant && this.audio) {
+                    this.audio.playMusic('overworld', getBattleEnvironment('world').scene);
                 }
+                this.checkRandomEncounter();
+                this.checkLocationProximity();
+                return true;
             }
             return false;
         }
@@ -22583,26 +23239,21 @@
         /** Movement/interaction handler for the walkable town screen - mirrors handleWorldInput. */
         handleTownInput(e) {
             if (!this.townMap) return;
-            let dx = 0, dy = 0;
-            switch (e.key) {
-                case 'ArrowUp': case 'w': case 'W': dy = -1; break;
-                case 'ArrowDown': case 's': case 'S': dy = 1; break;
-                case 'ArrowLeft': case 'a': case 'A': dx = -1; break;
-                case 'ArrowRight': case 'd': case 'D': dx = 1; break;
-                case 'Enter':
-                    if (this.nearBuilding) {
-                        this.handleBuildingAction(this.nearBuilding);
-                    } else if (this.nearTownNPC !== null) {
-                        this.showTownsfolkDetails(this.nearTownNPC, this.townMap.key);
-                    } else if (this.nearFishingSpot) {
-                        this.startFishing();
-                    }
-                    return;
-                default:
-                    return;
+            if (e.key === 'Enter') {
+                if (this.nearBuilding) {
+                    this.handleBuildingAction(this.nearBuilding);
+                } else if (this.nearTownNPC !== null) {
+                    this.showTownsfolkDetails(this.nearTownNPC, this.townMap.key);
+                } else if (this.nearFishingSpot) {
+                    this.startFishing();
+                }
+                return;
             }
+            if (!MOVE_KEY_DELTAS[e.key]) return;
             e.preventDefault();
-            this.attemptTownMove(dx, dy);
+            heldMoveKeys.add(e.key);
+            const { dx, dy } = getHeldMoveDelta();
+            if (dx !== 0 || dy !== 0) this.attemptTownMove(dx, dy);
         }
 
         /** Attempts a single-tile town move; shared by keyboard, D-pad, and tap-to-walk. */
@@ -22719,20 +23370,15 @@
         /** Movement/interaction handler for cave/castle/ruins screens - mirrors handleTownInput but with real wall collision. */
         handleDungeonInput(e) {
             if (!this.dungeonMap) return;
-            let dx = 0, dy = 0;
-            switch (e.key) {
-                case 'ArrowUp': case 'w': case 'W': dy = -1; break;
-                case 'ArrowDown': case 's': case 'S': dy = 1; break;
-                case 'ArrowLeft': case 'a': case 'A': dx = -1; break;
-                case 'ArrowRight': case 'd': case 'D': dx = 1; break;
-                case 'Enter':
-                    this.handleDungeonInteract();
-                    return;
-                default:
-                    return;
+            if (e.key === 'Enter') {
+                this.handleDungeonInteract();
+                return;
             }
+            if (!MOVE_KEY_DELTAS[e.key]) return;
             e.preventDefault();
-            this.attemptDungeonMove(dx, dy);
+            heldMoveKeys.add(e.key);
+            const { dx, dy } = getHeldMoveDelta();
+            if (dx !== 0 || dy !== 0) this.attemptDungeonMove(dx, dy);
         }
 
         /** Attempts a single-tile dungeon move; shared by keyboard, D-pad, and tap-to-walk. */
@@ -22740,10 +23386,43 @@
             if (!this.dungeonMap) return false;
             if (this.dungeonMap.movePlayer(dx, dy)) {
                 this.checkDungeonProximity();
-                this.checkDungeonRandomEncounter();
+                this.checkFieldMonsterEncounter(dx, dy);
                 return true;
             }
             return false;
+        }
+
+        /** Checks for contact with a visible field monster and, if found,
+         *  starts the encounter using its exact species/elite/rare status
+         *  ("what you see is what you fight") plus whatever directional
+         *  ambush advantage the approach angle earned. Two ways contact can
+         *  happen on a given step: the player walked straight into a
+         *  patrolling monster (checked immediately, before monsters even
+         *  take their own step this tick), or - only checked if that
+         *  didn't happen - a chasing monster's own step this tick lands it
+         *  on the player. Returns true if a battle started. */
+        checkFieldMonsterEncounter(moveDx, moveDy) {
+            if (!this.dungeonMap || this.dungeonMap.isShrine) return false;
+            const px = this.dungeonMap.playerX, py = this.dungeonMap.playerY;
+            let monster = this.dungeonMap.getFieldMonsterAt(px, py);
+            let moverIsMonster = false;
+            let moverDx = moveDx, moverDy = moveDy;
+            if (!monster) {
+                this.dungeonMap.updateFieldMonsters();
+                monster = this.dungeonMap.getFieldMonsterAt(px, py);
+                if (monster) {
+                    moverIsMonster = true;
+                    moverDx = monster.facing === 'left' ? -1 : monster.facing === 'right' ? 1 : 0;
+                    moverDy = monster.facing === 'up' ? -1 : monster.facing === 'down' ? 1 : 0;
+                }
+            }
+            if (!monster) return false;
+            const defenderFacing = moverIsMonster ? (this.dungeonMap.facing || 'down') : (monster.facing || 'down');
+            const ambushType = resolveFieldEncounterAdvantage(moverDx, moverDy, defenderFacing, moverIsMonster);
+            this.activeFieldMonster = monster;
+            const fieldAnchor = { speciesName: monster.speciesName, isElite: monster.isElite, isRare: monster.isRare };
+            this.battle.startEncounter(this.party, this.dungeonMap.type, ambushType, fieldAnchor);
+            return true;
         }
 
         /** Tile-walkability test used by the tap-to-walk pathfinder for dungeons. */
@@ -23069,6 +23748,11 @@
         }
 
         /** Random encounters while walking dungeon corridors - elite chance scales with floor depth (30/40/50/60/70%). */
+        /** Superseded by visible field monsters (see
+         *  Game.checkFieldMonsterEncounter() / updateFieldMonstersOnFloor())
+         *  - kept here unused rather than deleted in case a probability-
+         *  based ambient encounter is ever wanted again for some special
+         *  dungeon type. */
         checkDungeonRandomEncounter() {
             if (!this.dungeonMap) return;
             if (this.dungeonMap.isShrine) return; // no monsters at the shrine - it's a place of ceremony, not combat
@@ -26387,6 +27071,33 @@
                 unlockedLore: this.unlockedLore || ['intro'],
                 trackedQuestId: this.trackedQuestId || null,
                 gameCompleted: !!this.gameCompleted,
+                // Chest/vault/boss/field-monster progress per dungeon floor -
+                // NOT the floors themselves (those regenerate deterministically
+                // from the same seeded RNG every time, so there's no need to
+                // serialize the actual grid/chest positions, just which ones
+                // have already been dealt with). Without this, dungeonStates
+                // (the in-memory cache that normally keeps chests opened
+                // across re-entries within a session) simply doesn't survive
+                // an app restart/reload, and every chest silently came back -
+                // exactly the "exit and re-enter to farm it again" bug.
+                dungeonProgress: (() => {
+                    const out = {};
+                    for (const locName in this.dungeonStates) {
+                        const ds = this.dungeonStates[locName];
+                        const floors = {};
+                        for (const fIdx in ds.floors) {
+                            const f = ds.floors[fIdx];
+                            floors[fIdx] = {
+                                chestsOpened: f.chests.map(c => !!c.opened),
+                                vaultOpened: !!f.vaultOpened,
+                                bossDefeated: !!f.bossDefeated,
+                                monstersAlive: (f.liveMonsters || []).map(m => !!m.alive)
+                            };
+                        }
+                        out[locName] = floors;
+                    }
+                    return out;
+                })(),
                 dualTechIntroSeen: !!this.dualTechIntroSeen,
                 state: {
                     flags: this.state.flags || {},
@@ -26581,6 +27292,16 @@
                 this.unlockedLore = saveData.unlockedLore || ['intro'];
                 this.trackedQuestId = saveData.trackedQuestId || null;
                 this.gameCompleted = !!saveData.gameCompleted;
+                // Fresh regeneration cache per load - if this is a slot
+                // switch mid-session rather than a cold app restart, any
+                // dungeon states already cached in memory belong to whatever
+                // was previously loaded and must NOT bleed into this save.
+                // Actual floor layouts regenerate deterministically the next
+                // time each location is entered; dungeonProgress below is
+                // what makes that regeneration come back with the right
+                // chests/vault/boss/monsters already resolved.
+                this.dungeonStates = {};
+                this.dungeonProgress = saveData.dungeonProgress || {};
                 this.dualTechIntroSeen = !!saveData.dualTechIntroSeen;
                 if (!this.achievements) this.achievements = new AchievementManager();
                 this.achievements.loadSaveData(saveData.achievements);
@@ -27444,6 +28165,23 @@ const APOTHECARY_RECIPES = [
  * full resolution order (shops -> monster drops/loot tables -> this
  * registry -> last-resort material fallback).
  */
+/** Milo's Charm (see the Brighthollow "Milo's Big Adventure" quest) isn't a
+ *  consumable - it's a keepsake accessory that ALSO works as a free,
+ *  non-consumed battle item once per fight (see Battle.showBattleItemMenu()/
+ *  executeCharmAbility()). Each tier heals/restores more; upgrades are
+ *  awarded automatically for defeating each of the first 3 story bosses
+ *  (see Battle.endBattle()'s MILO_CHARM_UPGRADE_BOSSES check) - no separate
+ *  quest chain needed since that ladder already exists in the game. */
+const MILO_CHARM_TIERS = {
+    "Milo's Charm": { heal: 25, mp: 20, next: "Milo's Super Charm" },
+    "Milo's Super Charm": { heal: 50, mp: 30, next: "Milo's Amazing Charm" },
+    "Milo's Amazing Charm": { heal: 75, mp: 45, next: "Milo's Wishing Charm" },
+    "Milo's Wishing Charm": { heal: 100, mp: 60, next: null }
+};
+// The first 3 of the game's 4 story bosses (Ashveil Spire/Voraxis, the
+// final boss, is deliberately excluded - Wishing Charm is the last tier).
+const MILO_CHARM_UPGRADE_BOSSES = ['Goblin King', 'Dread Knight', 'Ancient Mummy Lord'];
+
 const QUEST_REWARD_ITEMS = {
     // --- Weapons ---
     'Darksteel Sword': { type: 'weapon', attack: 22, price: 900, desc: 'A blade of dark steel, forged for battle.' },
@@ -27484,7 +28222,10 @@ const QUEST_REWARD_ITEMS = {
     'Elemental Crown': { type: 'jewelry', magic: 20, defense: 10, price: 3000, desc: 'A crown resonating with elemental power.' },
     'Dragon Crown': { type: 'jewelry', attack: 20, defense: 20, magic: 10, price: 10000, desc: 'The crown of an ancient dragon.' },
     'Silver Ring': { type: 'jewelry', defense: 4, speed: 2, price: 300, desc: 'A modest silver ring.' },
-    'Milo\'s Charm': { type: 'jewelry', speed: 2, price: 150, desc: 'A charm given by a grateful little brother, glad to be home safe.' },
+    'Milo\'s Charm': { type: 'jewelry', speed: 2, price: 150, desc: 'A charm given by a grateful little brother, glad to be home safe. Once per battle, its warmth can be called on to lift the whole party.' },
+    'Milo\'s Super Charm': { type: 'jewelry', speed: 3, price: 0, desc: "Milo's charm, grown stronger - his gratitude hasn't faded a bit. Once per battle, its warmth can be called on to lift the whole party." },
+    'Milo\'s Amazing Charm': { type: 'jewelry', speed: 4, price: 0, desc: "Milo's charm again, brighter still. Once per battle, its warmth can be called on to lift the whole party." },
+    'Milo\'s Wishing Charm': { type: 'jewelry', speed: 5, price: 0, desc: "Milo's charm at its fullest - a little brother's gratitude, undimmed by anything you've faced since. Once per battle, its warmth can be called on to lift the whole party." },
     'Royal Signet': { type: 'jewelry', defense: 5, price: 250, desc: 'A signet ring marking the bearer as a friend of the Brighthollow crown.' },
     'Desert Rose Pendant': { type: 'jewelry', magic: 6, price: 300, desc: 'A pendant carved in the shape of a desert rose, gift of a grateful royal advisor.' },
 
