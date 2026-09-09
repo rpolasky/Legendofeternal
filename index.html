@@ -1992,6 +1992,20 @@
             color: #1a1a1a !important;
         }
 
+        /* Battle speed toggle - sits next to Auto Battle, cycles 1x/2x/instant.
+           Only tints once sped up so 1x (the common case) stays visually quiet. */
+        .battle-speed-btn {
+            font-size: 16px;
+            font-weight: 700;
+            font-family: 'Courier New', monospace;
+        }
+
+        .battle-speed-btn.speed-active {
+            background: linear-gradient(135deg, #0d4a3a, #1fae7a) !important;
+            border-color: #2fe0a0 !important;
+            color: #eafff5 !important;
+        }
+
         /* Dual Tech command button - same text-label treatment as
            .limit-break-btn, but a two-tone blue/gold gradient so it reads
            as a distinct, rarer option sitting right next to it. */
@@ -2226,6 +2240,100 @@
             flex-shrink: 0;
         }
 
+        /* Spell/item target-scope badges - "is this vs all enemies, a single
+           enemy, an ally, or the whole party?" at a glance, wherever a
+           spell/item name is listed (battle menu, character sheet, Spell
+           Weaver combo guide). Green is reserved for anything that hits
+           everyone (all enemies/allies/party), per the color scheme Ray
+           asked for. */
+        .spell-scope-badge {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            padding: 1px 6px;
+            border-radius: 8px;
+            margin-left: 6px;
+            white-space: nowrap;
+            vertical-align: middle;
+            border: 1px solid currentColor;
+        }
+        .spell-scope-badge.scope-all {
+            color: #5dff5d;
+            background: rgba(93,255,93,0.12);
+        }
+        .spell-scope-badge.scope-enemy {
+            color: #ff8866;
+            background: rgba(255,136,102,0.12);
+        }
+        .spell-scope-badge.scope-ally {
+            color: #66ccff;
+            background: rgba(102,204,255,0.12);
+        }
+        .spell-scope-badge.scope-self {
+            color: #ffd23f;
+            background: rgba(255,210,63,0.12);
+        }
+
+        /* Spell Weaving Guide - recipe cards (ingredients -> result) */
+        .spell-combo-card {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(42,42,74,0.5);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+        .spell-combo-card.combo-ready {
+            border-color: #ffd23f;
+            box-shadow: 0 0 14px rgba(255,210,63,0.25);
+        }
+        .spell-combo-ingredients {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+        .spell-combo-ingredient {
+            font-size: 12px;
+            font-weight: 600;
+            color: #cfc0ee;
+            background: rgba(255,255,255,0.06);
+            padding: 3px 8px;
+            border-radius: 6px;
+            white-space: nowrap;
+        }
+        .spell-combo-ingredient.unknown {
+            color: #666;
+            text-decoration: line-through;
+            background: rgba(255,255,255,0.02);
+        }
+        .spell-combo-plus {
+            color: #888;
+            font-weight: 700;
+        }
+        .spell-combo-arrow {
+            color: var(--highlight);
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+        .spell-combo-result {
+            flex: 1;
+            min-width: 140px;
+        }
+        .spell-combo-result-name {
+            font-weight: 700;
+            font-size: 14px;
+            color: #fff;
+        }
+        .spell-combo-result-desc {
+            font-size: 11px;
+            color: #a89ccb;
+            margin: 2px 0 4px;
+        }
+
         @keyframes limitBreakPulse {
             0%, 100% { box-shadow: 0 0 10px rgba(255,102,204,0.4), 0 2px 10px rgba(0,0,0,0.3); }
             50% { box-shadow: 0 0 26px rgba(255,102,204,0.9), 0 2px 10px rgba(0,0,0,0.3); }
@@ -2278,13 +2386,44 @@
 
         .damage-number.critical {
             color: #ffaa00;
-            font-size: 40px;
+            font-size: 76px;
             text-shadow: 0 0 40px rgba(255,170,0,0.8), 0 0 80px rgba(255,170,0,0.4), 2px 2px 0 #000;
         }
 
         .damage-number.heal {
             color: #44ff88;
             text-shadow: 0 0 20px rgba(68,255,136,0.8), 2px 2px 0 #000;
+        }
+
+        /* ====================================================================== */
+        /*        CRITICAL HIT! LABEL + HIT-STOP FREEZE FLASH (crits/            */
+        /*        Limit Breaks/Dual Techs - anything showDamage() gets           */
+        /*        called with isCrit=true for)                                   */
+        /* ====================================================================== */
+        .critical-hit-label {
+            position: absolute;
+            transform: translateX(-50%);
+            font-size: 22px;
+            font-weight: 900;
+            letter-spacing: 1px;
+            color: #fff2c2;
+            text-shadow: 0 0 12px #ff8800, 0 0 28px #ff4400, 2px 2px 0 #000;
+            pointer-events: none;
+            z-index: 151;
+            font-family: 'Courier New', monospace;
+            animation: critLabelPop 0.9s forwards;
+        }
+
+        @keyframes critLabelPop {
+            0% { opacity: 0; transform: translateX(-50%) scale(0.4); }
+            15% { opacity: 1; transform: translateX(-50%) scale(1.15); }
+            30% { transform: translateX(-50%) scale(1); }
+            75% { opacity: 1; transform: translateX(-50%) translateY(-8px) scale(1); }
+            100% { opacity: 0; transform: translateX(-50%) translateY(-18px) scale(0.95); }
+        }
+
+        .hit-stop-flash {
+            filter: brightness(1.9) saturate(0.4);
         }
 
         /* ====================================================================== */
@@ -5094,7 +5233,11 @@
             }
 
             .damage-number.critical {
-                font-size: 30px;
+                font-size: 56px;
+            }
+
+            .critical-hit-label {
+                font-size: 16px;
             }
 
         @media (max-width: 480px) {
@@ -5167,7 +5310,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v144</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v145</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -5434,6 +5577,7 @@
                             <button class="cmd-btn" title="Item" onclick="window.game.battle.selectCommand('item')">🎒</button>
                             <button class="cmd-btn" title="Run" onclick="window.game.battle.selectCommand('run')">🏃</button>
                             <button class="cmd-btn" id="auto-battle-btn" title="Auto Battle" onclick="window.game.battle.toggleAutoBattle()">⚡</button>
+                            <button class="cmd-btn battle-speed-btn" id="battle-speed-btn" title="Battle Speed (tap to cycle)" onclick="cycleBattleSpeed()">1x</button>
                         </div>
                     </div>
 
@@ -5526,6 +5670,7 @@
                 </div>
                 <div class="shop2-right">
                     <span class="shop2-gold" id="spellweaver-gold">G: 0</span>
+                    <div class="shop2-btn" onclick="window.game.openSpellComboGuide()">&#128214; Combo Guide</div>
                     <div class="shop2-btn leave" onclick="window.game.exitShop()">&#128682; Leave</div>
                 </div>
             </div>
@@ -5850,6 +5995,17 @@
                 <h3 style="color: var(--highlight); flex-shrink: 0;">⚔️ Legendary Weapons</h3>
                 <div class="message" id="legendary-content" style="overflow-y: auto; text-align: left; flex: 1; padding-right: 6px;"></div>
                 <button class="menu-button" onclick="window.game.closeLegendaryJournal()" style="flex-shrink: 0;">Close</button>
+            </div>
+        </div>
+        <!-- Spell Weaver combo reference - shows every SPELL_COMBINATIONS
+             recipe (ingredients -> result), grouped by tier, with a live
+             ready/learned/locked status per recipe based on what the party
+             currently knows. See renderSpellComboGuideContent(). -->
+        <div class="popup-overlay" id="spell-guide-overlay">
+            <div class="popup-box lore-box" id="spell-guide-box" style="max-width: 640px; width: 90%; max-height: 80vh; display: flex; flex-direction: column;">
+                <h3 style="color: var(--highlight); flex-shrink: 0;">📖 Spell Weaving Guide</h3>
+                <div class="message" id="spell-guide-content" style="overflow-y: auto; text-align: left; flex: 1; padding-right: 6px;"></div>
+                <button class="menu-button" onclick="window.game.closeSpellComboGuide()" style="flex-shrink: 0;">Close</button>
             </div>
         </div>
 
@@ -14866,23 +15022,53 @@
         showDamage(target, amount, isHeal = false, isCrit = false) {
             const battleScreen = document.getElementById('battle-window');
             if (!battleScreen) return;
-            const div = document.createElement('div');
-            div.className = `damage-number ${isHeal ? 'heal' : ''} ${isCrit ? 'critical' : ''}`;
             const isNumeric = typeof amount === 'number' || !isNaN(parseFloat(amount));
-            div.textContent = !isNumeric ? amount : (isHeal ? `+${amount}` : `-${amount}`);
+            // "Big hit" = a real crit, Limit Break, or Dual Tech - every call
+            // site that reaches for one of those already passes isCrit=true
+            // here, so this one flag is all that's needed to gate the
+            // hit-stop/haptic/CRITICAL HIT! treatment without touching each
+            // attack function individually.
+            const isBigHit = isCrit && !isHeal && isNumeric;
             const targetEl = getBattleElement(target);
-            const center = targetEl ? getBattleCenter(targetEl) : null;
-            const jitterX = (Math.random() - 0.5) * 30;
-            if (center) {
-                div.style.left = `${center.x + jitterX}px`;
-                div.style.top = `${center.y - 20}px`;
+            const spawn = () => {
+                const div = document.createElement('div');
+                div.className = `damage-number ${isHeal ? 'heal' : ''} ${isCrit ? 'critical' : ''}`;
+                div.textContent = !isNumeric ? amount : (isHeal ? `+${amount}` : `-${amount}`);
+                const center = targetEl ? getBattleCenter(targetEl) : null;
+                const jitterX = (Math.random() - 0.5) * 30;
+                if (center) {
+                    div.style.left = `${center.x + jitterX}px`;
+                    div.style.top = `${center.y - 20}px`;
+                } else {
+                    // Fallback for targets we can't resolve a DOM element for
+                    div.style.left = '50%';
+                    div.style.top = '30%';
+                }
+                battleScreen.appendChild(div);
+                setTimeout(() => div.remove(), 1200);
+                if (isBigHit) {
+                    const label = document.createElement('div');
+                    label.className = 'critical-hit-label';
+                    label.textContent = 'CRITICAL HIT!';
+                    if (center) {
+                        label.style.left = `${center.x}px`;
+                        label.style.top = `${center.y - 68}px`;
+                    } else {
+                        label.style.left = '50%';
+                        label.style.top = '20%';
+                    }
+                    battleScreen.appendChild(label);
+                    setTimeout(() => label.remove(), 900);
+                }
+            };
+            if (isBigHit) {
+                const hitStopMs = 110;
+                triggerHitStop(targetEl, hitStopMs);
+                hapticPulse(45);
+                setTimeout(spawn, hitStopMs);
             } else {
-                // Fallback for targets we can't resolve a DOM element for
-                div.style.left = '50%';
-                div.style.top = '30%';
+                spawn();
             }
-            battleScreen.appendChild(div);
-            setTimeout(() => div.remove(), 1200);
         }
 
         renderMainCommands() {
@@ -14910,6 +15096,7 @@
                 <button class="cmd-btn" title="Item" onclick="window.game.battle.selectCommand('item')">🎒</button>
                 <button class="cmd-btn" title="Run" onclick="window.game.battle.selectCommand('run')">🏃</button>
                 <button class="cmd-btn ${this.autoBattle ? 'auto-active' : ''}" id="auto-battle-btn" title="${this.autoBattle ? 'Stop Auto Battle' : 'Auto Battle'}" onclick="window.game.battle.toggleAutoBattle()">${this.autoBattle ? '⏸️' : '⚡'}</button>
+                <button class="cmd-btn battle-speed-btn ${battleSpeedSetting !== '1' ? 'speed-active' : ''}" id="battle-speed-btn" title="Battle Speed (tap to cycle)" onclick="cycleBattleSpeed()">${getBattleSpeedLabel()}</button>
             `;
         }
 
@@ -15436,7 +15623,7 @@
                 const affordable = hero.currentMp >= effCost;
                 const btn = document.createElement('button');
                 btn.className = 'battle-action-option' + (affordable ? '' : ' disabled');
-                btn.innerHTML = `<span class="battle-action-name">${spell.name}</span><span class="battle-action-cost">${effCost} MP</span>`;
+                btn.innerHTML = `<span class="battle-action-name">${spell.name}${spellScopeBadgeHTML(spell)}</span><span class="battle-action-cost">${effCost} MP</span>`;
                 btn.onclick = () => {
                     if (!affordable) {
                         this.log(`Not enough MP for ${spell.name}!`);
@@ -15457,7 +15644,14 @@
                     this.selectedSpell = spell;
                     this.waitingForTarget = true;
                     const isAllySpell = (spell.type === 'heal' || spell.type === 'all_heal' || spell.type === 'buff' || spell.type === 'buff_defense' || spell.type === 'buff_crit');
-                    const isMultiTarget = (spell.type === 'all_damage' || spell.type === 'all_heal');
+                    // all_buff (Haste/War Cry/Barrier/Fortify/Sanctified
+                    // Guard) applies to the whole party regardless of any
+                    // target - it was previously missing from this list,
+                    // which meant the player was told to "select an enemy"
+                    // for a spell that then completely ignored whatever they
+                    // clicked. Routing it through the same instant-cast path
+                    // as all_damage/all_heal fixes that.
+                    const isMultiTarget = (spell.type === 'all_damage' || spell.type === 'all_heal' || spell.type === 'all_buff');
                     if (isMultiTarget) {
                         this.log(`${hero.name} casts ${spell.name}!`);
                         this.executeMultiTargetSpell(hero, spell);
@@ -16350,6 +16544,37 @@
                     }, 100);
                 });
                 this.log(`${caster.name} casts ${spell.name} on all allies!`);
+            }
+            if (spell.type === 'all_buff') {
+                // Mirrors the single-target buff math in executeMagic() below -
+                // duplicated rather than shared since that path still needs to
+                // exist for anything that calls executeMagic() directly with
+                // an all_buff spell (defensive; the normal UI path now comes
+                // through here instead, see showMagicMenu's isMultiTarget).
+                const critByTier = { 1: 0.15, 2: 0.25, 3: 0.35 };
+                const amountByTier = { 1: 5, 2: 8, 3: 12 };
+                this.party.heroes.forEach(hero => {
+                    if (hero.isDead) return;
+                    const existingBuff = hero.statusEffects.find(e => e.name === spell.name);
+                    if (existingBuff) {
+                        existingBuff.duration = spell.duration;
+                    } else if (spell.stat === 'crit') {
+                        hero.statusEffects.push({ name: spell.name, duration: spell.duration, critBonus: critByTier[spell.tier] || 0.15 });
+                    } else {
+                        const statKey = (spell.stat === 'magic_defense') ? 'defense' : (spell.stat || 'defense');
+                        hero.statusEffects.push({ name: spell.name, duration: spell.duration, statModifiers: { [statKey]: amountByTier[spell.tier] || 8 } });
+                    }
+                });
+                window.game.audio.play('magic');
+                this.log(`${caster.name} casts ${spell.name} on the whole party!`);
+                setTimeout(() => {
+                    this.party.heroes.forEach(hero => {
+                        if (!hero.isDead) {
+                            const effectType = (spell.stat === 'crit') ? 'axe' : 'shield';
+                            this.createBuffEffect(hero, effectType);
+                        }
+                    });
+                }, 50);
             }
             this.updatePartyDisplay();
             this.updateMonsterDisplay();
@@ -20561,7 +20786,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v144]');
+            console.log('Game starting... [build v145]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
@@ -20800,6 +21025,20 @@
 
         closeLegendaryJournal() {
             const overlay = document.getElementById('legendary-overlay');
+            if (overlay) overlay.classList.remove('active');
+            if (this.state) this.state.resume();
+        }
+
+        openSpellComboGuide() {
+            const content = document.getElementById('spell-guide-content');
+            if (content) content.innerHTML = renderSpellComboGuideContent(this);
+            const overlay = document.getElementById('spell-guide-overlay');
+            if (overlay) overlay.classList.add('active');
+            if (this.state) this.state.pause();
+        }
+
+        closeSpellComboGuide() {
+            const overlay = document.getElementById('spell-guide-overlay');
             if (overlay) overlay.classList.remove('active');
             if (this.state) this.state.resume();
         }
@@ -25392,7 +25631,7 @@
                     if (isUsable) {
                         useButton = '<button class="menu-button" onclick="window.game.useSpellFromMenu(' + index + ', ' + spellIndex + ')" style="padding: 2px 8px; font-size: 11px;">💚 Use</button>';
                     }
-                    div.innerHTML = '<span>' + spell.name + ' <span style="color: #888;">(MP: ' + spell.cost + ')</span></span>' +
+                    div.innerHTML = '<span>' + spell.name + ' <span style="color: #888;">(MP: ' + spell.cost + ')</span>' + spellScopeBadgeHTML(spell) + '</span>' +
                                    '<span>' + useButton + '</span>';
                     spellsContainer.appendChild(div);
                 });
@@ -26648,6 +26887,107 @@ function resolveTomeSpell(spell) {
             { name: spell, cost: 10, power: 50, type: 'damage', tier: 1 };
     }
     return { name: 'Unknown Spell', cost: 10, power: 50, type: 'damage', tier: 1 };
+}
+
+/**
+ * "Who does this spell/effect hit?" - a single source of truth used
+ * everywhere a spell name shows up (battle magic menu, character sheet
+ * spell list, Spell Weaver combo guide) so the label/color is always
+ * consistent. Green is reserved for anything that hits every enemy, every
+ * ally, or the whole party at once (Ray's ask - "vs all" reads as green at
+ * a glance); single-target spells get a color per who they can target.
+ */
+function getSpellScopeInfo(spell) {
+    if (!spell || !spell.type) return { label: 'Single Target', cls: 'scope-enemy' };
+    switch (spell.type) {
+        case 'all_damage': return { label: 'All Enemies', cls: 'scope-all' };
+        case 'all_heal': return { label: 'All Allies', cls: 'scope-all' };
+        case 'all_buff': return { label: 'Whole Party', cls: 'scope-all' };
+        case 'damage': return { label: 'Single Enemy', cls: 'scope-enemy' };
+        case 'heal': return { label: 'Single Ally', cls: 'scope-ally' };
+        case 'buff': case 'buff_defense': case 'buff_crit':
+            return { label: 'Single Ally', cls: 'scope-ally' };
+        default: return { label: 'Single Target', cls: 'scope-enemy' };
+    }
+}
+
+/** Small inline HTML badge built from getSpellScopeInfo() - drop straight
+ *  into any spell-name template string. */
+function spellScopeBadgeHTML(spell) {
+    const scope = getSpellScopeInfo(spell);
+    return `<span class="spell-scope-badge ${scope.cls}">${scope.label}</span>`;
+}
+
+/** One-line plain-English summary of what a spell actually does - used by
+ *  the Spell Weaving guide so a result like "Firaga" reads as "90 damage to
+ *  one enemy (fire)" instead of just a name. */
+function describeSpellEffect(spell) {
+    if (!spell) return 'Special effect';
+    const elementTag = spell.element ? ` (${spell.element})` : '';
+    switch (spell.type) {
+        case 'damage': return `${spell.power} damage to one enemy${elementTag}`;
+        case 'all_damage': return `${spell.power} damage split across all enemies${elementTag}`;
+        case 'heal': return `Restores ${spell.power} HP to one ally`;
+        case 'all_heal': return `Restores ${spell.power} HP, split across the party`;
+        case 'buff': case 'buff_defense': case 'buff_crit':
+            return `Boosts one ally's ${spell.stat || 'stats'} for ${spell.duration} turns`;
+        case 'all_buff':
+            return `Boosts the whole party's ${spell.stat || 'stats'} for ${spell.duration} turns`;
+        default: return 'Special effect';
+    }
+}
+
+/** Builds the Spell Weaving Guide popup's content: every SPELL_COMBINATIONS
+ *  recipe, grouped by the result's tier, each showing its two ingredients
+ *  (greyed out + struck through if the party doesn't currently know that
+ *  spell on ANY hero) and a live status - already learned, ready to craft
+ *  right now, or still locked behind one or both ingredients. */
+function renderSpellComboGuideContent(game) {
+    const knownSpellNames = new Set();
+    const learnedResultNames = new Set();
+    (game.party ? game.party.heroes : []).forEach(hero => {
+        (hero.spells || []).forEach(s => {
+            knownSpellNames.add(s.name);
+            learnedResultNames.add(s.name);
+        });
+    });
+    const sorted = [...SPELL_COMBINATIONS].sort((a, b) => (a.result.tier || 0) - (b.result.tier || 0));
+    let html = '<p style="color:#cfc0ee; font-size:12px; margin-bottom:14px; line-height:1.5;">' +
+        'Combine two known spells (from any hero in the party) here to craft a new one. Both original spells are consumed - the new spell goes to whoever owned the first one you pick.' +
+        '</p>';
+    let currentTier = null;
+    sorted.forEach(combo => {
+        const tier = combo.result.tier || 1;
+        if (tier !== currentTier) {
+            currentTier = tier;
+            html += `<h4 style="color:var(--highlight); margin:16px 0 8px; border-bottom:1px solid rgba(255,215,0,0.25); padding-bottom:4px;">Tier ${tier}</h4>`;
+        }
+        const has1 = knownSpellNames.has(combo.spell1);
+        const has2 = knownSpellNames.has(combo.spell2);
+        const resultKnown = learnedResultNames.has(combo.result.name);
+        const ready = has1 && has2 && !resultKnown;
+        const statusHTML = resultKnown
+            ? '<span style="color:#5dff5d; font-size:11px; font-weight:700;">&#10003; LEARNED</span>'
+            : ready
+                ? '<span style="color:#ffd23f; font-size:11px; font-weight:700;">&#9889; READY TO CRAFT</span>'
+                : '<span style="color:#888; font-size:11px;">&#128274; Need both spells</span>';
+        html += `
+            <div class="spell-combo-card ${ready ? 'combo-ready' : ''}">
+                <div class="spell-combo-ingredients">
+                    <span class="spell-combo-ingredient ${has1 ? '' : 'unknown'}">${combo.spell1}</span>
+                    <span class="spell-combo-plus">+</span>
+                    <span class="spell-combo-ingredient ${has2 ? '' : 'unknown'}">${combo.spell2}</span>
+                </div>
+                <div class="spell-combo-arrow">&#10148;</div>
+                <div class="spell-combo-result">
+                    <div class="spell-combo-result-name">${combo.result.name}${spellScopeBadgeHTML(combo.result)}</div>
+                    <div class="spell-combo-result-desc">${describeSpellEffect(combo.result)}</div>
+                    ${statusHTML}
+                </div>
+            </div>
+        `;
+    });
+    return html;
 }
 
 // =====================================================================
@@ -30047,6 +30387,7 @@ const QUEST_DATA = [
         setTimeout(() => banner.remove(), 1650);
 
         shakeBattleScreen(true);
+        hapticPulse([40, 80, 40, 80, 70]);
         if (window.game && window.game.audio) {
             window.game.audio.play('bossAppear');
         }
@@ -30137,6 +30478,7 @@ const QUEST_DATA = [
 
     /** Gold particle fountain + flash for level-ups. */
     function showLevelUpFanfare(hero) {
+        hapticPulse([20, 40, 20, 40, 35]);
         const el = getBattleElement(hero) || document.querySelector('.hero-mini');
         const battleScreen = document.getElementById('battle-window');
         const canvas = document.getElementById('fx-canvas');
@@ -30428,6 +30770,38 @@ const QUEST_DATA = [
     }
 
     /** Brief brightness pulse on a sprite when it takes a hit. */
+    /** Fires a short device vibration pattern (Android Chrome/Firefox only -
+     *  iOS Safari has never implemented the Vibration API on any browser
+     *  engine there, WebKit included, so this silently no-ops on iPhone/iPad
+     *  instead of throwing - everyone still gets the visual/audio feedback,
+     *  Android users just get the extra buzz too). Wrapped in try/catch
+     *  since some browsers throw on vibrate() calls outside a user gesture
+     *  rather than just ignoring it. */
+    function hapticPulse(pattern) {
+        if (!navigator.vibrate) return;
+        try { navigator.vibrate(pattern); } catch (e) {}
+    }
+
+    /** Classic JRPG "hit-stop": freezes whatever CSS animations are already
+     *  mid-flight on the shake wrapper and the specific element that just
+     *  got hit (shake, hit-flash, recoil) for a beat, then lets them resume
+     *  exactly where they left off - browsers preserve animation progress
+     *  across a play-state pause, so this reads as a genuine freeze-frame
+     *  rather than a restart. Paired with a quick brightness flash on the
+     *  whole battle window for a bit more punch. Called from showDamage()
+     *  for crits/Limit Breaks/Dual Techs only (regular hits stay snappy). */
+    function triggerHitStop(targetEl, ms) {
+        const wrapper = document.getElementById('battle-shake-wrapper');
+        const battleWindow = document.getElementById('battle-window');
+        const toPause = [wrapper, targetEl].filter(Boolean);
+        toPause.forEach(el => { el.style.animationPlayState = 'paused'; });
+        if (battleWindow) battleWindow.classList.add('hit-stop-flash');
+        setTimeout(() => {
+            toPause.forEach(el => { el.style.animationPlayState = ''; });
+            if (battleWindow) battleWindow.classList.remove('hit-stop-flash');
+        }, ms);
+    }
+
     function hitFlash(el, red = false) {
         if (!el) return;
         const cls = red ? 'hit-flash-red' : 'hit-flash';
@@ -30435,6 +30809,9 @@ const QUEST_DATA = [
         void el.offsetWidth;
         el.classList.add(cls);
         setTimeout(() => el.classList.remove(cls), 400);
+        // Light haptic tick on every landed hit (crits/big moves layer a
+        // stronger pulse on top from showDamage()).
+        hapticPulse(12);
     }
 
     /** Screen shake helper - normal hits shake lightly, crits shake harder.
@@ -30545,6 +30922,40 @@ const QUEST_DATA = [
     // =====================================================================
     //                        GAME INITIALIZATION
     // =====================================================================
+
+    // =====================================================================
+    //                 BATTLE SPEED (1x / 2x / Instant toggle)
+    // =====================================================================
+    // Battle animation/turn pacing (lunges, hit-flash/shake cleanup,
+    // auto-battle's own turn cadence, banner cutscenes, etc.) already flows
+    // through setTimeout everywhere - rather than threading a speed
+    // multiplier through dozens of individual call sites, this scales every
+    // setTimeout delay while a battle is actually up. Outside of battle
+    // (world/town/menus/dialogue/etc.) timers are completely untouched,
+    // since the override only kicks in when window.game.battle.active.
+    const BATTLE_SPEED_MULTIPLIERS = { '1': 1, '2': 0.5, instant: 0.15 };
+    let battleSpeedSetting = localStorage.getItem('legendOfEternal_battleSpeed') || '1';
+    if (!BATTLE_SPEED_MULTIPLIERS[battleSpeedSetting]) battleSpeedSetting = '1';
+    const _nativeSetTimeout = window.setTimeout.bind(window);
+    window.setTimeout = function (fn, delay, ...args) {
+        if (window.game && window.game.battle && window.game.battle.active && typeof delay === 'number' && delay > 0) {
+            delay = Math.max(1, Math.round(delay * (BATTLE_SPEED_MULTIPLIERS[battleSpeedSetting] || 1)));
+        }
+        return _nativeSetTimeout(fn, delay, ...args);
+    };
+
+    function getBattleSpeedLabel() {
+        return { '1': '1x', '2': '2x', instant: '⏩' }[battleSpeedSetting] || '1x';
+    }
+
+    function cycleBattleSpeed() {
+        const order = ['1', '2', 'instant'];
+        battleSpeedSetting = order[(order.indexOf(battleSpeedSetting) + 1) % order.length];
+        localStorage.setItem('legendOfEternal_battleSpeed', battleSpeedSetting);
+        if (window.game && window.game.battle && window.game.battle.active) {
+            window.game.battle.renderMainCommands();
+        }
+    }
 
     console.log('Creating Game instance...');
     window.game = new Game();
