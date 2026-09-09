@@ -5167,7 +5167,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v143</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v144</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -8965,6 +8965,7 @@
                     }
                     window.game.audio.playMusic('overworld', getBattleEnvironment('world').scene);
                 }
+                applyScreenMusic(screenName);
                 if (window.game && window.game.updateGoldDisplays) {
                     window.game.updateGoldDisplays();
                 }
@@ -9010,6 +9011,7 @@
                 }
                 window.game.audio.playMusic('overworld', getBattleEnvironment('world').scene);
             }
+            applyScreenMusic(screenName);
 
             if (window.game && window.game.updateGoldDisplays) {
                 window.game.updateGoldDisplays();
@@ -14380,6 +14382,18 @@
             this.heroTurnConsumed = new Set();
 
             this.generateMonsters(location, party.getAverageLevel());
+            // Single source of truth for battle music: whatever any call
+            // site played in the lead-up (pre-battle boss dialogue, a random
+            // encounter roll, etc.) gets confirmed/corrected here based on
+            // the actual monsters that were generated, so a mis-set or
+            // missing pre-call can never leave the wrong track playing.
+            // _playRealMusic() no-ops if this is already the track in
+            // progress, so this doesn't cause an audible restart.
+            if (window.game && window.game.audio) {
+                const isBigFight = location === 'castle' || location === 'cave_elite' || location === 'world_rare' ||
+                    this.monsters.some(m => m.isBoss || m.isElite);
+                window.game.audio.playMusic(isBigFight ? 'battleBoss' : 'battle');
+            }
             this.setupBattleUI();
             // Bug found while testing Dual Techs: this never called
             // renderMainCommands(), so turn one's command bar stayed on
@@ -16790,7 +16804,7 @@
             if (livingMonsters.length === 0) {
                 this.battleEndHandled = true;
                 this.log('Victory!');
-                window.game.audio.play('victory');
+                window.game.audio.play('battleWin');
                 this.grantRewards();
                 this.showingResults = true;
                 this.showBattleResults();
@@ -19256,6 +19270,33 @@
             this.sounds['step'] = { type: 'step' };
             this.sounds['bossAppear'] = { type: 'bossAppear' };
             this.sounds['levelup'] = { type: 'levelup' };
+
+            // --- Real licensed music/SFX (replaces procedural chiptune for
+            // these specific cues; overworld/ending walk music stays
+            // synthesized below since no real track was authored for them). ---
+            this.currentMusicKey = null;
+            this.realMusicEl = null;
+            this.musicVolumeLevel = 0.25;
+            this.sfxVolumeLevel = 0.25;
+            this.realMusicSrc = {
+                town: 'assets/audio/town.mp3',
+                cave: 'assets/audio/dungeon.mp3',
+                ruins: 'assets/audio/dungeon.mp3',
+                shrine: 'assets/audio/dungeon.mp3',
+                castle: 'assets/audio/dungeon.mp3',
+                // Calming reuse of the Sacred Garden track for the player's
+                // own menu system and for shops/Guild Hall (Ray's call -
+                // easy to split into its own file later if he wants these
+                // to diverge from the dungeon ambience).
+                menu: 'assets/audio/dungeon.mp3',
+                battle: 'assets/audio/battle.mp3',
+                battleBoss: 'assets/audio/boss.mp3',
+                overworld: 'assets/audio/overworld.mp3'
+            };
+            this.realSfxSrc = {
+                battleWin: 'assets/audio/victory.mp3',
+                saveGame: 'assets/audio/victory.mp3'
+            };
         }
 
         init() {
@@ -19427,7 +19468,28 @@
             this.sounds[name] = { type: type };
         }
 
+        /** Fire-and-forget playback of a real licensed SFX file (each call
+         *  gets its own throwaway Audio() so overlapping calls - e.g. two
+         *  quick kills in a row - don't cut each other off). */
+        _playRealSfx(name) {
+            if (this.isMuted) return;
+            const src = this.realSfxSrc[name];
+            if (!src) return;
+            try {
+                const el = new Audio(src);
+                el.volume = this.sfxVolumeLevel;
+                const p = el.play();
+                if (p && p.catch) p.catch(err => console.warn(`SFX '${name}' playback blocked:`, err));
+            } catch (e) {
+                console.error(`Real SFX error (${name}):`, e);
+            }
+        }
+
         play(name) {
+            if (this.realSfxSrc[name]) {
+                this._playRealSfx(name);
+                return;
+            }
             if (!this.isInitialized) {
                 console.log(`Audio not initialized, can't play: ${name}`);
                 return;
@@ -19459,8 +19521,57 @@
             }
         }
 
+        /** Plays a real licensed music file on a loop, replacing the
+         *  procedural chiptune for the types listed in realMusicSrc. Reuses
+         *  a single <audio> element (swapping .src) rather than the
+         *  AudioContext graph, so it works independent of init()/mute
+         *  timing. No-ops if the requested track is already the one
+         *  playing, to avoid an audible restart-from-0 blip when multiple
+         *  call sites request the same music back to back (e.g. a
+         *  pre-battle-dialogue cue immediately followed by startEncounter's
+         *  own music call). */
+        _playRealMusic(key) {
+            const src = this.realMusicSrc[key];
+            if (!src) return;
+            if (this.musicTimer) {
+                clearTimeout(this.musicTimer);
+                this.musicTimer = null;
+            }
+            if (this.music && this.music.length > 0) {
+                for (let i = 0; i < this.music.length; i++) {
+                    try { this.music[i].stop(); } catch (e) {}
+                }
+                this.music = [];
+            }
+            const alreadyPlaying = this.currentMusicKey === key && this.realMusicEl && !this.realMusicEl.paused;
+            this.currentMusicKey = key;
+            if (this.isMuted) {
+                if (this.realMusicEl) this.realMusicEl.pause();
+                return;
+            }
+            if (alreadyPlaying) return;
+            if (!this.realMusicEl) {
+                this.realMusicEl = new Audio();
+                this.realMusicEl.loop = true;
+            }
+            try {
+                this.realMusicEl.pause();
+                this.realMusicEl.src = src;
+                this.realMusicEl.currentTime = 0;
+                this.realMusicEl.volume = this.musicVolumeLevel;
+                const p = this.realMusicEl.play();
+                if (p && p.catch) p.catch(err => console.warn(`Music '${key}' playback blocked until user interaction:`, err));
+            } catch (e) {
+                console.error(`Real music error (${key}):`, e);
+            }
+        }
+
         playMusic(type, variant) {
             console.log(`playMusic called with type: ${type}, variant: ${variant}`);
+            if (this.realMusicSrc[type]) {
+                this._playRealMusic(type);
+                return;
+            }
             if (!this.isInitialized || this.isMuted) return;
             if (this.context && this.context.state === 'suspended') {
                 console.log('Audio context suspended in playMusic, resuming...');
@@ -19741,6 +19852,9 @@
                 }
                 this.music = [];
             }
+            if (this.realMusicEl) {
+                this.realMusicEl.pause();
+            }
         }
 
         mute() {
@@ -19756,6 +19870,11 @@
             if (this.masterGain) {
                 this.masterGain.gain.value = 1;
             }
+            // Resume whatever real-audio track was last selected (stopMusic()
+            // paused it on mute without forgetting currentMusicKey).
+            if (this.currentMusicKey && this.realMusicSrc[this.currentMusicKey]) {
+                this._playRealMusic(this.currentMusicKey);
+            }
         }
 
         setVolume(level) {
@@ -19766,28 +19885,40 @@
 
         setMusicVolume(level) {
             console.log('Setting music volume to:', level);
+            const v = Math.max(0, Math.min(1, level));
+            this.musicVolumeLevel = v;
             if (this.musicGain) {
-                this.musicGain.gain.value = Math.max(0, Math.min(1, level));
+                this.musicGain.gain.value = v;
+            }
+            if (this.realMusicEl) {
+                this.realMusicEl.volume = v;
             }
         }
 
         refreshVolumeFromStorage() {
             const savedMusicVolume = localStorage.getItem('legendOfEternal_musicVolume');
             const savedSFXVolume = localStorage.getItem('legendOfEternal_sfxVolume');
-            if (savedMusicVolume !== null && this.musicGain) {
-                this.musicGain.gain.value = parseFloat(savedMusicVolume);
+            if (savedMusicVolume !== null) {
+                const v = parseFloat(savedMusicVolume);
+                this.musicVolumeLevel = v;
+                if (this.musicGain) this.musicGain.gain.value = v;
+                if (this.realMusicEl) this.realMusicEl.volume = v;
                 console.log('Refreshed music volume from storage:', savedMusicVolume);
             }
-            if (savedSFXVolume !== null && this.sfxGain) {
-                this.sfxGain.gain.value = parseFloat(savedSFXVolume);
+            if (savedSFXVolume !== null) {
+                const v = parseFloat(savedSFXVolume);
+                this.sfxVolumeLevel = v;
+                if (this.sfxGain) this.sfxGain.gain.value = v;
                 console.log('Refreshed SFX volume from storage:', savedSFXVolume);
             }
         }
 
         setSFXVolume(level) {
             console.log('Setting SFX volume to:', level);
+            const v = Math.max(0, Math.min(1, level));
+            this.sfxVolumeLevel = v;
             if (this.sfxGain) {
-                this.sfxGain.gain.value = Math.max(0, Math.min(1, level));
+                this.sfxGain.gain.value = v;
             }
         }
     }
@@ -20430,7 +20561,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v143]');
+            console.log('Game starting... [build v144]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
@@ -22082,7 +22213,7 @@
             if (!this.rareEncounterCooldown && Math.random() < CONFIG.RARE_ENCOUNTER_RATE) {
                 this.rareEncounterCooldown = CONFIG.RARE_ENCOUNTER_COOLDOWN_STEPS;
                 showRareEncounterWarning(() => {
-                    this.audio.playMusic('battle', getBattleEnvironment('world').scene);
+                    this.audio.playMusic('battleBoss');
                     this.battle.startEncounter(this.party, 'world_rare');
                 });
                 return;
@@ -22607,7 +22738,7 @@
                     return;
                 }
             }
-            this.audio.playMusic('battle', 'castle');
+            this.audio.playMusic('battleBoss');
             this.startPreBattleDialogue(bossName, () => { this.battle.startEncounter(this.party, 'castle'); });
             // boss_defeat progress now fires correctly from endBattle() on
             // an actual kill (see the comment there) - this call used to
@@ -22622,12 +22753,13 @@
             if (Math.random() < 0.14) {
                 const floorNum = this.dungeonMap.currentFloorIndex;
                 const eliteChance = Math.min(0.8, 0.2 + floorNum * 0.1);
-                this.audio.playMusic('battle', 'cave');
                 if (Math.random() < eliteChance) {
+                    this.audio.playMusic('battleBoss');
                     this.eliteBattle = true;
                     this.battle.startEncounter(this.party, 'cave_elite');
                     this.eliteBattle = false;
                 } else {
+                    this.audio.playMusic('battle');
                     this.battle.startEncounter(this.party, 'cave');
                 }
             }
@@ -24537,7 +24669,7 @@
                     }
                 }
             }
-            this.audio.playMusic('battle', 'castle');
+            this.audio.playMusic('battleBoss');
             this.startPreBattleDialogue(bossName, () => { this.battle.startEncounter(this.party, 'castle'); });
             // boss_defeat progress now fires correctly from endBattle() on
             // an actual kill (see the comment there) - this call used to
@@ -25948,6 +26080,7 @@
                     console.log(`Autosaved to slot ${this.currentSlot}:`, saveData);
                     this.showAutosaveToast();
                 } else {
+                    if (this.audio) this.audio.play('saveGame');
                     this.ui.showPopup('Game Saved', `Slot ${this.currentSlot} saved successfully!\n${saveData.timestamp}`);
                     console.log(`Game saved to slot ${this.currentSlot}:`, saveData);
                 }
@@ -29603,6 +29736,38 @@ const QUEST_DATA = [
         return assignments;
     }
 
+    /** Central place that decides music for every non-battle, non-world
+     *  screen transition (switchScreen('world') has its own biome-aware
+     *  branch already, kept separate above). Menus/shops/Guild Hall all
+     *  share the calming 'menu' track (Sacred Garden - Ray's call, easy to
+     *  split into its own file later); town/spring/cave/castle/ruins mirror
+     *  whatever enterLocation() would have picked. playMusic() itself is a
+     *  no-op if this key is already playing, so calling this from
+     *  switchScreen() alongside the existing explicit playMusic() calls
+     *  elsewhere (enterLocation, exitGuild, etc.) never causes a restart
+     *  blip - it just closes the gaps at spots that had no explicit call
+     *  (exitShop(), closing the pause menu, entering a crafting shop). */
+    function applyScreenMusic(screenName) {
+        if (!window.game || !window.game.audio) return;
+        if (screenName === 'ruins') {
+            const isShrine = window.game.dungeonMap && window.game.dungeonMap.isShrine;
+            window.game.audio.playMusic(isShrine ? 'shrine' : 'ruins');
+            return;
+        }
+        const screenMusicMap = {
+            town: 'town',
+            spring: 'town',
+            cave: 'cave',
+            castle: 'castle',
+            menu: 'menu',
+            shop: 'menu',
+            guild: 'menu',
+            spellweaver: 'menu'
+        };
+        const key = screenMusicMap[screenName];
+        if (key) window.game.audio.playMusic(key);
+    }
+
     function getBattleEnvironment(location) {
         if (location === 'castle') return { scene: 'castle', particle: 'dust' };
         if (location === 'cave' || location === 'cave_elite') return { scene: 'cave', particle: 'mist' };
@@ -30383,6 +30548,26 @@ const QUEST_DATA = [
 
     console.log('Creating Game instance...');
     window.game = new Game();
+
+    // Title-screen ambiance: play the overworld theme immediately on the
+    // save-slot picker, before New Game/Load Game even runs initAudio().
+    // Real <audio> playback doesn't need the Web Audio context that
+    // AudioManager.init() sets up, so this can fire independently of that -
+    // try right away, and if the browser's autoplay policy blocks it (the
+    // common case on mobile before any interaction), fall back to starting
+    // on the very first tap/click/key anywhere on the page. Once the player
+    // actually starts/loads a game, switchScreen('world'/etc.) takes over
+    // and _playRealMusic()'s no-op-if-already-playing guard means this
+    // never causes a restart blip if it's still the same 'overworld' track.
+    function playTitleMusicOnce() {
+        if (!window.game || !window.game.audio) return;
+        if (window.game.state.currentScreen !== 'start') return; // already left the title screen
+        window.game.audio.playMusic('overworld');
+    }
+    playTitleMusicOnce();
+    document.addEventListener('pointerdown', playTitleMusicOnce, { once: true, passive: true });
+    document.addEventListener('keydown', playTitleMusicOnce, { once: true });
+
     injectAmbientLayers();
     spawnStartScreenLeaves();
     setupMobileDpad();

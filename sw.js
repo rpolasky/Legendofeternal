@@ -5,7 +5,7 @@
 // shell (manifest + icons). Bump CACHE_VERSION any time you ship an
 // updated index.html so installed devices pick up the new build instead
 // of continuing to serve the stale cached copy.
-const CACHE_VERSION = 'legend-of-eternal-v143';
+const CACHE_VERSION = 'legend-of-eternal-v144';
 const CORE_ASSETS = [
     './',
     './index.html',
@@ -190,7 +190,17 @@ const CORE_ASSETS = [
 
     // --- Treasure reveal popup art ---
     './assets/treasure/chest_reveal.png',
-    './assets/treasure/vault_reveal.png'
+    './assets/treasure/vault_reveal.png',
+
+    // --- Real licensed music/SFX (replaces procedural chiptune for these
+    // cues; overworld/town/dungeon loops and the two battle themes are all
+    // real audio files now, plus one victory/save chime) ---
+    './assets/audio/overworld.mp3',
+    './assets/audio/town.mp3',
+    './assets/audio/dungeon.mp3',
+    './assets/audio/battle.mp3',
+    './assets/audio/boss.mp3',
+    './assets/audio/victory.mp3'
 ];
 
 self.addEventListener('install', (event) => {
