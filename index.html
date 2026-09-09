@@ -431,6 +431,65 @@
         .dpad-up-right { left: 100px; top: 4px; }
         .dpad-down-left { left: 4px; top: 100px; }
         .dpad-down-right { left: 100px; top: 100px; }
+
+        #mobile-dpad-wrap {
+            position: relative;
+        }
+        .movement-style-toggle {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: rgba(26, 26, 46, 0.75);
+            border: 2px solid rgba(180, 140, 255, 0.85);
+            color: var(--text-color);
+            font-size: 13px;
+            line-height: 1;
+            pointer-events: auto;
+            cursor: pointer;
+            z-index: 5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        /* Analog joystick - alternative to the D-pad, toggled via the
+           button above. Same 144x144 footprint as .dpad so swapping
+           between them doesn't shift anything else in the HUD column. */
+        .joystick {
+            position: relative;
+            width: 144px;
+            height: 144px;
+            pointer-events: auto;
+        }
+        .joystick-base {
+            position: absolute;
+            left: 22px;
+            top: 22px;
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: rgba(26, 26, 46, 0.35);
+            border: 2px solid rgba(180, 140, 255, 0.6);
+            touch-action: none;
+        }
+        .joystick-knob {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 44px;
+            height: 44px;
+            margin-left: -22px;
+            margin-top: -22px;
+            border-radius: 50%;
+            background: rgba(180, 140, 255, 0.55);
+            border: 2px solid rgba(230, 210, 255, 0.9);
+            pointer-events: none;
+        }
+        .joystick-knob.snapping {
+            transition: transform 0.08s ease-out;
+        }
         .dpad-center {
             position: absolute;
             left: 48px;
@@ -1686,7 +1745,13 @@
             border-radius: 16px;
             padding: 8px 10px;
             display: flex;
-            flex-wrap: wrap;
+            /* Ray: no wrapping - the bar should stay one row and extend
+               horizontally, not stack a second row underneath. Since
+               .cmd-btn doesn't set flex-shrink:0, flex's default
+               (shrinkable) behavior takes over automatically once content
+               would exceed max-width - buttons compress slightly instead
+               of wrapping or pushing off-screen, so this can never repeat
+               the original off-frame bug either. */
             justify-content: center;
             backdrop-filter: blur(5px);
             box-shadow: 0 4px 16px rgba(0,0,0,0.5);
@@ -1941,10 +2006,10 @@
            the icons themselves. */
         .battle-commands {
             display: flex;
-            flex-wrap: wrap;
             justify-content: center;
             align-items: center;
             gap: 8px;
+            min-width: 0;
         }
 
         .cmd-btn {
@@ -1953,6 +2018,7 @@
             color: var(--text-color);
             width: 52px;
             height: 52px;
+            min-width: 0;
             font-family: inherit;
             font-size: 22px;
             line-height: 1;
@@ -1965,7 +2031,14 @@
             align-items: center;
             justify-content: center;
             overflow: hidden;
-            flex-shrink: 0;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            /* Was flex-shrink:0 - deliberately made shrinkable now so the
+               whole bar can stay one row and just compress buttons a touch
+               if Limit Break + Dual Tech + everything else ever wouldn't
+               otherwise fit, instead of wrapping to a second row or (the
+               original bug) pushing buttons off the edge of the screen. */
+            flex-shrink: 1;
         }
 
         .cmd-btn::after {
@@ -2187,8 +2260,16 @@
             /* Ray: keep the sweep exactly as-is, just move it up so it
                doesn't cover the center of the battlefield where the actual
                action is happening - lands the bar in the top third instead
-               of dead center. */
-            padding-top: 20%;
+               of dead center. NOTE: this was previously "padding-top: 20%",
+               which is a classic CSS trap - percentage padding is always
+               resolved against the CONTAINING BLOCK'S WIDTH, never its
+               height, even for padding-top/bottom. On this screen (much
+               wider than tall) that meant 20% of the WIDTH, which landed
+               well past the actual vertical center rather than the top
+               third. vh is relative to viewport height, which is what was
+               actually wanted here.
+             */
+            padding-top: 14vh;
             justify-content: center;
             pointer-events: none;
             z-index: 500;
@@ -5367,7 +5448,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v147</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v148</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -5410,6 +5491,7 @@
     <div id="hud-side-left">
         <button type="button" id="hud-party-icon-btn" class="hud-icon-btn" onclick="togglePartyOverlay()" title="Party Status">⚔️</button>
         <div id="mobile-dpad-wrap" class="mobile-controls-part">
+            <button type="button" id="movement-style-toggle" class="movement-style-toggle" title="Switch D-pad / Joystick" aria-label="Switch movement control style" onclick="toggleMovementControlStyle()">🕹️</button>
             <div class="dpad" id="dpad">
                 <button type="button" class="dpad-btn dpad-up" data-dir="up" aria-label="Move up">▲</button>
                 <button type="button" class="dpad-btn dpad-down" data-dir="down" aria-label="Move down">▼</button>
@@ -5420,6 +5502,16 @@
                 <button type="button" class="dpad-btn dpad-diag dpad-down-left" data-dir="down-left" aria-label="Move down-left">◣</button>
                 <button type="button" class="dpad-btn dpad-diag dpad-down-right" data-dir="down-right" aria-label="Move down-right">◢</button>
                 <div class="dpad-center"></div>
+            </div>
+            <!-- Analog joystick alternative to the D-pad above - Ray wanted
+                 to try one out for diagonal movement instead of the corner
+                 buttons. Hidden by default; toggleMovementControlStyle()
+                 swaps which of these two is visible and remembers the
+                 choice. See setupJoystick(). -->
+            <div class="joystick" id="joystick-wrap" style="display: none;">
+                <div class="joystick-base" id="joystick-base">
+                    <div class="joystick-knob" id="joystick-knob"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -8930,17 +9022,19 @@
         }
     }
 
-    /** Bresenham line-of-sight check against a dungeon floor's wall grid -
-     *  true only if every tile between (and including) the two points is
-     *  open floor, so a monster can't "see" the player through a wall even
-     *  if they're technically within notice range. */
-    function dungeonHasLineOfSight(floor, x0, y0, x1, y1) {
+    /** Bresenham line-of-sight check against any walkability function - true
+     *  only if every tile between (and including) the two points passes
+     *  isWalkableFn, so a monster can't "see" the player through a wall/
+     *  mountain even if they're technically within notice range. Used by
+     *  both dungeons (against the wall grid) and the world map (against
+     *  terrain) via the small wrapper functions below. */
+    function hasLineOfSightGeneric(isWalkableFn, x0, y0, x1, y1) {
         let dx = Math.abs(x1 - x0), dy = Math.abs(y1 - y0);
         const sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
         let err = dx - dy;
         let x = x0, y = y0;
-        for (let guard = 0; guard < 200; guard++) {
-            if (!floor.grid[y] || floor.grid[y][x] === undefined || floor.grid[y][x] === 0) return false;
+        for (let guard = 0; guard < 500; guard++) {
+            if (!isWalkableFn(x, y)) return false;
             if (x === x1 && y === y1) return true;
             const e2 = 2 * err;
             if (e2 > -dy) { err -= dy; x += sx; }
@@ -8952,6 +9046,20 @@
     function dungeonTileWalkable(floor, x, y) {
         if (x < 0 || y < 0 || x >= floor.width || y >= floor.height) return false;
         return floor.grid[y][x] !== 0;
+    }
+
+    function dungeonHasLineOfSight(floor, x0, y0, x1, y1) {
+        return hasLineOfSightGeneric((x, y) => dungeonTileWalkable(floor, x, y), x0, y0, x1, y1);
+    }
+
+    /** World-map equivalent of dungeonTileWalkable - same 3 terrain types
+     *  that block ordinary movement (see Game.isWorldTileWalkable()) also
+     *  block a field monster's notice/chase/wander. */
+    function worldFieldTileWalkable(world, x, y) {
+        if (x < 0 || y < 0 || x >= world.width || y >= world.height) return false;
+        const terrain = world.tiles[y] && world.tiles[y][x];
+        return terrain !== undefined && terrain !== CONFIG.TERRAIN.WATER &&
+            terrain !== CONFIG.TERRAIN.MOUNTAIN && terrain !== CONFIG.TERRAIN.LAVA;
     }
 
     /** Finds a monster template by name across every quadrant's pool - used
@@ -8976,16 +9084,29 @@
         return null;
     }
 
-    /** The actual per-step brain for one floor's worth of monsters. Handles
-     *  respawns, aggro state transitions (with LOS gating both ways - a
-     *  monster can't notice you through a wall, and loses a chase the
-     *  instant it can't see you anymore, same as breaking off by distance),
-     *  and movement (patrol = slow aimless wander on a short leash, red =
-     *  greedy step toward the player at reduced speed via a fractional
-     *  move-budget so "60-70% of player speed" works in a tile-stepped
-     *  world). */
-    function updateFieldMonstersOnFloor(floor, playerX, playerY) {
+    /** The actual per-step brain for one floor's (or the whole world map's)
+     *  worth of monsters. Handles respawns, aggro state transitions (with
+     *  LOS gating both ways - a monster can't notice you through a wall,
+     *  and loses a chase the instant it can't see you anymore, same as
+     *  breaking off by distance), and movement (patrol = slow aimless
+     *  wander on a short leash, red = greedy step toward the player at
+     *  reduced speed via a fractional move-budget so "60-70% of player
+     *  speed" works in a tile-stepped world).
+     *
+     *  `entity` just needs a .liveMonsters array - it's a dungeon floor
+     *  object OR the WorldMap instance itself, both work identically.
+     *  `isWalkableFn(x,y)` defaults to the dungeon wall-grid check against
+     *  `entity` if omitted; the world map passes its own terrain-based
+     *  check instead (see checkWorldFieldMonsterEncounter()). Distance is
+     *  cheap regardless of how many total spawns exist (it's the whole
+     *  reason the world map can use a few hundred FIXED spawn points
+     *  instead of a dynamic spawn/despawn system - see the design notes on
+     *  WorldMap.generateWorldMonsterSpawns()) - the only per-monster cost
+     *  that scales with proximity is the LOS raycast, which only ever runs
+     *  for monsters already within FIELD_MONSTER_NOTICE_RADIUS. */
+    function updateFieldMonstersOnFloor(floor, playerX, playerY, isWalkableFn, suppressAggro) {
         if (!floor || !floor.liveMonsters) return;
+        const walkable = isWalkableFn || ((x, y) => dungeonTileWalkable(floor, x, y));
         const now = Date.now();
         floor.liveMonsters.forEach(m => {
             if (!m.alive) {
@@ -8999,8 +9120,18 @@
                 }
                 return;
             }
+            // Ward Incense (world map only - see Game.checkWorldFieldMonsterEncounter())
+            // keeps every monster from ever noticing the party at all while
+            // active, translating its old "-70% random encounter rate"
+            // effect into "-most encounters" for visible mobs: they're
+            // still there and still block a direct walk-into, but won't
+            // spot or chase you. Doesn't affect anything already chasing
+            // before the incense was used - it's a ward, not a dismissal.
+            if (suppressAggro && m.state === 'patrol') {
+                // still let it patrol-wander below, just skip the notice check
+            } else {
             const dist = Math.max(Math.abs(m.x - playerX), Math.abs(m.y - playerY));
-            const los = dist <= FIELD_MONSTER_NOTICE_RADIUS && dungeonHasLineOfSight(floor, m.x, m.y, playerX, playerY);
+            const los = dist <= FIELD_MONSTER_NOTICE_RADIUS && hasLineOfSightGeneric(walkable, m.x, m.y, playerX, playerY);
 
             if (m.state === 'red') {
                 if (dist > FIELD_MONSTER_BREAK_RADIUS || !los) {
@@ -9020,6 +9151,7 @@
                     m.state = 'yellow';
                 }
             }
+            }
 
             if (m.state === 'red') {
                 m.moveBudget += FIELD_MONSTER_CHASE_SPEED;
@@ -9033,7 +9165,7 @@
                     const tryOrder = Math.abs(playerX - m.x) >= Math.abs(playerY - m.y)
                         ? [[dx, 0], [0, dy]] : [[0, dy], [dx, 0]];
                     for (const [tx, ty] of tryOrder) {
-                        if ((tx || ty) && dungeonTileWalkable(floor, m.x + tx, m.y + ty)) {
+                        if ((tx || ty) && walkable(m.x + tx, m.y + ty)) {
                             m.x += tx; m.y += ty;
                             m.facing = directionToFacing(tx, ty) || m.facing;
                             break;
@@ -9049,7 +9181,7 @@
                         const [tx, ty] = dirs[Math.floor(Math.random() * dirs.length)];
                         const nx = m.x + tx, ny = m.y + ty;
                         const withinLeash = Math.max(Math.abs(nx - m.spawnX), Math.abs(ny - m.spawnY)) <= FIELD_MONSTER_LEASH_RADIUS;
-                        if (withinLeash && dungeonTileWalkable(floor, nx, ny)) {
+                        if (withinLeash && walkable(nx, ny)) {
                             m.x = nx; m.y = ny;
                             m.facing = directionToFacing(tx, ty) || m.facing;
                         }
@@ -11221,9 +11353,84 @@
                 this.signs = savedSigns || [];
                 this.npcs = savedNpcs || [];
                 this.placeLocations();
+                this.generateWorldMonsterSpawns();
             } else {
                 this.generateStaticMap();
+                this.generateWorldMonsterSpawns();
             }
+        }
+
+        /** Visible field monsters for the open world, same idea as dungeon
+         *  floors (see generateDungeonFloor's monsterSpawns) but reusing a
+         *  FIXED seed rather than one derived from anything save-specific,
+         *  since the world layout itself is hand-authored/static (see
+         *  generateStaticMap) rather than randomly generated per game - a
+         *  fixed seed here means spawn positions/species/tiers come out
+         *  identically every time regardless of save state, so there's
+         *  nothing to actually persist except which ones are currently
+         *  alive (see Game.saveGame()'s worldMonstersAlive).
+         *
+         *  Only ~90 spawns exist across the whole 400x400 map, but that's
+         *  fine even far from any of them - updateFieldMonstersOnFloor()
+         *  only does real work (a LOS raycast) for spawns already within
+         *  FIELD_MONSTER_NOTICE_RADIUS of the player; everything else is
+         *  just a cheap distance check (or, if dead, a timestamp compare
+         *  for its respawn timer) every step. */
+        generateWorldMonsterSpawns() {
+            const rng = mulberry32(hashStringToSeed('world_field_monsters_v1'));
+            const spawns = [];
+            const targetCount = 90;
+            let attempts = 0;
+            while (spawns.length < targetCount && attempts < 6000) {
+                attempts++;
+                const x = Math.floor(rng() * this.width);
+                const y = Math.floor(rng() * this.height);
+                const terrain = this.tiles[y] && this.tiles[y][x];
+                if (terrain === undefined) continue;
+                if (terrain === CONFIG.TERRAIN.WATER || terrain === CONFIG.TERRAIN.MOUNTAIN || terrain === CONFIG.TERRAIN.LAVA) continue;
+                // Keep clear of towns/dungeons/springs so nothing spawns on
+                // a doorstep.
+                const nearLocation = this.locations.some(loc =>
+                    Math.max(Math.abs(loc.x - x), Math.abs(loc.y - y)) < 8);
+                if (nearLocation) continue;
+                let tooClose = false;
+                for (const s of spawns) {
+                    if (Math.max(Math.abs(s.x - x), Math.abs(s.y - y)) < 12) { tooClose = true; break; }
+                }
+                if (tooClose) continue;
+                const quadrant = getWorldQuadrantForPos(x, y);
+                const quadrantData = QUADRANTS[quadrant] || QUADRANTS.CORNELIA;
+                const roll = rng();
+                const isRareSpawn = roll < 0.04;
+                const isEliteSpawn = !isRareSpawn && roll < 0.22;
+                let pool = quadrantData.monsters;
+                if (isRareSpawn || isEliteSpawn) {
+                    const eliteCandidates = quadrantData.monsters.filter(m => m.isElite);
+                    if (eliteCandidates.length > 0) pool = eliteCandidates;
+                } else {
+                    const regular = quadrantData.monsters.filter(m => !m.isElite);
+                    if (regular.length > 0) pool = regular;
+                }
+                let template = null;
+                for (let tries = 0; tries < 5; tries++) {
+                    const candidate = pool[Math.floor(rng() * pool.length)];
+                    const recentNames = spawns.slice(-3).map(s => s.speciesName);
+                    if (!recentNames.includes(candidate.name) || pool.length <= recentNames.length) {
+                        template = candidate;
+                        break;
+                    }
+                }
+                if (!template) template = pool[Math.floor(rng() * pool.length)];
+                spawns.push({
+                    id: 'wspawn_' + spawns.length,
+                    x, y,
+                    speciesName: template.name,
+                    isElite: isEliteSpawn,
+                    isRare: isRareSpawn
+                });
+            }
+            this.monsterSpawns = spawns;
+            initFieldMonsterLiveState(this);
         }
 
         generateStaticMap() {
@@ -14906,6 +15113,62 @@
                             ctx.shadowBlur = 0;
                         }
                     }
+                }
+            });
+
+            // Field monsters - same visible-mob treatment as dungeons (see
+            // DungeonWalkRenderer.renderFloor()'s matching block), just
+            // using this renderer's own startCol/startRow/ts/zoom instead
+            // of a dungeon floor's camera. Only ones inside the drawn
+            // startCol..endCol/startRow..endRow window get painted -
+            // everything else on the map (most of the ~90 total spawns at
+            // any given moment) is simply off-screen and skipped, same
+            // cheap cull the dungeon renderer already does for chests/etc.
+            const nowTsWorld = Date.now();
+            (worldMap.liveMonsters || []).forEach(m => {
+                if (!m.alive) return;
+                if (m.x < startCol - 1 || m.x > endCol || m.y < startRow - 1 || m.y > endRow) return;
+                const mx = (m.x - startCol) * ts + ts / 2;
+                const my = (m.y - startRow) * ts + ts / 2;
+                const tagColor = m.isRare ? '#c060ff' : (m.isElite ? '#4aa8ff' : null);
+                const aggroColor = m.state === 'red' ? '#ff4444' : (m.state === 'yellow' ? '#ffdd33' : null);
+                if (tagColor) {
+                    ctx.save();
+                    ctx.strokeStyle = tagColor;
+                    ctx.lineWidth = 2;
+                    ctx.shadowColor = tagColor;
+                    ctx.shadowBlur = 8;
+                    ctx.beginPath();
+                    ctx.arc(mx, my, ts * 0.32, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+                if (aggroColor) {
+                    ctx.save();
+                    const pulse = 0.85 + Math.sin(nowTsWorld / 150) * 0.15;
+                    ctx.strokeStyle = aggroColor;
+                    ctx.lineWidth = m.state === 'red' ? 3 : 2;
+                    ctx.shadowColor = aggroColor;
+                    ctx.shadowBlur = m.state === 'red' ? 14 : 8;
+                    ctx.globalAlpha = pulse;
+                    ctx.beginPath();
+                    ctx.arc(mx, my, ts * 0.44, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+                const template = findMonsterTemplateByName(m.speciesName);
+                ctx.font = `${Math.floor(ts * 0.7)}px 'Segoe UI Emoji', sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText((template && template.sprite) || '❓', mx, my);
+                if (m.alertUntil && nowTsWorld < m.alertUntil) {
+                    ctx.save();
+                    ctx.font = `bold ${Math.floor(ts * 0.6)}px 'Courier New', monospace`;
+                    ctx.fillStyle = '#ff4444';
+                    ctx.shadowColor = '#000';
+                    ctx.shadowBlur = 4;
+                    ctx.fillText('!', mx, my - ts * 0.8);
+                    ctx.restore();
                 }
             });
 
@@ -21451,7 +21714,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v147]');
+            console.log('Game starting... [build v148]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
@@ -23061,11 +23324,58 @@
                 if (getCurrentWorldQuadrant() !== prevQuadrant && this.audio) {
                     this.audio.playMusic('overworld', getBattleEnvironment('world').scene);
                 }
-                this.checkRandomEncounter();
+                this.checkWorldFieldMonsterEncounter(dx, dy);
                 this.checkLocationProximity();
                 return true;
             }
             return false;
+        }
+
+        /** World-map version of checkFieldMonsterEncounter() (dungeons) -
+         *  same "what you see is what you fight" contact logic, just
+         *  against this.world/its terrain-based walkability instead of a
+         *  dungeon's wall grid. Fully replaces the old invisible per-step
+         *  checkRandomEncounter() roll (including its separate rare-
+         *  mini-boss warning popup - purple field spawns are the direct
+         *  visible replacement for that, per the "full replacement for
+         *  consistency" decision), which is left defined-but-unused now,
+         *  same as checkDungeonRandomEncounter(). */
+        checkWorldFieldMonsterEncounter(moveDx, moveDy) {
+            if (!this.world) return false;
+            const isWalkableFn = (x, y) => worldFieldTileWalkable(this.world, x, y);
+            const px = this.world.playerX, py = this.world.playerY;
+            let monster = (this.world.liveMonsters || []).find(m => m.alive && m.x === px && m.y === py) || null;
+            let moverIsMonster = false;
+            let moverDx = moveDx, moverDy = moveDy;
+            if (!monster) {
+                // Ward Incense ("-70% encounters" for 40 steps) previously
+                // modified an invisible per-step dice roll - with visible
+                // field monsters there's no roll to modify, so it now
+                // suppresses aggro/notice entirely for its duration instead
+                // (see updateFieldMonstersOnFloor's suppressAggro param).
+                // Ticking the step counter down here (rather than in the
+                // now-unused checkRandomEncounter()) is what keeps the
+                // item's duration actually counting down as you walk.
+                const wardActive = this.party.encounterStepsRemaining > 0;
+                if (wardActive) {
+                    this.party.encounterStepsRemaining--;
+                    if (this.party.encounterStepsRemaining <= 0) this.party.encounterModifier = 1.0;
+                }
+                updateFieldMonstersOnFloor(this.world, px, py, isWalkableFn, wardActive);
+                monster = (this.world.liveMonsters || []).find(m => m.alive && m.x === px && m.y === py) || null;
+                if (monster) {
+                    moverIsMonster = true;
+                    moverDx = monster.facing === 'left' ? -1 : monster.facing === 'right' ? 1 : 0;
+                    moverDy = monster.facing === 'up' ? -1 : monster.facing === 'down' ? 1 : 0;
+                }
+            }
+            if (!monster) return false;
+            const defenderFacing = moverIsMonster ? (this.world.facing || 'down') : (monster.facing || 'down');
+            const ambushType = resolveFieldEncounterAdvantage(moverDx, moverDy, defenderFacing, moverIsMonster);
+            this.activeFieldMonster = monster;
+            const fieldAnchor = { speciesName: monster.speciesName, isElite: monster.isElite, isRare: monster.isRare };
+            this.battle.startEncounter(this.party, 'world', ambushType, fieldAnchor);
+            return true;
         }
 
         /** Tile-walkability test used by the tap-to-walk pathfinder for the overworld. */
@@ -23178,6 +23488,10 @@
             }
         }
 
+        /** Superseded by visible field monsters (see
+         *  Game.checkWorldFieldMonsterEncounter() / WorldMap.
+         *  generateWorldMonsterSpawns()) - kept here unused rather than
+         *  deleted, same reasoning as checkDungeonRandomEncounter(). */
         checkRandomEncounter() {
             const terrain = this.world.getTerrainAt(this.world.playerX, this.world.playerY);
             const isOnRoad = this.world.roads.some(road => road.x === this.world.playerX && road.y === this.world.playerY);
@@ -27098,6 +27412,12 @@
                     }
                     return out;
                 })(),
+                // World map field monsters use a fixed seed (see WorldMap.
+                // generateWorldMonsterSpawns()) so positions/species never
+                // need saving, only which ones are currently alive.
+                worldMonstersAlive: this.world && this.world.liveMonsters
+                    ? this.world.liveMonsters.map(m => !!m.alive)
+                    : [],
                 dualTechIntroSeen: !!this.dualTechIntroSeen,
                 state: {
                     flags: this.state.flags || {},
@@ -27302,6 +27622,15 @@
                 // chests/vault/boss/monsters already resolved.
                 this.dungeonStates = {};
                 this.dungeonProgress = saveData.dungeonProgress || {};
+                // World monster spawns just regenerated fresh (fixed seed,
+                // see WorldMap.generateWorldMonsterSpawns()) as part of
+                // constructing this.world above - stamp back which ones
+                // were already dead/on a respawn timer when this was saved.
+                if (this.world && this.world.liveMonsters && Array.isArray(saveData.worldMonstersAlive)) {
+                    this.world.liveMonsters.forEach((m, i) => {
+                        if (saveData.worldMonstersAlive[i] === false) { m.alive = false; m.respawnAt = null; }
+                    });
+                }
                 this.dualTechIntroSeen = !!saveData.dualTechIntroSeen;
                 if (!this.achievements) this.achievements = new AchievementManager();
                 this.achievements.loadSaveData(saveData.achievements);
@@ -30873,14 +31202,17 @@ const QUEST_DATA = [
     /** Reads the party's current overworld position and returns which of the
      *  four map quadrants they're standing in - shared by monster generation
      *  and the battle background picker so both agree on "where we are". */
+    function getWorldQuadrantForPos(px, py) {
+        if (px >= 200 && px <= 400 && py >= 200 && py <= 400) return 'CORNELIA';
+        if (px >= 0 && px <= 200 && py >= 200 && py <= 400) return 'PRAVOCA';
+        if (px >= 0 && px <= 200 && py >= 0 && py <= 200) return 'ELFHEIM';
+        if (px >= 200 && px <= 400 && py >= 0 && py <= 200) return 'CHAOS';
+        return 'CORNELIA';
+    }
+
     function getCurrentWorldQuadrant() {        let quadrant = 'CORNELIA';
         if (window.game && window.game.world) {
-            const px = window.game.world.playerX;
-            const py = window.game.world.playerY;
-            if (px >= 200 && px <= 400 && py >= 200 && py <= 400) quadrant = 'CORNELIA';
-            else if (px >= 0 && px <= 200 && py >= 200 && py <= 400) quadrant = 'PRAVOCA';
-            else if (px >= 0 && px <= 200 && py >= 0 && py <= 200) quadrant = 'ELFHEIM';
-            else if (px >= 200 && px <= 400 && py >= 0 && py <= 200) quadrant = 'CHAOS';
+            quadrant = getWorldQuadrantForPos(window.game.world.playerX, window.game.world.playerY);
         }
         return quadrant;
     }
@@ -31888,7 +32220,146 @@ const QUEST_DATA = [
 
     injectAmbientLayers();
     spawnStartScreenLeaves();
+    /** Analog joystick alternative to the D-pad (see toggleMovementControlStyle()) -
+     *  drag from the base's center; once the drag clears a small deadzone,
+     *  the angle snaps to the nearest of 8 directions and moves exactly
+     *  like holding that direction on the D-pad would (same repeat timer,
+     *  same currentMoveFn() dispatch), so both controls share one movement
+     *  path and only differ in how the direction gets picked. */
+    function setupJoystick() {
+        const base = document.getElementById('joystick-base');
+        const knob = document.getElementById('joystick-knob');
+        if (!base || !knob) return;
+        const REPEAT_MS = 160;
+        const MAX_KNOB_TRAVEL = 34;
+        const DEADZONE = 14;
+        let repeatTimer = null;
+        let activeDir = null;
+        let dragging = false;
+        let originX = 0, originY = 0;
+
+        function currentMoveFn() {
+            const g = window.game;
+            if (!g || !g.state) return null;
+            const screen = g.state.currentScreen;
+            if (screen === 'world') return (dx, dy) => g.attemptWorldMove(dx, dy);
+            if (screen === 'town') return (dx, dy) => g.attemptTownMove(dx, dy);
+            if (screen === 'cave' || screen === 'castle' || screen === 'ruins') return (dx, dy) => g.attemptDungeonMove(dx, dy);
+            return null;
+        }
+
+        const dirDeltas = {
+            right: [1, 0], 'down-right': [1, 1], down: [0, 1], 'down-left': [-1, 1],
+            left: [-1, 0], 'up-left': [-1, -1], up: [0, -1], 'up-right': [1, -1]
+        };
+        // Screen-space angle (0 = right, clockwise since Y grows downward)
+        // bucketed into 8 45-degree wedges, matching dirDeltas' order.
+        const dirOrder = ['right', 'down-right', 'down', 'down-left', 'left', 'up-left', 'up', 'up-right'];
+
+        function angleToDir(angleDeg) {
+            const idx = Math.round((((angleDeg % 360) + 360) % 360) / 45) % 8;
+            return dirOrder[idx];
+        }
+
+        function step() {
+            const g = window.game;
+            if (!g || !g.state || g.state.isPaused || !activeDir) return;
+            g.cancelAutoWalk();
+            const moveFn = currentMoveFn();
+            if (!moveFn) return;
+            const [dx, dy] = dirDeltas[activeDir];
+            moveFn(dx, dy);
+        }
+
+        function handleMove(clientX, clientY) {
+            const dx = clientX - originX;
+            const dy = clientY - originY;
+            const dist = Math.hypot(dx, dy);
+            const angleRad = Math.atan2(dy, dx);
+            const clampedDist = Math.min(dist, MAX_KNOB_TRAVEL);
+            knob.style.transform = `translate(${Math.cos(angleRad) * clampedDist}px, ${Math.sin(angleRad) * clampedDist}px)`;
+            if (dist < DEADZONE) {
+                if (activeDir) {
+                    activeDir = null;
+                    clearInterval(repeatTimer);
+                    repeatTimer = null;
+                }
+                return;
+            }
+            const newDir = angleToDir(angleRad * 180 / Math.PI);
+            if (newDir !== activeDir) {
+                activeDir = newDir;
+                step();
+                clearInterval(repeatTimer);
+                repeatTimer = setInterval(step, REPEAT_MS);
+            }
+        }
+
+        function resetKnob() {
+            dragging = false;
+            activeDir = null;
+            clearInterval(repeatTimer);
+            repeatTimer = null;
+            knob.classList.add('snapping');
+            knob.style.transform = 'translate(0px, 0px)';
+            setTimeout(() => knob.classList.remove('snapping'), 100);
+        }
+
+        base.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            dragging = true;
+            const rect = base.getBoundingClientRect();
+            originX = rect.left + rect.width / 2;
+            originY = rect.top + rect.height / 2;
+            try { base.setPointerCapture(e.pointerId); } catch (err) {}
+            handleMove(e.clientX, e.clientY);
+        });
+        base.addEventListener('pointermove', (e) => {
+            if (!dragging) return;
+            e.preventDefault();
+            handleMove(e.clientX, e.clientY);
+        });
+        base.addEventListener('pointerup', resetKnob);
+        base.addEventListener('pointercancel', resetKnob);
+        base.addEventListener('pointerleave', () => { if (dragging) resetKnob(); });
+    }
+
+    /** Swaps which movement control is visible (D-pad vs joystick) and
+     *  remembers the choice - lets Ray A/B test both without committing to
+     *  either. Both controls dispatch through the exact same
+     *  attempt*Move() functions, so there's nothing else to keep in sync. */
+    function toggleMovementControlStyle() {
+        const dpad = document.getElementById('dpad');
+        const joystick = document.getElementById('joystick-wrap');
+        const toggleBtn = document.getElementById('movement-style-toggle');
+        if (!dpad || !joystick) return;
+        const usingJoystick = joystick.style.display !== 'none';
+        if (usingJoystick) {
+            joystick.style.display = 'none';
+            dpad.style.display = '';
+            localStorage.setItem('legendOfEternal_movementStyle', 'dpad');
+            if (toggleBtn) toggleBtn.textContent = '🕹️';
+        } else {
+            joystick.style.display = '';
+            dpad.style.display = 'none';
+            localStorage.setItem('legendOfEternal_movementStyle', 'joystick');
+            if (toggleBtn) toggleBtn.textContent = '🎮';
+        }
+    }
+
+    function initMovementControlStyle() {
+        if (localStorage.getItem('legendOfEternal_movementStyle') !== 'joystick') return;
+        const dpad = document.getElementById('dpad');
+        const joystick = document.getElementById('joystick-wrap');
+        const toggleBtn = document.getElementById('movement-style-toggle');
+        if (dpad) dpad.style.display = 'none';
+        if (joystick) joystick.style.display = '';
+        if (toggleBtn) toggleBtn.textContent = '🎮';
+    }
+
     setupMobileDpad();
+    setupJoystick();
+    initMovementControlStyle();
     // Auto-close the hamburger dropdown after any action inside it fires -
     // its buttons are one-shot (save, open a journal, nudge zoom, etc.), so
     // leaving the panel open after tapping one just blocks the view.
