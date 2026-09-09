@@ -2083,6 +2083,23 @@
         .dual-tech-box {
             max-width: 380px;
         }
+        .dt-guide-btn {
+            position: absolute;
+            top: 10px;
+            right: 14px;
+            background: rgba(255,215,0,0.15);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-color);
+            font-size: 16px;
+            line-height: 1;
+            padding: 4px 9px;
+            cursor: pointer;
+        }
+        .dt-guide-btn:hover, .dt-guide-btn:active {
+            border-color: var(--highlight);
+            background: rgba(255,215,0,0.28);
+        }
         .dual-tech-option {
             background: linear-gradient(135deg, #1a4a8a, #7a5a00);
             border: 2px solid #ffe066;
@@ -5310,7 +5327,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v145</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v146</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -5725,6 +5742,7 @@
                     <div class="item" id="menu2-nav-map" onclick="window.game.openWorldMap()"><span>&#128506;&#65039;</span><span class="label">Map</span></div>
                     <div class="item" id="menu2-nav-lore" onclick="window.game.openLoreJournal()"><span>&#128220;</span><span class="label">Lore</span></div>
                     <div class="item" id="menu2-nav-legendary" onclick="window.game.openLegendaryJournal()"><span>&#127775;</span><span class="label">Legendary</span></div>
+                    <div class="item" id="menu2-nav-dualtech" onclick="window.game.openDualTechGuide()"><span>&#129309;</span><span class="label">Dual Techs</span></div>
                     <div class="item" id="menu2-nav-settings" onclick="window.game.showMenuPanel('settings')"><span>&#9881;&#65039;</span><span class="label">Settings</span></div>
                 </div>
 
@@ -5951,7 +5969,7 @@
              option next to Limit Break. -->
         <div class="popup-overlay" id="dual-tech-overlay">
             <div class="popup-box limit-break-box dual-tech-box" id="dual-tech-box">
-                <h3>🌟 Dual Tech</h3>
+                <h3>🌟 Dual Tech <button class="dt-guide-btn" onclick="window.game.openDualTechGuide()" title="Combo Reference">📖</button></h3>
                 <div class="limit-break-modal-options" id="dual-tech-options"></div>
                 <button class="menu-button" onclick="document.getElementById('dual-tech-overlay').classList.remove('active')">⬅️ Back</button>
             </div>
@@ -6006,6 +6024,18 @@
                 <h3 style="color: var(--highlight); flex-shrink: 0;">📖 Spell Weaving Guide</h3>
                 <div class="message" id="spell-guide-content" style="overflow-y: auto; text-align: left; flex: 1; padding-right: 6px;"></div>
                 <button class="menu-button" onclick="window.game.closeSpellComboGuide()" style="flex-shrink: 0;">Close</button>
+            </div>
+        </div>
+        <!-- Dual Tech combo reference - every hero-pair/archetype combo,
+             grouped by pair, flagging whichever one matches the party's
+             CURRENT archetype picks as active. Opened from the pause menu
+             sidebar or the little book icon inside the in-battle Dual Tech
+             popup itself. See renderDualTechGuideContent(). -->
+        <div class="popup-overlay" id="dualtech-guide-overlay">
+            <div class="popup-box lore-box" id="dualtech-guide-box" style="max-width: 640px; width: 90%; max-height: 80vh; display: flex; flex-direction: column;">
+                <h3 style="color: var(--highlight); flex-shrink: 0;">🌟 Dual Tech Guide</h3>
+                <div class="message" id="dualtech-guide-content" style="overflow-y: auto; text-align: left; flex: 1; padding-right: 6px;"></div>
+                <button class="menu-button" onclick="window.game.closeDualTechGuide()" style="flex-shrink: 0;">Close</button>
             </div>
         </div>
 
@@ -15077,6 +15107,19 @@
             const hero = this.party.heroes[this.selectedHeroIndex];
             const limitReady = hero && !hero.isDead && hero.isLimitBreakReady();
             const dualTechOptions = (hero && !hero.isDead) ? this.getDualTechOptions(hero) : [];
+            // First time a Dual Tech is actually available to pick, pause for
+            // a short one-time mentor scene explaining the mechanic (Ray's
+            // "Master Aldous" onboarding request) rather than just letting
+            // the button silently appear. The dialogue overlay sits on top
+            // of the command bar underneath, so there's no need to hide
+            // anything here - just guard against firing twice.
+            if (dualTechOptions.length > 0 && window.game && !window.game.dualTechIntroSeen && !window.game.dualTechIntroShowing) {
+                window.game.dualTechIntroSeen = true;
+                window.game.dualTechIntroShowing = true;
+                window.game.showDualTechMentorIntro(() => {
+                    window.game.dualTechIntroShowing = false;
+                });
+            }
             // Attack/Magic/Item/Run are icon-only (self-explanatory), but
             // Limit Break/Dual Tech keep their text labels since that's
             // genuinely useful to read in the moment, per request.
@@ -20728,6 +20771,12 @@
                 'Ashen Core': false
             };
             this.currentSlot = 1;
+            // First-time Dual Tech mentor scene (Master Aldous) - fires once,
+            // the first moment two heroes are actually both Limit-Break-ready
+            // together in battle (see renderMainCommands()). Persisted so it
+            // never repeats for a given save.
+            this.dualTechIntroSeen = false;
+            this.dualTechIntroShowing = false;
             this.setupInput();
             this.state.currentScreen = 'start';
             setTimeout(() => {
@@ -20786,7 +20835,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v145]');
+            console.log('Game starting... [build v146]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
@@ -21039,6 +21088,20 @@
 
         closeSpellComboGuide() {
             const overlay = document.getElementById('spell-guide-overlay');
+            if (overlay) overlay.classList.remove('active');
+            if (this.state) this.state.resume();
+        }
+
+        openDualTechGuide() {
+            const content = document.getElementById('dualtech-guide-content');
+            if (content) content.innerHTML = renderDualTechGuideContent(this);
+            const overlay = document.getElementById('dualtech-guide-overlay');
+            if (overlay) overlay.classList.add('active');
+            if (this.state) this.state.pause();
+        }
+
+        closeDualTechGuide() {
+            const overlay = document.getElementById('dualtech-guide-overlay');
             if (overlay) overlay.classList.remove('active');
             if (this.state) this.state.resume();
         }
@@ -22218,6 +22281,26 @@
                 lines,
                 onEnd: onStartBattle
             });
+        }
+
+        /** One-time Dual Tech tutorial scene - see renderMainCommands()'s
+         *  trigger. Reuses Master Aldous (Wren's missing mentor, already in
+         *  the game's cast via the Duskmere "Apprentice's Master" quest) as
+         *  the teacher rather than inventing a new face, and the Spell
+         *  Weaver's wizard-tower backdrop/portrait since there's no
+         *  dedicated Aldous art yet. */
+        showDualTechMentorIntro(onEnd) {
+            const lines = [
+                { speaker: 'Master Aldous', portraitKey: 'wizard', side: 'left',
+                    text: "Hold a moment - I sense two of your bonds have grown strong enough to act as one." },
+                { speaker: 'Master Aldous', portraitKey: 'wizard', side: 'left',
+                    text: "When two heroes both stand ready to unleash their full strength, they can combine it instead into a Dual Tech. It spends both their gauges and both their turns - but the result hits far harder than either alone." },
+                { speaker: 'Master Aldous', portraitKey: 'wizard', side: 'left',
+                    text: "Which technique you get depends on both heroes' training - their archetypes. Look for the golden DUAL TECH button whenever it lights up, and tap the little book inside it any time you want the full reference of every combination." },
+                { speaker: 'Master Aldous', portraitKey: 'wizard', side: 'left',
+                    text: "Go on - try it now, while the moment is with you." }
+            ];
+            this.dialogue.start({ background: 'wizard_tower', lines, onEnd: onEnd || null });
         }
 
         /** Presents a Lore journal chapter's paragraphs as a narrated
@@ -26304,6 +26387,7 @@
                 unlockedLore: this.unlockedLore || ['intro'],
                 trackedQuestId: this.trackedQuestId || null,
                 gameCompleted: !!this.gameCompleted,
+                dualTechIntroSeen: !!this.dualTechIntroSeen,
                 state: {
                     flags: this.state.flags || {},
                     currentScreen: this.state.currentScreen
@@ -26497,6 +26581,7 @@
                 this.unlockedLore = saveData.unlockedLore || ['intro'];
                 this.trackedQuestId = saveData.trackedQuestId || null;
                 this.gameCompleted = !!saveData.gameCompleted;
+                this.dualTechIntroSeen = !!saveData.dualTechIntroSeen;
                 if (!this.achievements) this.achievements = new AchievementManager();
                 this.achievements.loadSaveData(saveData.achievements);
                 if (!this.monsterCodex) this.monsterCodex = new MonsterCodex();
@@ -26986,6 +27071,87 @@ function renderSpellComboGuideContent(game) {
                 </div>
             </div>
         `;
+    });
+    return html;
+}
+
+/** Dual Tech combo keys are `${archetypeA}_${archetypeB}` - a plain split on
+ *  '_' breaks for any archetype whose own id has an underscore in it
+ *  (paladin's 'holy_paladin'), so this checks the two classes' real
+ *  archetype id lists instead of guessing from the string shape. */
+function splitDualTechComboKey(comboKey, classA, classB) {
+    const idsA = (ARCHETYPE_DEFS[classA] || []).map(a => a.id);
+    const idsB = (ARCHETYPE_DEFS[classB] || []).map(a => a.id);
+    for (const idA of idsA) {
+        if (comboKey.startsWith(idA + '_')) {
+            const rest = comboKey.slice(idA.length + 1);
+            if (idsB.includes(rest)) return [idA, rest];
+        }
+    }
+    return comboKey.split('_');
+}
+
+function getArchetypeDisplayName(classKey, archId) {
+    const def = (ARCHETYPE_DEFS[classKey] || []).find(a => a.id === archId);
+    return def ? `${def.icon} ${def.name}` : archId;
+}
+
+/** Same idea as getSpellScopeInfo() but for Dual Tech `kind` values -
+ *  phys_multi is several hits on the SAME target, not a spread, so it
+ *  still reads as single-target. */
+function getDualTechScopeInfo(techDef) {
+    if (!techDef || !techDef.kind) return { label: 'Single Enemy', cls: 'scope-enemy' };
+    switch (techDef.kind) {
+        case 'phys_aoe':
+        case 'magic_aoe':
+            return { label: 'All Enemies', cls: 'scope-all' };
+        case 'heal_all_full':
+            return { label: 'All Allies', cls: 'scope-all' };
+        case 'phys_single':
+        case 'magic_single':
+        case 'phys_multi':
+        default:
+            return { label: 'Single Enemy', cls: 'scope-enemy' };
+    }
+}
+
+/** Builds the Dual Tech Guide popup's content - all 27 hero-pair/archetype
+ *  combos, grouped under their 3 fixed hero pairs, each flagged "ACTIVE
+ *  NOW" if the party's current archetype picks actually match it. Unlike
+ *  spells there's no "unlocked/learned" state to track - a Dual Tech is
+ *  purely a function of which archetypes the two heroes currently have, so
+ *  respeccing at the Archetype trainer is how you actually explore this
+ *  list rather than any kind of gated discovery. */
+function renderDualTechGuideContent(game) {
+    const heroes = game.party ? game.party.heroes : [];
+    const byClass = {};
+    heroes.forEach(h => { byClass[h.heroClass] = h; });
+    let html = '<p style="color:#cfc0ee; font-size:12px; margin-bottom:14px; line-height:1.5;">' +
+        "When two heroes both have a full Limit Break gauge, they can spend both gauges and both turns on a combined Dual Tech instead. Which move you get depends on BOTH heroes' current archetypes - respec at the Archetype trainer to explore other combos." +
+        '</p>';
+    Object.keys(DUAL_TECH_PAIRS).forEach(pairKey => {
+        const pairInfo = DUAL_TECH_PAIRS[pairKey];
+        const [classA, classB] = pairKey.split('_');
+        const heroA = byClass[classA];
+        const heroB = byClass[classB];
+        const pairLabel = (heroA && heroB) ? `${heroA.name} + ${heroB.name}` : `${classA} + ${classB}`;
+        html += `<h4 style="margin:18px 0 8px; padding-bottom:4px; border-bottom:2px solid ${pairInfo.colorA}; color:${pairInfo.colorB};">${pairLabel} &mdash; ${pairInfo.title}</h4>`;
+        const combos = DUAL_TECHS[pairKey] || {};
+        Object.keys(combos).forEach(comboKey => {
+            const techDef = combos[comboKey];
+            const [archA, archB] = splitDualTechComboKey(comboKey, classA, classB);
+            const isActive = !!(heroA && heroB && heroA.archetype === archA && heroB.archetype === archB);
+            const scope = getDualTechScopeInfo(techDef);
+            html += `
+                <div class="spell-combo-card ${isActive ? 'combo-ready' : ''}">
+                    <div class="spell-combo-result" style="flex:1;">
+                        <div class="spell-combo-result-name">&#127775; ${techDef.name} <span class="spell-scope-badge ${scope.cls}">${scope.label}</span></div>
+                        <div class="spell-combo-result-desc">${techDef.desc}</div>
+                        <div style="font-size:10px; color:#888;">Requires: ${getArchetypeDisplayName(classA, archA)} + ${getArchetypeDisplayName(classB, archB)}${isActive ? ' &nbsp;<span style="color:#5dff5d; font-weight:700;">&mdash; ACTIVE NOW</span>' : ''}</div>
+                    </div>
+                </div>
+            `;
+        });
     });
     return html;
 }
