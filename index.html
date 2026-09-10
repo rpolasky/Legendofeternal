@@ -5448,7 +5448,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v149</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v155</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -6954,6 +6954,7 @@
             const townText = townInfo ? townInfo.textContent : '';
             if (townText.includes('Sylvaris')) return 'garden_shrine';
             if (townText.includes('Duskmere')) return 'forest_shrine';
+            if (townText.includes('Cinderhold')) return 'town'; // TODO: no ashen/fortress dialogue backdrop art yet - reuses the generic town backdrop until one's generated
             return 'town';
         }
         if (screen === 'castle') return 'brighthollow_castle';
@@ -7060,6 +7061,12 @@
             { name: 'Nomad', icon: '🐪', spriteKey: 'ouzo', dialogue: "I've crossed the desert many times. The djinn are dangerous, but they drop valuable essences.", hint: "Djinn are weak to ice magic.", quest: "Djinn essences are rare. I'll pay premium for them." },
             { name: 'Oasis Guardian', icon: '💧', dialogue: "The spring's water has healing properties, but it's most potent during the full moon.", hint: "Drinking from the spring at night might have extra effects.", quest: "Protect the oasis from sand worms. Bring me 5 worm teeth as proof." },
             { name: 'Desert Trader', icon: '🏺', dialogue: "I trade with the nomads and the elves. Business is good, but the sand worms are a problem.", hint: "Sand worms are weak to ice magic.", quest: "I'll pay for each sand worm tooth you bring me. They make excellent decorations." }
+        ],
+        // Only 2 entries - matches Cinderhold's 2 npcSpots (a smaller,
+        // war-footing outpost rather than a full town, per Ray).
+        cinderhold: [
+            { name: 'Quartermaster Vey', icon: '🎖️', dialogue: "Every soul left in Cinderhold either fights or keeps the ones who fight alive. There's no third option out here.", hint: "The Ashen Wastes don't forgive being underprepared - stock up before you push toward the Spire.", quest: "Bring me anything you pull off a demon. We melt down what we can't use." },
+            { name: 'Scarred Veteran', icon: '🧔', dialogue: "I've watched three companies march north to the Spire. I'm the only one who walked back from any of them.", hint: "Voraxis doesn't send warnings. Whatever you're bringing, bring more of it.", quest: "If you make it back from the Spire, find me. I want to hear it, whatever happens." }
         ]
     };
 
@@ -7892,6 +7899,54 @@
                 { icon: '🐪', x1: 48, y1: 12, x2: 48, y2: 55, speed: 0.07 },
                 { icon: '🧑', x1: 20, y1: 45, x2: 20, y2: 15, speed: 0.14 },
                 { icon: '🧕', x1: 70, y1: 45, x2: 30, y2: 45, speed: 0.1 }
+            ]
+        },
+        // Quadrant 4 (Ashen Wastes / Chaos region, levels 39-52) town -
+        // smaller than the other three on purpose (per Ray: "not as many"
+        // buildings, since legendary weapons cap the endgame progression
+        // here rather than a deep shop tier) - core 6 shops + Inn + Guild
+        // Hall + one bonus crafting building (Spell Weaver, fitting an
+        // endgame full of "ultimate" spells) + just 2 decorative houses,
+        // vs. the other towns' dozen-plus. Reuses Brighthollow's proven
+        // building coordinates (known not to overlap) rather than hand-
+        // placing a whole new grid from scratch.
+        cinderhold: {
+            width: 96, height: 60,
+            gate: { x: 48, y: 58 },
+            decor: { x: 48, y: 30, icon: '🔥', scale: 1.7, basin: true },
+            palette: { skyTop: '#3a1210', skyMid: '#4a1a12', skyBottom: '#1a0808', ground: '#5a4a42', groundLight: '#6a5850', road: '#4a3a32', roadLight: '#5a4a42', river: '#c4441a', riverLight: '#e4661a', buildingFill: '#4a2a22', buildingRoof: '#2a1510', accent: '#ff6622', treeColor: '#3a2018' },
+            buildings: [
+                { id: 'king', x: 39, y: 3, w: 12, h: 7, icon: '👑', label: "Warlord's Hold", action: 'king' },
+                { id: 'weapon', x: 8, y: 17, w: 7, h: 5, icon: '⚔️', label: 'Weapon Shop', action: 'shop', shopType: 'weapon' },
+                { id: 'armor', x: 25, y: 11, w: 7, h: 5, icon: '🛡️', label: 'Armor Shop', action: 'shop', shopType: 'armor' },
+                { id: 'shield', x: 55, y: 11, w: 7, h: 5, icon: '🔰', label: 'Shield Shop', action: 'shop', shopType: 'shield' },
+                { id: 'magic', x: 72, y: 17, w: 7, h: 5, icon: '📜', label: 'Magic Shop', action: 'shop', shopType: 'magic' },
+                { id: 'item', x: 11, y: 36, w: 7, h: 5, icon: '🧪', label: 'Item Shop', action: 'shop', shopType: 'item' },
+                { id: 'jewelry', x: 28, y: 41, w: 7, h: 5, icon: '💍', label: 'Jewelry Shop', action: 'shop', shopType: 'jewelry' },
+                { id: 'inn', x: 52, y: 36, w: 7, h: 5, icon: '🏨', label: 'Inn', action: 'inn' },
+                { id: 'guild', x: 69, y: 39, w: 7, h: 5, icon: '🏛️', label: 'War Council', action: 'guild' },
+                { id: 'gate', x: 48, y: 58, w: 1, h: 1, icon: '🚪', label: 'Ashgate', action: 'exit' },
+                { id: 'house6', x: 39, y: 13, w: 6, h: 4, icon: '🔮', label: 'Spell Weaver', action: 'spellweaver' },
+                { id: 'house1', x: 18, y: 5, w: 5, h: 5, icon: '🏚️', label: 'Bunker', action: null },
+                { id: 'house2', x: 63, y: 7, w: 6, h: 4, icon: '🏚️', label: 'Watchpost', action: null }
+            ],
+            roadSegments: [
+                [[48,9],[48,58]], [[45,22],[51,22]], [[43,24],[53,24]], [[41,26],[55,26]], [[39,28],[57,28]], [[41,32],[55,32]], [[43,34],[53,34]], [[45,36],[51,36]], [[48,19],[48,22]], [[10,10],[86,10]], [[10,10],[10,50]], [[86,10],[86,50]], [[10,50],[86,50]], [[45,10],[45,10]], [[11,22],[11,22]], [[28,16],[28,10]], [[58,16],[58,10]], [[75,22],[75,22]], [[14,41],[14,36]], [[31,46],[31,50]], [[55,41],[55,36]], [[72,44],[72,50]], [[20,10],[20,10]], [[19,52],[19,50]], [[89,53],[89,50]], [[63,45],[63,50]], [[26,52],[26,50]], [[42,17],[42,22]], [[19,30],[19,36]], [[43,49],[43,50]], [[11,50],[11,50]], [[88,31],[88,36]], [[88,13],[88,10]], [[10,29],[10,22]], [[69,34],[69,36]], [[23,40],[23,36]],
+                [[10,29],[27,29]]
+            ],
+            // A cooled lava channel rather than a river - reuses riverPath/
+            // riverThickness verbatim (same renderer, no new system needed),
+            // just recolored via the palette above.
+            riverPath: [[6, 6], [24, 18], [45, 10], [70, 20], [90, 10]],
+            riverThickness: 3,
+            fishingSpots: [],
+            npcSpots: [
+                { x: 14, y: 6, npcIndex: 0 },
+                { x: 80, y: 6, npcIndex: 1 }
+            ],
+            wanderers: [
+                { icon: '🧑‍🌾', x1: 12, y1: 30, x2: 84, y2: 30, speed: 0.09 },
+                { icon: '🧑‍🔧', x1: 48, y1: 12, x2: 48, y2: 55, speed: 0.11 }
             ]
         }
     };
@@ -8775,11 +8830,15 @@
                     if (Math.max(Math.abs(t.x - c.x), Math.abs(t.y - c.y)) < 3) { tooClose = true; break; }
                 }
                 if (tooClose) continue;
-                // Elite/rare status locked in at world-gen too, sparse enough
-                // that spotting a purple tag actually feels like a find.
+                // Elite/rare status locked in at world-gen too, sparse
+                // enough that spotting a purple tag actually feels like a
+                // find. Lowered from 0.06/0.28 - with respawns now also
+                // much slower for these (see FIELD_MONSTER_ELITE_RESPAWN_*),
+                // this is purely about how many exist per floor at all, not
+                // farmability.
                 const roll = rng();
-                const isRareSpawn = roll < 0.06;
-                const isEliteSpawn = !isRareSpawn && roll < 0.28;
+                const isRareSpawn = roll < 0.03;
+                const isEliteSpawn = !isRareSpawn && roll < 0.16;
                 let pool = quadrantData.monsters;
                 if (isRareSpawn || isEliteSpawn) {
                     const eliteCandidates = quadrantData.monsters.filter(m => m.isElite);
@@ -8790,16 +8849,20 @@
                 }
                 // Avoid repeating either of the last 2 spawns' species, so a
                 // stretch of corridor doesn't read as "spider, spider, spider".
+                // Picks are level-biased toward the low end of this
+                // quadrant's range (see pickLevelBiasedTemplate) - shallower
+                // floors bias harder toward low-level spawns, deeper floors
+                // flatten out toward the quadrant's full spread.
                 let template = null;
                 for (let tries = 0; tries < 5; tries++) {
-                    const candidate = pool[Math.floor(rng() * pool.length)];
+                    const candidate = pickLevelBiasedTemplate(pool, rng, floorIndex - 1);
                     const recentNames = monsterSpawns.slice(-2).map(s => s.speciesName);
                     if (!recentNames.includes(candidate.name) || pool.length <= recentNames.length) {
                         template = candidate;
                         break;
                     }
                 }
-                if (!template) template = pool[Math.floor(rng() * pool.length)];
+                if (!template) template = pickLevelBiasedTemplate(pool, rng, floorIndex - 1);
                 monsterSpawns.push({
                     id: 'spawn_' + monsterSpawns.length,
                     x: t.x, y: t.y,
@@ -8970,8 +9033,20 @@
     const FIELD_MONSTER_PATROL_SPEED = 0.35; // slower, aimless wander speed
     const FIELD_MONSTER_LEASH_RADIUS = 6;    // patrol wander never strays further than this from spawn (was 4 - a bit more roaming range so standing in a general area is more likely to actually cross paths with one)
     const FIELD_MONSTER_ALERT_FLASH_MS = 2000; // the "!" flash when yellow->red triggers
-    const FIELD_MONSTER_RESPAWN_MIN_MS = 5000;
-    const FIELD_MONSTER_RESPAWN_MAX_MS = 10000;
+    const FIELD_MONSTER_RESPAWN_MIN_MS = 20000;
+    const FIELD_MONSTER_RESPAWN_MAX_MS = 35000;
+    // Elite/rare field spawns keep their tag PERMANENTLY at that spawn
+    // point (species/tier are locked in at floor-gen, see monsterSpawns) -
+    // combined with the original 5-10s respawn, that made a found elite/
+    // rare spot a fixed, walk-back-to-able farming location paying out
+    // 3.5x-4.5x normal gold every few seconds, which the game's economy
+    // (shop prices up to 12,000g) was never tuned around - the old random-
+    // encounter system had no "go back to the same spot" mechanic at all.
+    // A much longer, separate respawn for anything tagged elite/rare closes
+    // that off while leaving regular trash mobs (worth far less anyway)
+    // roughly as immediate as before.
+    const FIELD_MONSTER_ELITE_RESPAWN_MIN_MS = 90000;
+    const FIELD_MONSTER_ELITE_RESPAWN_MAX_MS = 180000;
 
     /** Builds floor.liveMonsters from floor.monsterSpawns, if not already
      *  built. Safe to call repeatedly (e.g. every time a floor becomes
@@ -9068,6 +9143,28 @@
      *  the current one since it's cheap and avoids ever failing to find a
      *  species that got locked in at floor-gen time under a different
      *  quadrant read. */
+    /** Picks from a monster pool with a bias toward LOWER-level entries -
+     *  sorts ascending by level, then raises the random roll to a power
+     *  before indexing so low levels come up far more often than high ones
+     *  (roll^exponent skews toward 0, i.e. toward the front of the sorted
+     *  list). This is the actual fix for quadrants now spanning a much
+     *  wider level range (e.g. Cornelia 1-13 instead of 1-4) than before -
+     *  without it, a level-1 party's very first dungeon floor could roll a
+     *  spawn point tagged at level 13 just as easily as level 1, since
+     *  spawn generation has no live party level to reference (it happens
+     *  once, seeded, before the player ever arrives - see
+     *  generateDungeonFloor()/generateWorldMonsterSpawns()). `depthBias`
+     *  (0 = strongest low-level bias, higher = flatter toward uniform) lets
+     *  dungeon floor depth nudge deeper floors toward tougher spawns. */
+    function pickLevelBiasedTemplate(pool, rng, depthBias = 0) {
+        if (!pool || pool.length === 0) return null;
+        const sorted = [...pool].sort((a, b) => (a.level || 0) - (b.level || 0));
+        const roll = typeof rng === 'function' ? rng() : Math.random();
+        const exponent = Math.max(1, 2.2 - depthBias * 0.3);
+        const idx = Math.min(sorted.length - 1, Math.floor(Math.pow(roll, exponent) * sorted.length));
+        return sorted[idx];
+    }
+
     function findMonsterTemplateByName(name) {
         for (const key in QUADRANTS) {
             const found = QUADRANTS[key].monsters.find(m => m.name === name);
@@ -9205,12 +9302,32 @@
     }
 
     /** Marks a field monster cleared (won or fled from) and starts its
-     *  5-10s respawn timer, per Ray's spec. */
+     *  respawn timer - much longer for anything elite/rare than a regular
+     *  mob (see the constants above) since that's the actual lever that
+     *  turns a found elite/rare spot into a farm rather than a nice find. */
+    /** A chasing (red-state) monster adjacent to (x,y), or null. Separate
+     *  from exact-tile contact (getFieldMonsterAt) because monsters move at
+     *  a FRACTION of the player's speed via a rounding "budget" (see
+     *  FIELD_MONSTER_CHASE_SPEED) - if the player keeps moving every tick,
+     *  a chaser can trail exactly one tile behind indefinitely without ever
+     *  mathematically landing exactly on the player's tile. That reads as
+     *  "it caught up to me and then just... didn't do anything" - a real
+     *  bug, not a timing fluke, since a fast-enough player could in
+     *  principle outrun a chase forever this way. Being merely adjacent
+     *  while actively chasing (not just patrolling) is treated as a catch. */
+    function getAdjacentChasingMonster(entity, x, y) {
+        if (!entity || !entity.liveMonsters) return null;
+        return entity.liveMonsters.find(m => m.alive && m.state === 'red' &&
+            Math.max(Math.abs(m.x - x), Math.abs(m.y - y)) <= 1) || null;
+    }
+
     function clearFieldMonster(monster) {
         if (!monster) return;
         monster.alive = false;
-        monster.respawnAt = Date.now() + FIELD_MONSTER_RESPAWN_MIN_MS +
-            Math.random() * (FIELD_MONSTER_RESPAWN_MAX_MS - FIELD_MONSTER_RESPAWN_MIN_MS);
+        const isBigSpawn = monster.isElite || monster.isRare;
+        const minMs = isBigSpawn ? FIELD_MONSTER_ELITE_RESPAWN_MIN_MS : FIELD_MONSTER_RESPAWN_MIN_MS;
+        const maxMs = isBigSpawn ? FIELD_MONSTER_ELITE_RESPAWN_MAX_MS : FIELD_MONSTER_RESPAWN_MAX_MS;
+        monster.respawnAt = Date.now() + minMs + Math.random() * (maxMs - minMs);
     }
 
     /** Who gets the jump on a field contact. `moverFacing`/`moverDx,moverDy`
@@ -10536,6 +10653,43 @@
     //                           MONSTER CLASS
     // =====================================================================
 
+    // =====================================================================
+    //           LEVEL-DRIVEN MONSTER SCALING (1-55 curve)
+    // =====================================================================
+    // Quadrants were originally capped at level 20 total with hand-typed
+    // stats per monster - stretching the curve to 1-52 (+3 wiggle room to
+    // 55) the same way would mean manually retuning ~50 monster templates'
+    // hp/attack/defense/exp/gold by hand, with no guarantee they'd stay in
+    // proportion to each other or to hero growth. Instead, combat stats and
+    // rewards are computed from a monster's `level` field via these
+    // formulas - each template only needs an authored level (rescaled to
+    // its quadrant's new range) plus flavor (family, sprite, elemental
+    // resist/weakness, drops), and the numbers stay internally consistent
+    // across the whole curve automatically.
+    //
+    // HP/attack/defense are LINEAR in level because hero stat growth is
+    // linear (see ARCHETYPE base stats / Hero.levelUp()) - a power curve
+    // here would drift out of proportion to what heroes actually gain.
+    // Verified this holds a stable ~5-6 hits to kill a same-level monster
+    // and ~8-11 hits for a monster to kill a hero, from level 1 through 52.
+    //
+    // EXP/gold ARE power-law (exponents 1.5 and 1.15) because they're
+    // calibrated against calculateExpToNext()'s own 50*level^1.5 curve
+    // instead of hero combat stats - 1.5 keeps "fights needed per level"
+    // constant across the whole curve; gold's damped 1.15 means grinding a
+    // zone well below your level gets less gold-efficient per hour as you
+    // outlevel it, keeping shop prices meaningful instead of trivialized by
+    // farming old content.
+    //
+    // All 4 anchored to the existing level-1 Goblin (hp30/atk8/def3/exp15/
+    // gold10) so early-game feel is unchanged; only the extrapolation
+    // beyond level ~8 is new.
+    function monsterHpForLevel(level) { return Math.round(30 + (level - 1) * 14); }
+    function monsterAttackForLevel(level) { return Math.round(8 + (level - 1) * 3); }
+    function monsterDefenseForLevel(level) { return Math.round(3 + (level - 1) * 1.4); }
+    function monsterExpForLevel(level) { return Math.round(15 * Math.pow(level, 1.5)); }
+    function monsterGoldForLevel(level) { return Math.round(10 * Math.pow(level, 1.15)); }
+
     class Monster {
         constructor(template, isBoss = false) {
             this.name = template.name;
@@ -10549,13 +10703,24 @@
             this.speciesName = template.name;
             this.sprite = template.sprite;
             this.level = template.level;
-            this.maxHp = template.hp * (isBoss ? 3 : 1);
+            // Combat stats/rewards are level-formula-driven now (see above)
+            // rather than read straight off the template - a template
+            // authored as isElite gets a flat +50% on top (matching the
+            // separate "randomly promote a regular pull into Elite X" boost
+            // used elsewhere for consistency), so a hand-authored "Elite
+            // Goblin" still reads as meaningfully tougher than a same-level
+            // regular Goblin even though both derive from the same curve.
+            const templateEliteMult = template.isElite ? 1.5 : 1;
+            const bossHpMult = isBoss ? 3 : 1;
+            const bossAtkMult = isBoss ? 1.5 : 1;
+            const bossRewardMult = isBoss ? 5 : 1;
+            this.maxHp = Math.round(monsterHpForLevel(this.level) * templateEliteMult * bossHpMult);
             this.currentHp = this.maxHp;
-            this.attack = template.attack * (isBoss ? 1.5 : 1);
-            this.defense = template.defense;
+            this.attack = Math.round(monsterAttackForLevel(this.level) * templateEliteMult * bossAtkMult);
+            this.defense = Math.round(monsterDefenseForLevel(this.level) * templateEliteMult);
             this.speed = template.speed;
-            this.expReward = template.exp * (isBoss ? 5 : 1);
-            this.goldReward = template.gold * (isBoss ? 5 : 1);
+            this.expReward = Math.round(monsterExpForLevel(this.level) * templateEliteMult * bossRewardMult);
+            this.goldReward = Math.round(monsterGoldForLevel(this.level) * templateEliteMult * bossRewardMult);
             this.isBoss = isBoss;
             this.elementalResist = template.elementalResist || {};
             this.elementalWeakness = template.elementalWeakness || {};
@@ -10628,14 +10793,14 @@
         CORNELIA: {
             name: 'Brighthollow Region',
             minLevel: 1,
-            maxLevel: 4,
+            maxLevel: 13,
             monsters: [
                 { name: 'Goblin', sprite: '👺', level: 1, hp: 30, attack: 8, defense: 3, speed: 5, exp: 15, gold: 10,
                     family: 'goblin',
                     elementalWeakness: { fire: 1.5, lightning: 1.3 }, desc: 'Weak to fire and lightning',
                     drops: { material: 'Goblin Ear', chance: 0.7, quantity: 1 },
                     fragment: { color: 'Emerald', chance: 0.25 } },
-                { name: 'Wolf', sprite: '🐺', level: 2, hp: 45, attack: 12, defense: 4, speed: 8, exp: 25, gold: 15,
+                { name: 'Wolf', sprite: '🐺', level: 5, hp: 45, attack: 12, defense: 4, speed: 8, exp: 25, gold: 15,
                     family: 'beast',
                     elementalWeakness: { ice: 1.5 }, elementalResist: { lightning: 0.8 }, desc: 'Weak to ice, resists lightning',
                     drops: { material: 'Wolf Fang', chance: 0.7, quantity: 1 },
@@ -10645,38 +10810,38 @@
                     elementalWeakness: { fire: 1.3, lightning: 1.3 }, desc: 'Weak to fire and lightning',
                     drops: { material: 'Rat Tail', chance: 0.6, quantity: 1 },
                     fragment: { color: 'Emerald', chance: 0.25 } },
-                { name: 'Bandit', sprite: '🗡️', level: 2, hp: 40, attack: 10, defense: 5, speed: 5, exp: 20, gold: 25,
+                { name: 'Bandit', sprite: '🗡️', level: 5, hp: 40, attack: 10, defense: 5, speed: 5, exp: 20, gold: 25,
                     family: 'raider',
                     desc: 'No elemental affinities',
                     drops: { material: 'Stolen Goods', chance: 0.5, quantity: 1 },
                     fragment: { color: 'Topaz', chance: 0.25 } },
-                { name: 'Wild Boar', sprite: '🐗', level: 3, hp: 60, attack: 14, defense: 6, speed: 4, exp: 35, gold: 20,
+                { name: 'Wild Boar', sprite: '🐗', level: 9, hp: 60, attack: 14, defense: 6, speed: 4, exp: 35, gold: 20,
                     family: 'beast',
                     elementalResist: { lightning: 0.7 }, desc: 'Tough hide resists lightning',
                     drops: { material: 'Boar Hide', chance: 0.7, quantity: 1 },
                     fragment: { color: 'Emerald', chance: 0.25 } },
-                { name: 'Goblin Scout', sprite: '🏹', level: 2, hp: 35, attack: 9, defense: 3, speed: 7, exp: 20, gold: 15,
+                { name: 'Goblin Scout', sprite: '🏹', level: 5, hp: 35, attack: 9, defense: 3, speed: 7, exp: 20, gold: 15,
                     family: 'goblin',
                     elementalWeakness: { fire: 1.3, lightning: 1.3 }, desc: 'Fast and sneaky, weak to fire and lightning',
                     drops: { material: 'Goblin Ear', chance: 0.7, quantity: 1 },
                     fragment: { color: 'Emerald', chance: 0.25 } },
-                { name: 'Forest Spider', sprite: '🕷️', level: 3, hp: 40, attack: 11, defense: 4, speed: 6, exp: 30, gold: 18,
+                { name: 'Forest Spider', sprite: '🕷️', level: 9, hp: 40, attack: 11, defense: 4, speed: 6, exp: 30, gold: 18,
                     family: 'venomous',
                     elementalWeakness: { fire: 1.4 }, desc: 'Venomous bite', poisonChance: 0.35, poisonDamage: 4, poisonDuration: 4,
                     drops: { material: 'Spider Silk', chance: 0.7, quantity: 1 },
                     fragment: { color: 'Amethyst', chance: 0.25 } },
-                { name: 'Goblin Warrior', sprite: '⚔️', level: 4, hp: 55, attack: 15, defense: 7, speed: 4, exp: 45, gold: 30,
+                { name: 'Goblin Warrior', sprite: '⚔️', level: 13, hp: 55, attack: 15, defense: 7, speed: 4, exp: 45, gold: 30,
                     family: 'goblin',
                     elementalWeakness: { fire: 1.5, lightning: 1.2 }, desc: 'Stronger goblin, weak to fire, slightly weak to lightning',
                     drops: { material: 'Goblin Ear', chance: 0.8, quantity: 1 },
                     fragment: { color: 'Emerald', chance: 0.25 } },
-                { name: 'Elite Goblin', sprite: '👹', level: 5, hp: 120, attack: 25, defense: 10, speed: 6, exp: 120, gold: 100, isElite: true,
+                { name: 'Elite Goblin', sprite: '👹', level: 13, hp: 120, attack: 25, defense: 10, speed: 6, exp: 120, gold: 100, isElite: true,
                     family: 'goblin',
                     elementalWeakness: { fire: 1.5, lightning: 1.3 }, desc: 'Tough goblin chieftain, weak to fire and lightning',
                     drops: { material: 'Goblin Ear', chance: 0.8, quantity: 2 },
                     fragment: { color: 'Emerald', chance: 0.25 },
                     weaponDrop: { chance: 0.10, item: { name: 'Goblin Cleaver', type: 'weapon', attack: 12, warriorOnly: true, price: 350, bonusVsFamily: { goblin: 0.15 }, desc: 'Heavy axe stripped from a fallen goblin chieftain. 15% more damage to goblins.' } } },
-                { name: 'Shadow Stalker', sprite: '👤', level: 6, hp: 120, attack: 25, defense: 10, speed: 10, exp: 120, gold: 100, isElite: true,
+                { name: 'Shadow Stalker', sprite: '👤', level: 13, hp: 120, attack: 25, defense: 10, speed: 10, exp: 120, gold: 100, isElite: true,
                     family: 'shade',
                     elementalWeakness: { fire: 1.5 }, elementalResist: { lightning: 1.3 }, desc: 'Moves between shadows, resists lightning',
                     drops: { material: 'Shadow Essence', chance: 0.7, quantity: 1 },
@@ -10686,41 +10851,41 @@
         },
         PRAVOCA: {
             name: 'Duskmere Region',
-            minLevel: 4,
-            maxLevel: 8,
+            minLevel: 13,
+            maxLevel: 26,
             monsters: [
-                { name: 'Skeleton', sprite: '💀', level: 4, hp: 60, attack: 15, defense: 8, speed: 4, exp: 40, gold: 25,
+                { name: 'Skeleton', sprite: '💀', level: 13, hp: 60, attack: 15, defense: 8, speed: 4, exp: 40, gold: 25,
                     family: 'undead',
                     elementalResist: { ice: 0.5, lightning: 0.7 }, elementalWeakness: { fire: 1.5 }, desc: 'Resists ice and lightning, weak to fire',
                     drops: { material: 'Bone Fragment', chance: 0.8, quantity: 1 },
                     fragment: { color: 'Amethyst', chance: 0.25 } },
-                { name: 'Orc', sprite: '👹', level: 5, hp: 80, attack: 18, defense: 10, speed: 5, exp: 60, gold: 40,
+                { name: 'Orc', sprite: '👹', level: 16, hp: 80, attack: 18, defense: 10, speed: 5, exp: 60, gold: 40,
                     family: 'orc',
                     elementalResist: { lightning: 0.8 }, desc: 'No elemental affinities, slightly resists lightning',
                     drops: { material: 'Orc Hide', chance: 0.7, quantity: 1 },
                     fragment: { color: 'Topaz', chance: 0.25 } },
-                { name: 'Wraith', sprite: '👻', level: 6, hp: 70, attack: 20, defense: 6, speed: 10, exp: 80, gold: 50,
+                { name: 'Wraith', sprite: '👻', level: 20, hp: 70, attack: 20, defense: 6, speed: 10, exp: 80, gold: 50,
                     family: 'shade',
                     elementalResist: { ice: 0.5, fire: 0.5, lightning: 0.5 }, desc: 'Resists all elements',
                     drops: { material: 'Soul Essence', chance: 0.6, quantity: 1 },
                     fragment: { color: 'Amethyst', chance: 0.25 } },
-                { name: 'Swamp Thing', sprite: '🌿', level: 5, hp: 90, attack: 16, defense: 9, speed: 3, exp: 65, gold: 45,
+                { name: 'Swamp Thing', sprite: '🌿', level: 16, hp: 90, attack: 16, defense: 9, speed: 3, exp: 65, gold: 45,
                     family: 'plant',
                     elementalWeakness: { fire: 1.4, lightning: 1.2 }, desc: 'Weak to fire and lightning',
                     drops: { material: 'Swamp Moss', chance: 0.7, quantity: 1 },
                     fragment: { color: 'Emerald', chance: 0.25 } },
-                { name: 'Zombie', sprite: '🧟', level: 4, hp: 70, attack: 12, defense: 5, speed: 2, exp: 45, gold: 30,
+                { name: 'Zombie', sprite: '🧟', level: 13, hp: 70, attack: 12, defense: 5, speed: 2, exp: 45, gold: 30,
                     family: 'undead',
                     elementalWeakness: { fire: 1.3 }, elementalResist: { lightning: 0.8 }, desc: 'Slow but tough, resists lightning',
                     poisonChance: 0.25, poisonDamage: 5, poisonDuration: 4,
                     drops: { material: 'Rotten Flesh', chance: 0.7, quantity: 1 },
                     fragment: { color: 'Amethyst', chance: 0.25 } },
-                { name: 'Ghoul', sprite: '👤', level: 5, hp: 65, attack: 17, defense: 7, speed: 6, exp: 55, gold: 38,
+                { name: 'Ghoul', sprite: '👤', level: 16, hp: 65, attack: 17, defense: 7, speed: 6, exp: 55, gold: 38,
                     family: 'undead',
                     elementalWeakness: { fire: 1.4 }, desc: 'Undead scavenger, weak to fire', poisonChance: 0.35, poisonDamage: 6, poisonDuration: 4,
                     drops: { material: 'Ghoul Claw', chance: 0.7, quantity: 1 },
                     fragment: { color: 'Amethyst', chance: 0.25 } },
-                { name: 'Orc Shaman', sprite: '🔮', level: 6, hp: 75, attack: 14, defense: 8, speed: 5, exp: 75, gold: 55,
+                { name: 'Orc Shaman', sprite: '🔮', level: 20, hp: 75, attack: 14, defense: 8, speed: 5, exp: 75, gold: 55,
                     family: 'orc',
                     spell: 'Shadow Bolt', elementalResist: { lightning: 0.6 }, desc: 'Uses dark magic, resists lightning',
                     // The `spell` field above sat unread for a long time (same
@@ -10731,18 +10896,18 @@
                     abilityChance: 0.25, abilityType: 'spell_damage', abilityPower: 22, abilityName: 'Shadow Bolt',
                     drops: { material: 'Orc Hide', chance: 0.7, quantity: 1 },
                     fragment: { color: 'Topaz', chance: 0.25 } },
-                { name: 'Dark Knight', sprite: '⚔️', level: 7, hp: 120, attack: 25, defense: 15, speed: 6, exp: 120, gold: 80,
+                { name: 'Dark Knight', sprite: '⚔️', level: 23, hp: 120, attack: 25, defense: 15, speed: 6, exp: 120, gold: 80,
                     family: 'knight',
                     elementalResist: { lightning: 0.7 }, desc: 'Fallen warrior, resists lightning',
                     drops: { material: 'Dark Steel', chance: 0.6, quantity: 1 },
                     fragment: { color: 'Topaz', chance: 0.25 } },
-                { name: 'Elite Orc', sprite: '👺', level: 8, hp: 200, attack: 32, defense: 18, speed: 6, exp: 200, gold: 180, isElite: true,
+                { name: 'Elite Orc', sprite: '👺', level: 26, hp: 200, attack: 32, defense: 18, speed: 6, exp: 200, gold: 180, isElite: true,
                     family: 'orc',
                     elementalResist: { lightning: 0.6 }, desc: 'Orc war chief, resists lightning',
                     drops: { material: 'Orc Hide', chance: 0.8, quantity: 2 },
                     fragment: { color: 'Topaz', chance: 0.25 },
                     weaponDrop: { chance: 0.09, item: { name: 'Orcsplitter', type: 'weapon', attack: 20, defense: 2, warriorOnly: true, price: 680, bonusVsFamily: { orc: 0.18 }, desc: 'A brutal cleaver stripped from a fallen orc chieftain. 18% more damage to orcs.' } } },
-                { name: 'Dread Wraith', sprite: '👻', level: 8, hp: 180, attack: 30, defense: 12, speed: 12, exp: 220, gold: 200, isElite: true,
+                { name: 'Dread Wraith', sprite: '👻', level: 26, hp: 180, attack: 30, defense: 12, speed: 12, exp: 220, gold: 200, isElite: true,
                     family: 'shade',
                     elementalResist: { ice: 0.3, fire: 0.3, lightning: 0.3 }, desc: 'Powerful spirit, resists all elements',
                     drops: { material: 'Soul Essence', chance: 0.7, quantity: 2 },
@@ -10752,26 +10917,26 @@
         },
         ELFHEIM: {
             name: 'Sylvaris Region',
-            minLevel: 7,
-            maxLevel: 12,
+            minLevel: 26,
+            maxLevel: 39,
             monsters: [
-                { name: 'Sand Worm', sprite: '🪱', level: 7, hp: 100, attack: 20, defense: 12, speed: 4, exp: 90, gold: 70,
+                { name: 'Sand Worm', sprite: '🪱', level: 26, hp: 100, attack: 20, defense: 12, speed: 4, exp: 90, gold: 70,
                     family: 'beast',
                     elementalWeakness: { ice: 1.4, lightning: 1.2 }, desc: 'Burrows in sand, weak to ice and lightning',
                     drops: { material: 'Sand Worm Tooth', chance: 0.7, quantity: 1 },
                     fragment: { color: 'Ruby', chance: 0.25 } },
-                { name: 'Mummy', sprite: '🧻', level: 8, hp: 130, attack: 22, defense: 14, speed: 3, exp: 110, gold: 85,
+                { name: 'Mummy', sprite: '🧻', level: 29, hp: 130, attack: 22, defense: 14, speed: 3, exp: 110, gold: 85,
                     family: 'undead',
                     elementalWeakness: { fire: 1.3 }, elementalResist: { lightning: 0.7 }, desc: 'Ancient cursed, resists lightning',
                     drops: { material: 'Mummy Wrapping', chance: 0.7, quantity: 1 },
                     fragment: { color: 'Amethyst', chance: 0.25 } },
-                { name: 'Desert Scorpion', sprite: '🦂', level: 8, hp: 110, attack: 24, defense: 12, speed: 7, exp: 120, gold: 90,
+                { name: 'Desert Scorpion', sprite: '🦂', level: 29, hp: 110, attack: 24, defense: 12, speed: 7, exp: 120, gold: 90,
                     family: 'venomous',
                     elementalWeakness: { ice: 1.3 }, elementalResist: { lightning: 0.8 }, desc: 'Poisonous stinger, resists lightning',
                     poisonChance: 0.4, poisonDamage: 8, poisonDuration: 4,
                     drops: { material: 'Scorpion Stinger', chance: 0.7, quantity: 1 },
                     fragment: { color: 'Ruby', chance: 0.25 } },
-                { name: 'Djinn', sprite: '🌪️', level: 9, hp: 120, attack: 26, defense: 10, speed: 10, exp: 140, gold: 110,
+                { name: 'Djinn', sprite: '🌪️', level: 31, hp: 120, attack: 26, defense: 10, speed: 10, exp: 140, gold: 110,
                     family: 'elemental',
                     elementalResist: { fire: 0.7, lightning: 0.8 }, elementalWeakness: { ice: 1.4 }, desc: 'Fire spirit, resists fire and lightning',
                     // 20% chance to whip up a self-buffing sandstorm instead
@@ -10781,7 +10946,7 @@
                     abilityChance: 0.2, abilityType: 'buff_self', abilityStat: 'attack', abilityPower: 1.35, abilityName: 'Sandstorm Veil',
                     drops: { material: 'Djinn Essence', chance: 0.6, quantity: 1 },
                     fragment: { color: 'Topaz', chance: 0.25 } },
-                { name: 'Sand Golem', sprite: '🗿', level: 9, hp: 180, attack: 24, defense: 18, speed: 2, exp: 150, gold: 120,
+                { name: 'Sand Golem', sprite: '🗿', level: 31, hp: 180, attack: 24, defense: 18, speed: 2, exp: 150, gold: 120,
                     family: 'construct',
                     elementalResist: { fire: 0.8, ice: 0.8, lightning: 0.6 }, desc: 'Living statue, resists all elements',
                     // 18% chance to knit its own cracked stone back together
@@ -10790,27 +10955,27 @@
                     abilityChance: 0.18, abilityType: 'heal_self', abilityPower: 45, abilityName: 'Reform',
                     drops: { material: 'Golem Core', chance: 0.6, quantity: 1 },
                     fragment: { color: 'Emerald', chance: 0.25 } },
-                { name: 'Camel Rider', sprite: '🐫', level: 7, hp: 95, attack: 21, defense: 10, speed: 8, exp: 100, gold: 80,
+                { name: 'Camel Rider', sprite: '🐫', level: 26, hp: 95, attack: 21, defense: 10, speed: 8, exp: 100, gold: 80,
                     family: 'raider',
                     desc: 'Desert nomad, no elemental affinities',
                     drops: { material: 'Nomad Goods', chance: 0.5, quantity: 1 },
                     fragment: { color: 'Emerald', chance: 0.25 } },
-                { name: 'Sand Spirit', sprite: '💨', level: 8, hp: 85, attack: 23, defense: 8, speed: 12, exp: 115, gold: 95,
+                { name: 'Sand Spirit', sprite: '💨', level: 29, hp: 85, attack: 23, defense: 8, speed: 12, exp: 115, gold: 95,
                     family: 'elemental',
                     elementalWeakness: { ice: 1.3 }, elementalResist: { lightning: 0.7 }, desc: 'Whirlwind of sand, resists lightning',
                     drops: { material: 'Sand Essence', chance: 0.7, quantity: 1 },
                     fragment: { color: 'Sapphire', chance: 0.25 } },
-                { name: 'Ancient Mummy Lord', sprite: '👑', level: 15, hp: 1200, attack: 55, defense: 30, speed: 6, exp: 2500, gold: 2000, isElite: true, isBoss: true,
+                { name: 'Ancient Mummy Lord', sprite: '👑', level: 39, hp: 1200, attack: 55, defense: 30, speed: 6, exp: 2500, gold: 2000, isElite: true, isBoss: true,
                     family: 'undead',
                     elementalWeakness: { fire: 1.5 }, elementalResist: { ice: 0.5, lightning: 0.7 }, desc: 'Pharaoh\'s guardian, weak to fire',
                     drops: { material: 'Pharaoh\'s Staff', chance: 1.0, quantity: 1, type: 'treasure' },
                     fragment: { color: 'Amethyst', chance: 0.25 } },
-                { name: 'Lesser Fire Elemental', sprite: '🔥', level: 10, hp: 130, attack: 25, defense: 10, speed: 7, exp: 180, gold: 150,
+                { name: 'Lesser Fire Elemental', sprite: '🔥', level: 34, hp: 130, attack: 25, defense: 10, speed: 7, exp: 180, gold: 150,
                     family: 'elemental',
                     elementalResist: { fire: 0.3, lightning: 0.8 }, elementalWeakness: { ice: 1.5 }, desc: 'Living flame, weak to ice',
                     drops: { material: 'Fire Core', chance: 0.6, quantity: 1 },
                     fragment: { color: 'Ruby', chance: 0.25 } },
-                { name: 'Fire Elemental', sprite: '🔥', level: 12, hp: 190, attack: 32, defense: 14, speed: 8, exp: 250, gold: 220, isElite: true,
+                { name: 'Fire Elemental', sprite: '🔥', level: 39, hp: 190, attack: 32, defense: 14, speed: 8, exp: 250, gold: 220, isElite: true,
                     family: 'elemental',
                     elementalResist: { fire: 0.2, lightning: 0.7 }, elementalWeakness: { ice: 1.8 }, desc: 'Living flame, resists lightning slightly',
                     drops: { material: 'Fire Core', chance: 0.7, quantity: 1 },
@@ -10820,52 +10985,52 @@
         },
         CHAOS: {
             name: 'Ashen Wastes',
-            minLevel: 12,
-            maxLevel: 20,
+            minLevel: 39,
+            maxLevel: 52,
             monsters: [
-                { name: 'Demon', sprite: '👿', level: 12, hp: 180, attack: 40, defense: 18, speed: 9, exp: 350, gold: 250,
+                { name: 'Demon', sprite: '👿', level: 39, hp: 180, attack: 40, defense: 18, speed: 9, exp: 350, gold: 250,
                     family: 'demon',
                     elementalWeakness: { ice: 1.5 }, elementalResist: { fire: 0.7, lightning: 0.7 }, desc: 'Weak to ice, resists fire and lightning',
                     drops: { material: 'Demon Horn', chance: 0.7, quantity: 1 },
                     fragment: { color: 'Amethyst', chance: 0.25 } },
-                { name: 'Dragon', sprite: '🐉', level: 15, hp: 500, attack: 50, defense: 25, speed: 5, exp: 1000, gold: 1000,
+                { name: 'Dragon', sprite: '🐉', level: 44, hp: 500, attack: 50, defense: 25, speed: 5, exp: 1000, gold: 1000,
                     family: 'dragon',
                     elementalResist: { fire: 0.5, ice: 0.5, lightning: 0.5 }, desc: 'Resists all elements equally',
                     drops: { material: 'Dragon Scale', chance: 0.8, quantity: 2 },
                     fragment: { color: 'Ruby', chance: 0.25 } },
-                { name: 'Lava Beast', sprite: '🌋', level: 13, hp: 220, attack: 38, defense: 20, speed: 4, exp: 400, gold: 300,
+                { name: 'Lava Beast', sprite: '🌋', level: 41, hp: 220, attack: 38, defense: 20, speed: 4, exp: 400, gold: 300,
                     family: 'elemental',
                     elementalResist: { fire: 0.3, lightning: 0.6 }, elementalWeakness: { ice: 1.7 }, desc: 'Born of magma, resists lightning',
                     drops: { material: 'Lava Core', chance: 0.7, quantity: 1 },
                     fragment: { color: 'Ruby', chance: 0.25 } },
-                { name: 'Flame Knight', sprite: '🔥', level: 14, hp: 240, attack: 42, defense: 22, speed: 6, exp: 450, gold: 350,
+                { name: 'Flame Knight', sprite: '🔥', level: 42, hp: 240, attack: 42, defense: 22, speed: 6, exp: 450, gold: 350,
                     family: 'knight',
                     elementalResist: { fire: 0.5, lightning: 0.7 }, elementalWeakness: { ice: 1.5 }, desc: 'Burning warrior, resists lightning',
                     drops: { material: 'Flame Steel', chance: 0.7, quantity: 1 },
                     fragment: { color: 'Ruby', chance: 0.25 } },
-                { name: 'Ice Demon', sprite: '❄️', level: 14, hp: 230, attack: 40, defense: 20, speed: 7, exp: 450, gold: 350,
+                { name: 'Ice Demon', sprite: '❄️', level: 42, hp: 230, attack: 40, defense: 20, speed: 7, exp: 450, gold: 350,
                     family: 'demon',
                     elementalResist: { ice: 0.5, lightning: 0.7 }, elementalWeakness: { fire: 1.5 }, desc: 'Frozen fiend, resists lightning',
                     drops: { material: 'Ice Crystal', chance: 0.7, quantity: 1 },
                     fragment: { color: 'Sapphire', chance: 0.25 } },
-                { name: 'Ember Knight', sprite: '⚔️', level: 16, hp: 280, attack: 48, defense: 24, speed: 8, exp: 600, gold: 500,
+                { name: 'Ember Knight', sprite: '⚔️', level: 46, hp: 280, attack: 48, defense: 24, speed: 8, exp: 600, gold: 500,
                     family: 'knight',
                     elementalResist: { fire: 0.6, ice: 0.6, lightning: 0.4 }, desc: 'Servant of Voraxis, very resistant to lightning',
                     drops: { material: 'Ashen Shard', chance: 0.6, quantity: 1 },
                     fragment: { color: 'Ruby', chance: 0.25 } },
-                { name: 'Abyssal Demon', sprite: '🌑', level: 17, hp: 320, attack: 52, defense: 26, speed: 7, exp: 700, gold: 600,
+                { name: 'Abyssal Demon', sprite: '🌑', level: 47, hp: 320, attack: 52, defense: 26, speed: 7, exp: 700, gold: 600,
                     family: 'demon',
                     elementalResist: { fire: 0.6, ice: 0.6, lightning: 0.6 }, desc: 'From the void, resists all elements',
                     poisonChance: 0.15, poisonDamage: 15, poisonDuration: 4,
                     drops: { material: 'Abyss Essence', chance: 0.7, quantity: 1 },
                     fragment: { color: 'Amethyst', chance: 0.25 } },
-                { name: 'Ancient Dragon', sprite: '🐲', level: 18, hp: 1000, attack: 70, defense: 35, speed: 6, exp: 1800, gold: 1800, isElite: true,
+                { name: 'Ancient Dragon', sprite: '🐲', level: 49, hp: 1000, attack: 70, defense: 35, speed: 6, exp: 1800, gold: 1800, isElite: true,
                     family: 'dragon',
                     elementalResist: { fire: 0.3, ice: 0.3, lightning: 0.5 }, desc: 'Elder dragon, slightly resistant to lightning',
                     drops: { material: 'Dragon Scale', chance: 1.0, quantity: 3 },
                     fragment: { color: 'Ruby', chance: 0.25 },
                     weaponDrop: { chance: 0.07, item: { name: 'Dragonscale Hewer', type: 'weapon', attack: 30, defense: 4, warriorOnly: true, price: 1400, bonusVsFamily: { dragon: 0.18 }, desc: 'Fashioned from a single shed scale, still warm. 18% more damage to dragons.' } } },
-                { name: 'Voraxis', sprite: '🔱', level: 20, hp: 2000, attack: 80, defense: 40, speed: 12, exp: 5000, gold: 5000, isElite: true,
+                { name: 'Voraxis', sprite: '🔱', level: 52, hp: 2000, attack: 80, defense: 40, speed: 12, exp: 5000, gold: 5000, isElite: true,
                     family: 'demon',
                     elementalResist: { fire: 0.5, ice: 0.5, lightning: 0.3 }, desc: 'The final boss, very resistant to lightning',
                     drops: { material: 'Ashen Core', chance: 1.0, quantity: 3 },
@@ -10880,25 +11045,25 @@
 
     const CASTLE_BOSSES = {
         'Goblin Keep': {
-            name: 'Goblin King', sprite: '👑', level: 8, hp: 500, attack: 35, defense: 20, speed: 8,
+            name: 'Goblin King', sprite: '👑', level: 13, hp: 500, attack: 35, defense: 20, speed: 8,
             exp: 800, gold: 600, isBoss: true, family: 'goblin',
             elementalWeakness: { fire: 1.5, lightning: 1.3 }, desc: 'Ruler of the goblins, weak to fire and lightning',
             drops: { material: 'Goblin Crown', chance: 1.0, quantity: 1, type: 'treasure', value: 500 }
         },
         'Dark Fortress': {
-            name: 'Dread Knight', sprite: '⚔️', level: 12, hp: 800, attack: 45, defense: 28, speed: 8,
+            name: 'Dread Knight', sprite: '⚔️', level: 26, hp: 800, attack: 45, defense: 28, speed: 8,
             exp: 1500, gold: 1200, isBoss: true, family: 'knight',
             elementalResist: { ice: 0.5, lightning: 0.6 }, elementalWeakness: { fire: 1.3 }, desc: 'Dark champion, resists ice and lightning',
             drops: { material: 'Darksteel Plate', chance: 1.0, quantity: 1, type: 'treasure', value: 800 }
         },
         'Sunken Temple': {
-            name: 'Ancient Mummy Lord', sprite: '👑', level: 15, hp: 1200, attack: 55, defense: 30, speed: 6,
+            name: 'Ancient Mummy Lord', sprite: '👑', level: 39, hp: 1200, attack: 55, defense: 30, speed: 6,
             exp: 2500, gold: 2000, isBoss: true, family: 'undead',
             elementalWeakness: { fire: 1.5 }, elementalResist: { ice: 0.5, lightning: 0.7 }, desc: 'Ancient pharaoh, weak to fire, resists ice',
             drops: { material: 'Pharaoh\'s Staff', chance: 1.0, quantity: 1, type: 'treasure', value: 1200 }
         },
         'Ashveil Spire': {
-            name: 'Voraxis', sprite: '🔱', level: 20, hp: 2000, attack: 80, defense: 40, speed: 12,
+            name: 'Voraxis', sprite: '🔱', level: 52, hp: 2000, attack: 80, defense: 40, speed: 12,
             exp: 5000, gold: 5000, isBoss: true, family: 'demon',
             elementalResist: { fire: 0.5, ice: 0.5, lightning: 0.3 }, desc: 'The final boss, very resistant to lightning',
             drops: { material: 'Ashen Core', chance: 1.0, quantity: 3, type: 'treasure', value: 2000 }
@@ -11412,8 +11577,11 @@
                 const quadrant = getWorldQuadrantForPos(x, y);
                 const quadrantData = QUADRANTS[quadrant] || QUADRANTS.CORNELIA;
                 const roll = rng();
-                const isRareSpawn = roll < 0.04;
-                const isEliteSpawn = !isRareSpawn && roll < 0.22;
+                // Lowered from 0.04/0.22 - same reasoning as the dungeon
+                // version above (see FIELD_MONSTER_ELITE_RESPAWN_* for the
+                // farmability side of this fix).
+                const isRareSpawn = roll < 0.02;
+                const isEliteSpawn = !isRareSpawn && roll < 0.14;
                 let pool = quadrantData.monsters;
                 if (isRareSpawn || isEliteSpawn) {
                     const eliteCandidates = quadrantData.monsters.filter(m => m.isElite);
@@ -11422,16 +11590,22 @@
                     const regular = quadrantData.monsters.filter(m => !m.isElite);
                     if (regular.length > 0) pool = regular;
                 }
+                // Level-biased pick (see pickLevelBiasedTemplate) for the
+                // same reason as the dungeon version - keeps most world
+                // spawns skewed toward the low end of a quadrant's now much
+                // wider range instead of being equally likely to roll a
+                // max-for-the-region species right next to where a fresh
+                // party wanders in.
                 let template = null;
                 for (let tries = 0; tries < 5; tries++) {
-                    const candidate = pool[Math.floor(rng() * pool.length)];
+                    const candidate = pickLevelBiasedTemplate(pool, rng, 0);
                     const recentNames = spawns.slice(-3).map(s => s.speciesName);
                     if (!recentNames.includes(candidate.name) || pool.length <= recentNames.length) {
                         template = candidate;
                         break;
                     }
                 }
-                if (!template) template = pool[Math.floor(rng() * pool.length)];
+                if (!template) template = pickLevelBiasedTemplate(pool, rng, 0);
                 spawns.push({
                     id: 'wspawn_' + spawns.length,
                     x, y,
@@ -12022,6 +12196,7 @@
             this.addLocation(370, 90, 'cave', 'Dragon\'s Lair', 2, 2);
             this.addLocation(300, 110, 'cave', 'Abyssal Depths', 2, 2);
             this.addLocation(260, 70, 'cave', 'Frost Cave', 2, 2);
+            this.addLocation(250, 150, 'town', 'Cinderhold', 2, 2);
             this.secretLocations = [
                 { x: 200, y: 200, type: 'ruins', name: 'Ancient Ruins', secret: true, revealed: false, width: 2, height: 2 },
                 { x: 160, y: 160, type: 'spring', name: 'Fairy Spring', secret: true, revealed: false, width: 2, height: 2 },
@@ -19697,6 +19872,7 @@
                     if (townText.includes('Brighthollow')) currentTown = 'brighthollow';
                     else if (townText.includes('Duskmere')) currentTown = 'duskmere';
                     else if (townText.includes('Sylvaris')) currentTown = 'sylvaris';
+                    else if (townText.includes('Cinderhold')) currentTown = 'cinderhold';
                 }
             }
             const shops = {
@@ -19746,202 +19922,251 @@
 
         getShieldShopItems(town) {
             const town1Shields = [
-                { name: 'Wooden Shield', type: 'shield', price: 80, defense: 3, desc: 'Simple wooden shield' },
-                { name: 'Buckler', type: 'shield', price: 120, defense: 5, desc: 'Small metal shield' },
-                { name: 'Healer\'s Targe', type: 'shield', price: 150, defense: 2, magic: 2, healerShield: true, desc: 'Increases healing received by 20%', healingBonus: 0.2 }
+                { name: 'Wooden Shield', type: 'shield', price: 670, defense: 3, desc: 'Simple wooden shield' },
+                { name: 'Buckler', type: 'shield', price: 1000, defense: 5, desc: 'Small metal shield' },
+                { name: 'Healer\'s Targe', type: 'shield', price: 1250, defense: 2, magic: 2, healerShield: true, desc: 'Increases healing received by 20%', healingBonus: 0.2 }
             ];
             const town2Shields = [
-                { name: 'Iron Shield', type: 'shield', price: 350, defense: 10, desc: 'Sturdy iron shield' },
-                { name: 'Kite Shield', type: 'shield', price: 500, defense: 14, desc: 'Large defensive shield' },
-                { name: 'Spiked Shield', type: 'shield', price: 450, defense: 12, attack: 3, desc: 'Deals damage when blocking' },
-                { name: 'Crystal Ward', type: 'shield', price: 400, defense: 4, magic: 6, healerShield: true, desc: 'Amplifies healing magic by 30%', healingBonus: 0.3 },
-                { name: 'Moon Targe', type: 'shield', price: 480, defense: 5, magic: 4, healerShield: true, desc: 'Grants 25% chance to recover MP when hit', mpRecoveryChance: 0.25 }
+                { name: 'Iron Shield', type: 'shield', price: 750, defense: 10, desc: 'Sturdy iron shield' },
+                { name: 'Kite Shield', type: 'shield', price: 1080, defense: 14, desc: 'Large defensive shield' },
+                { name: 'Spiked Shield', type: 'shield', price: 970, defense: 12, attack: 3, desc: 'Deals damage when blocking' },
+                { name: 'Crystal Ward', type: 'shield', price: 860, defense: 4, magic: 6, healerShield: true, desc: 'Amplifies healing magic by 30%', healingBonus: 0.3 },
+                { name: 'Moon Targe', type: 'shield', price: 1040, defense: 5, magic: 4, healerShield: true, desc: 'Grants 25% chance to recover MP when hit', mpRecoveryChance: 0.25 }
             ];
             const town3Shields = [
-                { name: 'Mythril Shield', type: 'shield', price: 1200, defense: 25, magic: 5, desc: 'Lightweight but strong' },
-                { name: 'Aegis', type: 'shield', price: 1800, defense: 30, magic: 8, desc: 'Legendary protective shield' },
-                { name: 'Dragon Shield', type: 'shield', price: 2000, defense: 35, desc: 'Forged from dragon scales' },
-                { name: 'Angels Ward', type: 'shield', price: 1600, defense: 10, magic: 12, healerShield: true, desc: 'Increases healing received by 50%', healingBonus: 0.5 },
-                { name: 'Sanctuary Shield', type: 'shield', price: 1900, defense: 12, magic: 10, healerShield: true, desc: 'Regenerate 10 HP per turn', regenHP: 10 },
-                { name: 'Prism Guard', type: 'shield', price: 2200, defense: 8, magic: 15, healerShield: true, desc: 'Converts 20% of damage to MP', mpConversion: 0.2 }
+                { name: 'Mythril Shield', type: 'shield', price: 1280, defense: 25, magic: 5, desc: 'Lightweight but strong' },
+                { name: 'Aegis', type: 'shield', price: 1920, defense: 30, magic: 8, desc: 'Legendary protective shield' },
+                { name: 'Dragon Shield', type: 'shield', price: 2130, defense: 35, desc: 'Forged from dragon scales' },
+                { name: 'Angels Ward', type: 'shield', price: 1700, defense: 10, magic: 12, healerShield: true, desc: 'Increases healing received by 50%', healingBonus: 0.5 },
+                { name: 'Sanctuary Shield', type: 'shield', price: 2020, defense: 12, magic: 10, healerShield: true, desc: 'Regenerate 10 HP per turn', regenHP: 10 },
+                { name: 'Prism Guard', type: 'shield', price: 2340, defense: 8, magic: 15, healerShield: true, desc: 'Converts 20% of damage to MP', mpConversion: 0.2 }
+            ];
+            // Quadrant 4 (Cinderhold) tier - target ceiling ~1.43x tier 3's,
+            // per the same "dungeon nets ~3x its best item" math used for
+            // every other tier.
+            const town4Shields = [
+                { name: 'Cinderplate Shield', type: 'shield', price: 2900, defense: 38, desc: 'Forged and quenched in ash-fall rain' },
+                { name: 'Emberguard Aegis', type: 'shield', price: 3350, defense: 44, magic: 10, desc: 'Never grows cold to the touch' },
+                { name: 'Ashfall Ward', type: 'shield', price: 3150, defense: 20, magic: 20, healerShield: true, desc: 'Increases healing received by 60%', healingBonus: 0.6 }
             ];
             switch(town) {
                 case 'brighthollow': return town1Shields;
                 case 'duskmere': return [...town1Shields, ...town2Shields];
                 case 'sylvaris': return [...town1Shields, ...town2Shields, ...town3Shields];
+                case 'cinderhold': return [...town1Shields, ...town2Shields, ...town3Shields, ...town4Shields];
                 default: return town1Shields;
             }
         }
 
         getJewelryShopItems(town) {
             const town1Jewelry = [
-                { name: 'Copper Ring', type: 'jewelry', price: 120, defense: 2, speed: 1, desc: 'Basic ring with minor protection' },
-                { name: 'Iron Necklace', type: 'jewelry', price: 150, defense: 3, desc: 'Simple iron chain necklace' },
-                { name: 'Glass Pendant', type: 'jewelry', price: 100, magic: 3, defense: 1, mageOnly: true, desc: 'Simple pendant for mages' },
-                { name: 'Warriors Torc', type: 'jewelry', price: 130, attack: 2, defense: 2, warriorOnly: true, desc: 'Neck ring that strengthens the wearer' },
-                { name: 'Holy Symbol', type: 'jewelry', price: 140, magic: 2, defense: 2, paladinOnly: true, desc: 'Simple symbol of faith' }
+                { name: 'Copper Ring', type: 'jewelry', price: 1000, defense: 2, speed: 1, desc: 'Basic ring with minor protection' },
+                { name: 'Iron Necklace', type: 'jewelry', price: 1250, defense: 3, desc: 'Simple iron chain necklace' },
+                { name: 'Glass Pendant', type: 'jewelry', price: 830, magic: 3, defense: 1, mageOnly: true, desc: 'Simple pendant for mages' },
+                { name: 'Warriors Torc', type: 'jewelry', price: 1080, attack: 2, defense: 2, warriorOnly: true, desc: 'Neck ring that strengthens the wearer' },
+                { name: 'Holy Symbol', type: 'jewelry', price: 1170, magic: 2, defense: 2, paladinOnly: true, desc: 'Simple symbol of faith' }
             ];
             const town2Jewelry = [
-                { name: 'Silver Pendant', type: 'jewelry', price: 350, magic: 4, defense: 4, desc: 'Silver pendant with balanced properties' },
-                { name: 'Gold Ring', type: 'jewelry', price: 400, defense: 5, speed: 2, desc: 'Prestigious gold ring' },
-                { name: 'Amber Brooch', type: 'jewelry', price: 380, magic: 3, defense: 3, desc: 'Warm amber with healing properties' },
-                { name: 'Mage Ring', type: 'jewelry', price: 500, magic: 10, speed: 2, mageOnly: true, desc: 'Increases spell power significantly' },
-                { name: 'Crystal Earring', type: 'jewelry', price: 600, magic: 12, defense: 4, mageOnly: true, desc: 'Crystal focus for advanced magic' },
-                { name: 'Berserker Pendant', type: 'jewelry', price: 550, attack: 8, defense: 3, warriorOnly: true, desc: 'Increases ferocity in battle' },
-                { name: 'Iron Will Ring', type: 'jewelry', price: 520, defense: 8, attack: 3, warriorOnly: true, desc: 'Grants unwavering determination' },
-                { name: 'Knights Cross', type: 'jewelry', price: 530, defense: 6, magic: 4, paladinOnly: true, desc: 'Blessed cross of the order' },
-                { name: 'Sapphire Amulet', type: 'jewelry', price: 580, magic: 7, defense: 5, paladinOnly: true, desc: 'Sapphire that glows with holy light' }
+                { name: 'Silver Pendant', type: 'jewelry', price: 750, magic: 4, defense: 4, desc: 'Silver pendant with balanced properties' },
+                { name: 'Gold Ring', type: 'jewelry', price: 860, defense: 5, speed: 2, desc: 'Prestigious gold ring' },
+                { name: 'Amber Brooch', type: 'jewelry', price: 820, magic: 3, defense: 3, desc: 'Warm amber with healing properties' },
+                { name: 'Mage Ring', type: 'jewelry', price: 1080, magic: 10, speed: 2, mageOnly: true, desc: 'Increases spell power significantly' },
+                { name: 'Crystal Earring', type: 'jewelry', price: 1290, magic: 12, defense: 4, mageOnly: true, desc: 'Crystal focus for advanced magic' },
+                { name: 'Berserker Pendant', type: 'jewelry', price: 1190, attack: 8, defense: 3, warriorOnly: true, desc: 'Increases ferocity in battle' },
+                { name: 'Iron Will Ring', type: 'jewelry', price: 1120, defense: 8, attack: 3, warriorOnly: true, desc: 'Grants unwavering determination' },
+                { name: 'Knights Cross', type: 'jewelry', price: 1140, defense: 6, magic: 4, paladinOnly: true, desc: 'Blessed cross of the order' },
+                { name: 'Sapphire Amulet', type: 'jewelry', price: 1250, magic: 7, defense: 5, paladinOnly: true, desc: 'Sapphire that glows with holy light' }
             ];
             const town3Jewelry = [
-                { name: 'Platinum Ring', type: 'jewelry', price: 1200, defense: 10, speed: 4, desc: 'Exquisite platinum craftsmanship' },
-                { name: 'Dragonbone Necklace', type: 'jewelry', price: 1500, attack: 5, defense: 8, magic: 5, desc: 'Fashioned from dragon remains' },
-                { name: 'Mystic Medallion', type: 'jewelry', price: 1400, magic: 8, defense: 6, speed: 2, desc: 'Hum with arcane energy' },
-                { name: 'Archmage Pendant', type: 'jewelry', price: 2000, magic: 22, defense: 8, speed: 3, mageOnly: true, desc: 'Worn by archmages of legend' },
-                { name: 'Sage Ring', type: 'jewelry', price: 1800, magic: 25, mageOnly: true, desc: 'Enhances magical power to its limits' },
-                { name: 'Elemental Gem', type: 'jewelry', price: 2200, magic: 28, mageOnly: true, desc: 'Focuses elemental energy' },
-                { name: 'Titans Band', type: 'jewelry', price: 2100, attack: 18, defense: 10, warriorOnly: true, desc: 'Grants the strength of giants' },
-                { name: 'Warlords Crown', type: 'jewelry', price: 2300, attack: 15, defense: 12, speed: 2, warriorOnly: true, desc: 'Commands respect on the battlefield' },
-                { name: 'Unyielding Torc', type: 'jewelry', price: 1900, defense: 20, attack: 8, warriorOnly: true, desc: 'Makes the wearer nearly unstoppable' },
-                { name: 'Divine Relic', type: 'jewelry', price: 2200, magic: 14, defense: 14, paladinOnly: true, desc: 'Ancient artifact of the church' },
-                { name: 'Paladins Vow', type: 'jewelry', price: 2000, defense: 16, magic: 10, paladinOnly: true, desc: 'Strengthens the wearer\'s conviction' },
-                { name: 'Seraphs Tear', type: 'jewelry', price: 2400, magic: 12, defense: 12, speed: 3, paladinOnly: true, desc: 'Tear-shaped gem with healing properties' }
+                { name: 'Platinum Ring', type: 'jewelry', price: 1280, defense: 10, speed: 4, desc: 'Exquisite platinum craftsmanship' },
+                { name: 'Dragonbone Necklace', type: 'jewelry', price: 1600, attack: 5, defense: 8, magic: 5, desc: 'Fashioned from dragon remains' },
+                { name: 'Mystic Medallion', type: 'jewelry', price: 1490, magic: 8, defense: 6, speed: 2, desc: 'Hum with arcane energy' },
+                { name: 'Archmage Pendant', type: 'jewelry', price: 2130, magic: 22, defense: 8, speed: 3, mageOnly: true, desc: 'Worn by archmages of legend' },
+                { name: 'Sage Ring', type: 'jewelry', price: 1920, magic: 25, mageOnly: true, desc: 'Enhances magical power to its limits' },
+                { name: 'Elemental Gem', type: 'jewelry', price: 2340, magic: 28, mageOnly: true, desc: 'Focuses elemental energy' },
+                { name: 'Titans Band', type: 'jewelry', price: 2240, attack: 18, defense: 10, warriorOnly: true, desc: 'Grants the strength of giants' },
+                { name: 'Warlords Crown', type: 'jewelry', price: 2450, attack: 15, defense: 12, speed: 2, warriorOnly: true, desc: 'Commands respect on the battlefield' },
+                { name: 'Unyielding Torc', type: 'jewelry', price: 2020, defense: 20, attack: 8, warriorOnly: true, desc: 'Makes the wearer nearly unstoppable' },
+                { name: 'Divine Relic', type: 'jewelry', price: 2340, magic: 14, defense: 14, paladinOnly: true, desc: 'Ancient artifact of the church' },
+                { name: 'Paladins Vow', type: 'jewelry', price: 2130, defense: 16, magic: 10, paladinOnly: true, desc: 'Strengthens the wearer\'s conviction' },
+                { name: 'Seraphs Tear', type: 'jewelry', price: 2560, magic: 12, defense: 12, speed: 3, paladinOnly: true, desc: 'Tear-shaped gem with healing properties' }
+            ];
+            const town4Jewelry = [
+                { name: 'Cinder Signet', type: 'jewelry', price: 3200, attack: 12, magic: 12, speed: 4, desc: 'Warm to the touch no matter the weather' },
+                { name: 'Voidglass Amulet', type: 'jewelry', price: 3500, magic: 32, mageOnly: true, desc: 'Cut from glass formed in the Ashen Wastes' },
+                { name: 'Ashen Standard', type: 'jewelry', price: 3400, attack: 22, defense: 15, warriorOnly: true, desc: 'Carried by those who refuse to fall back' },
+                { name: 'Emberheart Locket', type: 'jewelry', price: 3300, defense: 18, magic: 16, paladinOnly: true, desc: 'Keeps a single coal that never cools' }
             ];
             switch(town) {
                 case 'brighthollow': return town1Jewelry;
                 case 'duskmere': return [...town1Jewelry, ...town2Jewelry];
                 case 'sylvaris': return [...town1Jewelry, ...town2Jewelry, ...town3Jewelry];
+                case 'cinderhold': return [...town1Jewelry, ...town2Jewelry, ...town3Jewelry, ...town4Jewelry];
                 default: return town1Jewelry;
             }
         }
 
         getWeaponShopItems(town) {
             const town1Weapons = [
-                { name: 'Iron Dagger', type: 'weapon', price: 80, attack: 4, desc: 'A basic but reliable dagger' },
-                { name: 'Iron Sword', type: 'weapon', price: 150, attack: 7, desc: 'A sturdy iron blade' },
-                { name: 'Iron Axe', type: 'weapon', price: 180, attack: 9, desc: 'Heavy iron axe', warriorOnly: true },
-                { name: 'Shortstaff', type: 'weapon', price: 120, attack: 2, magic: 6, desc: 'A basic wooden staff for mages', mageOnly: true }
+                { name: 'Iron Dagger', type: 'weapon', price: 670, attack: 4, desc: 'A basic but reliable dagger' },
+                { name: 'Iron Sword', type: 'weapon', price: 1250, attack: 7, desc: 'A sturdy iron blade' },
+                { name: 'Iron Axe', type: 'weapon', price: 1500, attack: 9, desc: 'Heavy iron axe', warriorOnly: true },
+                { name: 'Shortstaff', type: 'weapon', price: 1000, attack: 2, magic: 6, desc: 'A basic wooden staff for mages', mageOnly: true }
             ];
             const town2Weapons = [
-                { name: 'Steel Sword', type: 'weapon', price: 900, attack: 14, desc: 'Forged from quality steel' },
-                { name: 'Battle Axe', type: 'weapon', price: 1200, attack: 20, desc: 'A heavy two-handed axe', warriorOnly: true },
-                { name: 'Knight Sword', type: 'weapon', price: 1100, attack: 18, desc: 'A fine blade favored by paladins', paladinOnly: true },
-                { name: 'Steel Blade', type: 'weapon', price: 1000, attack: 16, desc: 'Sharp steel blade' },
-                { name: 'Grand Mage Staff', type: 'weapon', price: 1600, attack: 8, magic: 18, desc: 'Powerful staff for accomplished mages', mageOnly: true }
+                { name: 'Steel Sword', type: 'weapon', price: 1940, attack: 14, desc: 'Forged from quality steel' },
+                { name: 'Battle Axe', type: 'weapon', price: 2590, attack: 20, desc: 'A heavy two-handed axe', warriorOnly: true },
+                { name: 'Knight Sword', type: 'weapon', price: 2370, attack: 18, desc: 'A fine blade favored by paladins', paladinOnly: true },
+                { name: 'Steel Blade', type: 'weapon', price: 2160, attack: 16, desc: 'Sharp steel blade' },
+                { name: 'Grand Mage Staff', type: 'weapon', price: 3450, attack: 8, magic: 18, desc: 'Powerful staff for accomplished mages', mageOnly: true }
             ];
             const town3Weapons = [
-                { name: 'Great Axe', type: 'weapon', price: 4500, attack: 32, desc: 'Massive axe of destruction', warriorOnly: true },
-                { name: 'Broadsword', type: 'weapon', price: 4200, attack: 30, desc: 'Legendary paladin blade', paladinOnly: true },
-                { name: 'Wizard Staff', type: 'weapon', price: 5400, attack: 12, magic: 28, desc: 'Ultimate staff for master mages', mageOnly: true },
-                { name: 'Mythril Sword', type: 'weapon', price: 3900, attack: 28, desc: 'Lightweight mythril blade' }
+                { name: 'Great Axe', type: 'weapon', price: 4790, attack: 32, desc: 'Massive axe of destruction', warriorOnly: true },
+                { name: 'Broadsword', type: 'weapon', price: 4470, attack: 30, desc: 'Legendary paladin blade', paladinOnly: true },
+                { name: 'Wizard Staff', type: 'weapon', price: 5750, attack: 12, magic: 28, desc: 'Ultimate staff for master mages', mageOnly: true },
+                { name: 'Mythril Sword', type: 'weapon', price: 4150, attack: 28, desc: 'Lightweight mythril blade' }
+            ];
+            const town4Weapons = [
+                { name: 'Ashreaver Greataxe', type: 'weapon', price: 7800, attack: 58, desc: 'Cuts through ash-hardened hide with ease', warriorOnly: true },
+                { name: 'Emberlance', type: 'weapon', price: 7600, attack: 50, magic: 20, desc: 'Never cools once it has drawn blood', paladinOnly: true },
+                { name: 'Cinderstaff of Ruin', type: 'weapon', price: 8200, attack: 15, magic: 42, desc: 'The ash it channels was once something living', mageOnly: true },
+                { name: 'Voidforged Blade', type: 'weapon', price: 6800, attack: 45, desc: 'Forged in a place with no light left to lose' }
             ];
             switch(town) {
                 case 'brighthollow': return town1Weapons;
                 case 'duskmere': return [...town1Weapons, ...town2Weapons];
                 case 'sylvaris': return [...town1Weapons, ...town2Weapons, ...town3Weapons];
+                case 'cinderhold': return [...town1Weapons, ...town2Weapons, ...town3Weapons, ...town4Weapons];
                 default: return town1Weapons;
             }
         }
 
         getArmorShopItems(town) {
             const town1Armor = [
-                { name: 'Leather Armor', type: 'armor', price: 100, defense: 4, desc: 'Basic leather protection' },
-                { name: 'Chain Mail', type: 'armor', price: 300, defense: 10, desc: 'Interlocking metal rings' },
-                { name: 'Apprentice Robe', type: 'armor', price: 150, defense: 2, magic: 5, desc: 'Simple robes for magic users', mageOnly: true }
+                { name: 'Leather Armor', type: 'armor', price: 830, defense: 4, desc: 'Basic leather protection' },
+                { name: 'Chain Mail', type: 'armor', price: 2500, defense: 10, desc: 'Interlocking metal rings' },
+                { name: 'Apprentice Robe', type: 'armor', price: 1250, defense: 2, magic: 5, desc: 'Simple robes for magic users', mageOnly: true }
             ];
             const town2Armor = [
-                { name: 'Bronze Armor', type: 'armor', price: 500, defense: 16, desc: 'Sturdy bronze plate' },
-                { name: 'Steel Armor', type: 'armor', price: 700, defense: 20, desc: 'Quality steel protection' },
-                { name: 'Magician Robe', type: 'armor', price: 450, defense: 6, magic: 12, desc: 'Enchanted robes for mages', mageOnly: true },
-                { name: 'Plate Mail', type: 'armor', price: 850, defense: 24, desc: 'Full plate armor', warriorOnly: true }
+                { name: 'Bronze Armor', type: 'armor', price: 1080, defense: 16, desc: 'Sturdy bronze plate' },
+                { name: 'Steel Armor', type: 'armor', price: 1510, defense: 20, desc: 'Quality steel protection' },
+                { name: 'Magician Robe', type: 'armor', price: 970, defense: 6, magic: 12, desc: 'Enchanted robes for mages', mageOnly: true },
+                { name: 'Plate Mail', type: 'armor', price: 1830, defense: 24, desc: 'Full plate armor', warriorOnly: true }
             ];
             const town3Armor = [
-                { name: 'Grand Wizard Robe', type: 'armor', price: 1200, defense: 12, magic: 22, desc: 'Ultimate mage attire', mageOnly: true },
-                { name: 'Mythril Armor', type: 'armor', price: 1500, defense: 30, desc: 'Legendary mythril plate' },
-                { name: 'Dragon Scale Mail', type: 'armor', price: 1800, defense: 35, desc: 'Armor made from dragon scales', warriorOnly: true }
+                { name: 'Grand Wizard Robe', type: 'armor', price: 1280, defense: 12, magic: 22, desc: 'Ultimate mage attire', mageOnly: true },
+                { name: 'Mythril Armor', type: 'armor', price: 1600, defense: 30, desc: 'Legendary mythril plate' },
+                { name: 'Dragon Scale Mail', type: 'armor', price: 1920, defense: 35, desc: 'Armor made from dragon scales', warriorOnly: true }
+            ];
+            const town4Armor = [
+                { name: 'Cindermail Plate', type: 'armor', price: 2740, defense: 48, desc: 'Never fully cools between battles', warriorOnly: true },
+                { name: 'Ashveil Robe', type: 'armor', price: 2200, defense: 16, magic: 30, desc: 'Woven from thread that survived the Wastes', mageOnly: true },
+                { name: 'Bastionplate', type: 'armor', price: 2500, defense: 42, magic: 8, desc: 'Standard-issue for the last line of defense' }
             ];
             switch(town) {
                 case 'brighthollow': return town1Armor;
                 case 'duskmere': return [...town1Armor, ...town2Armor];
                 case 'sylvaris': return [...town1Armor, ...town2Armor, ...town3Armor];
+                case 'cinderhold': return [...town1Armor, ...town2Armor, ...town3Armor, ...town4Armor];
                 default: return town1Armor;
             }
         }
 
         getItemShopItems(town) {
             const town1Items = [
-                { name: 'Potion', type: 'consumable', price: 50, effect: 'heal', power: 60, desc: 'Restores 60 HP to one ally' },
-                { name: 'Ether', type: 'consumable', price: 80, effect: 'restore_mp', power: 30, desc: 'Restores 30 MP to one ally' },
-                { name: 'Antidote', type: 'consumable', price: 30, effect: 'cure_poison', desc: 'Cures poison' },
-                { name: 'Cabin', type: 'consumable', price: 200, effect: 'full_restore', desc: 'Fully restores all party HP/MP (Use from Menu)' }
+                { name: 'Potion', type: 'consumable', price: 420, effect: 'heal', power: 60, desc: 'Restores 60 HP to one ally' },
+                { name: 'Ether', type: 'consumable', price: 670, effect: 'restore_mp', power: 30, desc: 'Restores 30 MP to one ally' },
+                { name: 'Antidote', type: 'consumable', price: 250, effect: 'cure_poison', desc: 'Cures poison' },
+                { name: 'Cabin', type: 'consumable', price: 1670, effect: 'full_restore', desc: 'Fully restores all party HP/MP (Use from Menu)' }
             ];
             const town2Items = [
-                { name: 'Hi-Potion', type: 'consumable', price: 200, effect: 'heal', power: 180, desc: 'Restores 180 HP to one ally' },
-                { name: 'Hi-Ether', type: 'consumable', price: 300, effect: 'restore_mp', power: 80, desc: 'Restores 80 MP to one ally' },
-                { name: 'Smoke Bomb', type: 'consumable', price: 150, effect: 'escape_buff', power: 0.5, desc: 'Increases escape chance by 50% for one battle' },
-                { name: 'Napalm', type: 'consumable', price: 400, effect: 'damage_all', power: 80, element: 'fire', desc: 'Deals 80 fire damage to all enemies' },
-                { name: 'Frost Trap', type: 'consumable', price: 400, effect: 'damage_all', power: 80, element: 'ice', desc: 'Deals 80 ice damage to all enemies' },
-                { name: 'Elixir', type: 'consumable', price: 350, effect: 'restore_all', power: 0, desc: 'Fully restores HP/MP of one ally' },
-                { name: 'Incense of Calm', type: 'consumable', effect: 'encounter_rate', power: 0.5, price: 200, desc: 'Reduces encounter rate by 50% for 100 steps' },
-                { name: 'Beast Lure', type: 'consumable', effect: 'encounter_rate', power: 2.0, price: 150, desc: 'Doubles encounter rate for 50 steps' }
+                { name: 'Hi-Potion', type: 'consumable', price: 430, effect: 'heal', power: 180, desc: 'Restores 180 HP to one ally' },
+                { name: 'Hi-Ether', type: 'consumable', price: 650, effect: 'restore_mp', power: 80, desc: 'Restores 80 MP to one ally' },
+                { name: 'Smoke Bomb', type: 'consumable', price: 320, effect: 'escape_buff', power: 0.5, desc: 'Increases escape chance by 50% for one battle' },
+                { name: 'Napalm', type: 'consumable', price: 860, effect: 'damage_all', power: 80, element: 'fire', desc: 'Deals 80 fire damage to all enemies' },
+                { name: 'Frost Trap', type: 'consumable', price: 860, effect: 'damage_all', power: 80, element: 'ice', desc: 'Deals 80 ice damage to all enemies' },
+                { name: 'Elixir', type: 'consumable', price: 750, effect: 'restore_all', power: 0, desc: 'Fully restores HP/MP of one ally' },
+                { name: 'Incense of Calm', type: 'consumable', effect: 'encounter_rate', power: 0.5, price: 430, desc: 'Reduces encounter rate by 50% for 100 steps' },
+                { name: 'Beast Lure', type: 'consumable', effect: 'encounter_rate', power: 2.0, price: 320, desc: 'Doubles encounter rate for 50 steps' }
             ];
             const town3Items = [
-                { name: 'Mega-Potion', type: 'consumable', price: 600, effect: 'heal_all', power: 200, desc: 'Restores 200 HP to all allies' },
-                { name: 'Mega-Ether', type: 'consumable', price: 800, effect: 'restore_mp_all', power: 100, desc: 'Restores 100 MP to all allies' },
-                { name: 'Rage Potion', type: 'consumable', price: 800, effect: 'buff', stat: 'crit', power: 0.3, duration: 5, desc: 'Increases critical hit chance by 30% for 5 turns' },
-                { name: 'Fortitude Draught', type: 'consumable', price: 800, effect: 'buff', stat: 'defense', power: 2.0, duration: 5, desc: 'Doubles defense for 5 turns' },
-                { name: 'Lucky Bomb', type: 'consumable', price: 1000, effect: 'lucky', power: 0, desc: 'Increases gold and rare item chance by 50% for next battle' },
-                { name: 'Megalixir', type: 'consumable', price: 1500, effect: 'full_restore_all', desc: 'Fully restores all party members' }
+                { name: 'Mega-Potion', type: 'consumable', price: 640, effect: 'heal_all', power: 200, desc: 'Restores 200 HP to all allies' },
+                { name: 'Mega-Ether', type: 'consumable', price: 850, effect: 'restore_mp_all', power: 100, desc: 'Restores 100 MP to all allies' },
+                { name: 'Rage Potion', type: 'consumable', price: 850, effect: 'buff', stat: 'crit', power: 0.3, duration: 5, desc: 'Increases critical hit chance by 30% for 5 turns' },
+                { name: 'Fortitude Draught', type: 'consumable', price: 850, effect: 'buff', stat: 'defense', power: 2.0, duration: 5, desc: 'Doubles defense for 5 turns' },
+                { name: 'Lucky Bomb', type: 'consumable', price: 1060, effect: 'lucky', power: 0, desc: 'Increases gold and rare item chance by 50% for next battle' },
+                { name: 'Megalixir', type: 'consumable', price: 1600, effect: 'full_restore_all', desc: 'Fully restores all party members' }
+            ];
+            const town4Items = [
+                { name: 'Phoenix Ash', type: 'consumable', effect: 'revive', power: 0.75, price: 1400, desc: 'Revives a fallen ally with 75% HP' },
+                { name: 'Cinder Elixir', type: 'consumable', effect: 'full_restore', price: 1100, desc: 'Fully restores one ally\'s HP/MP' },
+                { name: 'Warlord\'s Reserve', type: 'consumable', effect: 'buff', stat: 'attack', power: 2.2, duration: 5, price: 1200, desc: 'Sharply increases attack for 5 turns' }
             ];
             switch(town) {
                 case 'brighthollow': return town1Items;
                 case 'duskmere': return [...town1Items, ...town2Items];
                 case 'sylvaris': return [...town1Items, ...town2Items, ...town3Items];
+                case 'cinderhold': return [...town1Items, ...town2Items, ...town3Items, ...town4Items];
                 default: return town1Items;
             }
         }
 
         getMagicShopItems(town) {
             const town1Spells = [
-                { name: 'Fire Tome', type: 'spell', price: 200, spell: { name: 'Fire', cost: 6, power: 35, type: 'damage', element: 'fire', tier: 1 }, desc: 'Basic fire magic. Deals 35 fire damage to a single enemy.', class: 'mage' },
-                { name: 'Ice Tome', type: 'spell', price: 200, spell: { name: 'Ice', cost: 6, power: 35, type: 'damage', element: 'ice', tier: 1 }, desc: 'Basic ice magic. Deals 35 ice damage to a single enemy.', class: 'mage' },
-                { name: 'Spark Tome', type: 'spell', price: 200, spell: { name: 'Spark', cost: 6, power: 30, type: 'damage', element: 'lightning', tier: 1 }, desc: 'Basic lightning magic. Deals 30 lightning damage.', class: 'mage' },
-                { name: 'Bolster Tome', type: 'spell', price: 150, spell: { name: 'Bolster', cost: 4, power: 1.5, type: 'buff', stat: 'attack', duration: 4, tier: 1 }, desc: 'Raises attack by 50% for 4 turns.', class: 'warrior' },
-                { name: 'Focus Tome', type: 'spell', price: 150, spell: { name: 'Focus', cost: 4, power: 0.15, type: 'buff', stat: 'crit', duration: 4, tier: 1 }, desc: 'Raises critical hit chance by 15% for 4 turns.', class: 'warrior' },
-                { name: 'Cure Tome', type: 'spell', price: 150, spell: { name: 'Cure', cost: 5, power: 50, type: 'heal', tier: 1 }, desc: 'Basic healing magic. Restores 50 HP.', class: 'paladin' },
-                { name: 'Protect Tome', type: 'spell', price: 150, spell: { name: 'Protect', cost: 5, power: 1.5, type: 'buff', stat: 'defense', duration: 4, tier: 1 }, desc: 'Raises defense by 50% for 4 turns.', class: 'paladin' }
+                { name: 'Fire Tome', type: 'spell', price: 1670, spell: { name: 'Fire', cost: 6, power: 35, type: 'damage', element: 'fire', tier: 1 }, desc: 'Basic fire magic. Deals 35 fire damage to a single enemy.', class: 'mage' },
+                { name: 'Ice Tome', type: 'spell', price: 1670, spell: { name: 'Ice', cost: 6, power: 35, type: 'damage', element: 'ice', tier: 1 }, desc: 'Basic ice magic. Deals 35 ice damage to a single enemy.', class: 'mage' },
+                { name: 'Spark Tome', type: 'spell', price: 1670, spell: { name: 'Spark', cost: 6, power: 30, type: 'damage', element: 'lightning', tier: 1 }, desc: 'Basic lightning magic. Deals 30 lightning damage.', class: 'mage' },
+                { name: 'Bolster Tome', type: 'spell', price: 1250, spell: { name: 'Bolster', cost: 4, power: 1.5, type: 'buff', stat: 'attack', duration: 4, tier: 1 }, desc: 'Raises attack by 50% for 4 turns.', class: 'warrior' },
+                { name: 'Focus Tome', type: 'spell', price: 1250, spell: { name: 'Focus', cost: 4, power: 0.15, type: 'buff', stat: 'crit', duration: 4, tier: 1 }, desc: 'Raises critical hit chance by 15% for 4 turns.', class: 'warrior' },
+                { name: 'Cure Tome', type: 'spell', price: 1250, spell: { name: 'Cure', cost: 5, power: 50, type: 'heal', tier: 1 }, desc: 'Basic healing magic. Restores 50 HP.', class: 'paladin' },
+                { name: 'Protect Tome', type: 'spell', price: 1250, spell: { name: 'Protect', cost: 5, power: 1.5, type: 'buff', stat: 'defense', duration: 4, tier: 1 }, desc: 'Raises defense by 50% for 4 turns.', class: 'paladin' }
             ];
             const town2Spells = [
-                { name: 'Fira Tome', type: 'spell', price: 600, spell: { name: 'Fira', cost: 12, power: 70, type: 'damage', element: 'fire', tier: 2 }, desc: 'Stronger fire magic. Deals 70 fire damage.', class: 'mage' },
-                { name: 'Blizzara Tome', type: 'spell', price: 600, spell: { name: 'Blizzara', cost: 12, power: 70, type: 'damage', element: 'ice', tier: 2 }, desc: 'Stronger ice magic. Deals 70 ice damage.', class: 'mage' },
-                { name: 'Thundara Tome', type: 'spell', price: 600, spell: { name: 'Thundara', cost: 12, power: 65, type: 'damage', element: 'lightning', tier: 2 }, desc: 'Stronger lightning magic. Deals 65 lightning damage.', class: 'mage' },
-                { name: 'Firaga Tome', type: 'spell', price: 1000, spell: { name: 'Firaga', cost: 18, power: 55, type: 'all_damage', element: 'fire', tier: 2 }, desc: 'Fire magic hitting all enemies for 55 damage.', class: 'mage' },
-                { name: 'Blizzaga Tome', type: 'spell', price: 1000, spell: { name: 'Blizzaga', cost: 18, power: 55, type: 'all_damage', element: 'ice', tier: 2 }, desc: 'Ice magic hitting all enemies for 55 damage.', class: 'mage' },
-                { name: 'Thundaga Tome', type: 'spell', price: 1000, spell: { name: 'Thundaga', cost: 18, power: 55, type: 'all_damage', element: 'lightning', tier: 2 }, desc: 'Lightning magic hitting all enemies for 55 damage.', class: 'mage' },
-                { name: 'Might Tome', type: 'spell', price: 500, spell: { name: 'Might', cost: 8, power: 1.8, type: 'buff', stat: 'attack', duration: 4, tier: 2 }, desc: 'Raises attack by 80% for 4 turns.', class: 'warrior' },
-                { name: 'Critical 2 Tome', type: 'spell', price: 500, spell: { name: 'Critical 2', cost: 8, power: 0.25, type: 'buff', stat: 'crit', duration: 4, tier: 2 }, desc: 'Raises critical hit chance by 25% for 4 turns.', class: 'warrior' },
-                { name: 'Cura Tome', type: 'spell', price: 500, spell: { name: 'Cura', cost: 10, power: 120, type: 'heal', tier: 2 }, desc: 'Stronger healing. Restores 120 HP.', class: 'paladin' },
-                { name: 'Protect 2 Tome', type: 'spell', price: 500, spell: { name: 'Protect 2', cost: 8, power: 1.8, type: 'buff', stat: 'defense', duration: 4, tier: 2 }, desc: 'Raises defense by 80% for 4 turns.', class: 'paladin' },
-                { name: 'Shell Tome', type: 'spell', price: 500, spell: { name: 'Shell', cost: 8, power: 0.5, type: 'buff', stat: 'magic_defense', duration: 4, tier: 2 }, desc: 'Raises magic defense by 50% for 4 turns.', class: 'paladin' }
+                { name: 'Fira Tome', type: 'spell', price: 1290, spell: { name: 'Fira', cost: 12, power: 70, type: 'damage', element: 'fire', tier: 2 }, desc: 'Stronger fire magic. Deals 70 fire damage.', class: 'mage' },
+                { name: 'Blizzara Tome', type: 'spell', price: 1290, spell: { name: 'Blizzara', cost: 12, power: 70, type: 'damage', element: 'ice', tier: 2 }, desc: 'Stronger ice magic. Deals 70 ice damage.', class: 'mage' },
+                { name: 'Thundara Tome', type: 'spell', price: 1290, spell: { name: 'Thundara', cost: 12, power: 65, type: 'damage', element: 'lightning', tier: 2 }, desc: 'Stronger lightning magic. Deals 65 lightning damage.', class: 'mage' },
+                { name: 'Firaga Tome', type: 'spell', price: 2160, spell: { name: 'Firaga', cost: 18, power: 55, type: 'all_damage', element: 'fire', tier: 2 }, desc: 'Fire magic hitting all enemies for 55 damage.', class: 'mage' },
+                { name: 'Blizzaga Tome', type: 'spell', price: 2160, spell: { name: 'Blizzaga', cost: 18, power: 55, type: 'all_damage', element: 'ice', tier: 2 }, desc: 'Ice magic hitting all enemies for 55 damage.', class: 'mage' },
+                { name: 'Thundaga Tome', type: 'spell', price: 2160, spell: { name: 'Thundaga', cost: 18, power: 55, type: 'all_damage', element: 'lightning', tier: 2 }, desc: 'Lightning magic hitting all enemies for 55 damage.', class: 'mage' },
+                { name: 'Might Tome', type: 'spell', price: 1080, spell: { name: 'Might', cost: 8, power: 1.8, type: 'buff', stat: 'attack', duration: 4, tier: 2 }, desc: 'Raises attack by 80% for 4 turns.', class: 'warrior' },
+                { name: 'Critical 2 Tome', type: 'spell', price: 1080, spell: { name: 'Critical 2', cost: 8, power: 0.25, type: 'buff', stat: 'crit', duration: 4, tier: 2 }, desc: 'Raises critical hit chance by 25% for 4 turns.', class: 'warrior' },
+                { name: 'Cura Tome', type: 'spell', price: 1080, spell: { name: 'Cura', cost: 10, power: 120, type: 'heal', tier: 2 }, desc: 'Stronger healing. Restores 120 HP.', class: 'paladin' },
+                { name: 'Protect 2 Tome', type: 'spell', price: 1080, spell: { name: 'Protect 2', cost: 8, power: 1.8, type: 'buff', stat: 'defense', duration: 4, tier: 2 }, desc: 'Raises defense by 80% for 4 turns.', class: 'paladin' },
+                { name: 'Shell Tome', type: 'spell', price: 1080, spell: { name: 'Shell', cost: 8, power: 0.5, type: 'buff', stat: 'magic_defense', duration: 4, tier: 2 }, desc: 'Raises magic defense by 50% for 4 turns.', class: 'paladin' }
             ];
             const town3Spells = [
-                { name: 'Firaja Tome', type: 'spell', price: 1500, spell: { name: 'Firaja', cost: 20, power: 140, type: 'damage', element: 'fire', tier: 3 }, desc: 'Ultimate fire magic. Deals 140 fire damage.', class: 'mage' },
-                { name: 'Blizzaja Tome', type: 'spell', price: 1500, spell: { name: 'Blizzaja', cost: 20, power: 140, type: 'damage', element: 'ice', tier: 3 }, desc: 'Ultimate ice magic. Deals 140 ice damage.', class: 'mage' },
-                { name: 'Thundaja Tome', type: 'spell', price: 1500, spell: { name: 'Thundaja', cost: 20, power: 140, type: 'damage', element: 'lightning', tier: 3 }, desc: 'Ultimate lightning magic. Deals 140 lightning damage.', class: 'mage' },
-                { name: 'Meteor Tome', type: 'spell', price: 2000, spell: { name: 'Meteor', cost: 28, power: 110, type: 'all_damage', element: 'fire', tier: 3 }, desc: 'Calls meteors on all enemies for 110 damage.', class: 'mage' },
-                { name: 'Glacier Tome', type: 'spell', price: 2000, spell: { name: 'Glacier', cost: 28, power: 110, type: 'all_damage', element: 'ice', tier: 3 }, desc: 'Frozen avalanche hitting all enemies for 110 damage.', class: 'mage' },
-                { name: 'Thunderstorm Tome', type: 'spell', price: 2000, spell: { name: 'Thunderstorm', cost: 28, power: 110, type: 'all_damage', element: 'lightning', tier: 3 }, desc: 'Massive lightning storm hitting all enemies for 110 damage.', class: 'mage' },
-                { name: 'Berserk Tome', type: 'spell', price: 1200, spell: { name: 'Berserk', cost: 15, power: 2.5, type: 'buff', stat: 'attack', duration: 5, tier: 3 }, desc: 'Greatly increases attack by 150% for 5 turns.', class: 'warrior' },
-                { name: 'Haste Tome', type: 'spell', price: 1200, spell: { name: 'Haste', cost: 15, power: 0, type: 'all_buff', stat: 'speed', duration: 5, tier: 3 }, desc: 'Increases speed for entire party for 5 turns.', class: 'warrior' },
-                { name: 'War Cry Tome', type: 'spell', price: 1500, spell: { name: 'War Cry', cost: 20, power: 0.35, type: 'all_buff', stat: 'crit', duration: 5, tier: 3 }, desc: 'Raises whole party crit chance by 35% for 5 turns.', class: 'warrior' },
-                { name: 'Curaja Tome', type: 'spell', price: 1500, spell: { name: 'Curaja', cost: 18, power: 250, type: 'heal', tier: 3 }, desc: 'Powerful healing. Restores 250 HP to one ally.', class: 'paladin' },
-                { name: 'Curaja All Tome', type: 'spell', price: 2200, spell: { name: 'Curaja All', cost: 28, power: 150, type: 'all_heal', tier: 3 }, desc: 'Heals all allies for 150 HP.', class: 'paladin' },
-                { name: 'Barrier Tome', type: 'spell', price: 1500, spell: { name: 'Barrier', cost: 18, power: 2.0, type: 'all_buff', stat: 'defense', duration: 5, tier: 3 }, desc: 'Doubles defense for entire party for 5 turns.', class: 'paladin' },
-                { name: 'Holy Tome', type: 'spell', price: 2500, spell: { name: 'Holy', cost: 32, power: 200, type: 'damage', element: 'holy', tier: 4 }, desc: 'Legendary holy magic. Deals 200 damage to one enemy.', class: 'paladin' }
+                { name: 'Firaja Tome', type: 'spell', price: 1600, spell: { name: 'Firaja', cost: 20, power: 140, type: 'damage', element: 'fire', tier: 3 }, desc: 'Ultimate fire magic. Deals 140 fire damage.', class: 'mage' },
+                { name: 'Blizzaja Tome', type: 'spell', price: 1600, spell: { name: 'Blizzaja', cost: 20, power: 140, type: 'damage', element: 'ice', tier: 3 }, desc: 'Ultimate ice magic. Deals 140 ice damage.', class: 'mage' },
+                { name: 'Thundaja Tome', type: 'spell', price: 1600, spell: { name: 'Thundaja', cost: 20, power: 140, type: 'damage', element: 'lightning', tier: 3 }, desc: 'Ultimate lightning magic. Deals 140 lightning damage.', class: 'mage' },
+                { name: 'Meteor Tome', type: 'spell', price: 2130, spell: { name: 'Meteor', cost: 28, power: 110, type: 'all_damage', element: 'fire', tier: 3 }, desc: 'Calls meteors on all enemies for 110 damage.', class: 'mage' },
+                { name: 'Glacier Tome', type: 'spell', price: 2130, spell: { name: 'Glacier', cost: 28, power: 110, type: 'all_damage', element: 'ice', tier: 3 }, desc: 'Frozen avalanche hitting all enemies for 110 damage.', class: 'mage' },
+                { name: 'Thunderstorm Tome', type: 'spell', price: 2130, spell: { name: 'Thunderstorm', cost: 28, power: 110, type: 'all_damage', element: 'lightning', tier: 3 }, desc: 'Massive lightning storm hitting all enemies for 110 damage.', class: 'mage' },
+                { name: 'Berserk Tome', type: 'spell', price: 1280, spell: { name: 'Berserk', cost: 15, power: 2.5, type: 'buff', stat: 'attack', duration: 5, tier: 3 }, desc: 'Greatly increases attack by 150% for 5 turns.', class: 'warrior' },
+                { name: 'Haste Tome', type: 'spell', price: 1280, spell: { name: 'Haste', cost: 15, power: 0, type: 'all_buff', stat: 'speed', duration: 5, tier: 3 }, desc: 'Increases speed for entire party for 5 turns.', class: 'warrior' },
+                { name: 'War Cry Tome', type: 'spell', price: 1600, spell: { name: 'War Cry', cost: 20, power: 0.35, type: 'all_buff', stat: 'crit', duration: 5, tier: 3 }, desc: 'Raises whole party crit chance by 35% for 5 turns.', class: 'warrior' },
+                { name: 'Curaja Tome', type: 'spell', price: 1600, spell: { name: 'Curaja', cost: 18, power: 250, type: 'heal', tier: 3 }, desc: 'Powerful healing. Restores 250 HP to one ally.', class: 'paladin' },
+                { name: 'Curaja All Tome', type: 'spell', price: 2340, spell: { name: 'Curaja All', cost: 28, power: 150, type: 'all_heal', tier: 3 }, desc: 'Heals all allies for 150 HP.', class: 'paladin' },
+                { name: 'Barrier Tome', type: 'spell', price: 1600, spell: { name: 'Barrier', cost: 18, power: 2.0, type: 'all_buff', stat: 'defense', duration: 5, tier: 3 }, desc: 'Doubles defense for entire party for 5 turns.', class: 'paladin' },
+                { name: 'Holy Tome', type: 'spell', price: 2660, spell: { name: 'Holy', cost: 32, power: 200, type: 'damage', element: 'holy', tier: 4 }, desc: 'Legendary holy magic. Deals 200 damage to one enemy.', class: 'paladin' }
+            ];
+            // Ray's note for a future pass: town1-3's "-ja" tome naming
+            // (Firaja/Blizzaja/Thundaja/Curaja) still reads as straight FF
+            // terminology and should get renamed eventually - NOT doing
+            // that rename here, but making sure these NEW tier-4 spells
+            // don't repeat that pattern.
+            const town4Spells = [
+                { name: 'Ashquake Tome', type: 'spell', price: 3600, spell: { name: 'Ashquake', cost: 34, power: 165, type: 'all_damage', element: 'fire', tier: 4 }, desc: 'Splits the ground beneath every enemy for 165 fire damage.', class: 'mage' },
+                { name: 'Permafrost Tome', type: 'spell', price: 3600, spell: { name: 'Permafrost', cost: 34, power: 165, type: 'all_damage', element: 'ice', tier: 4 }, desc: 'Freezes the battlefield solid for 165 ice damage to all enemies.', class: 'mage' },
+                { name: 'Stormbreaker Tome', type: 'spell', price: 3600, spell: { name: 'Stormbreaker', cost: 34, power: 165, type: 'all_damage', element: 'lightning', tier: 4 }, desc: 'Calls down a shattering storm for 165 lightning damage to all enemies.', class: 'mage' },
+                { name: 'Oblivion Tome', type: 'spell', price: 3400, spell: { name: 'Oblivion', cost: 36, power: 260, type: 'damage', tier: 4 }, desc: 'Unravels one enemy from the inside out for 260 damage.', class: 'mage' },
+                { name: 'Bloodfury Tome', type: 'spell', price: 2900, spell: { name: 'Bloodfury', cost: 20, power: 3.0, type: 'all_buff', stat: 'attack', duration: 5, tier: 4 }, desc: 'Triples the whole party\'s attack for 5 turns.', class: 'warrior' },
+                { name: 'Sanctuary Tome', type: 'spell', price: 3300, spell: { name: 'Sanctuary', cost: 30, power: 200, type: 'all_heal', tier: 4 }, desc: 'Heals all allies for 200 HP.', class: 'paladin' }
             ];
             switch(town) {
                 case 'brighthollow': return town1Spells;
                 case 'duskmere': return [...town1Spells, ...town2Spells];
                 case 'sylvaris': return [...town1Spells, ...town2Spells, ...town3Spells];
+                case 'cinderhold': return [...town1Spells, ...town2Spells, ...town3Spells, ...town4Spells];
                 default: return town1Spells;
             }
         }
@@ -21730,7 +21955,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v149]');
+            console.log('Game starting... [build v155]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
@@ -22726,6 +22951,7 @@
                 if (townText.includes('Brighthollow')) currentTown = 'brighthollow';
                 else if (townText.includes('Duskmere')) currentTown = 'duskmere';
                 else if (townText.includes('Sylvaris')) currentTown = 'sylvaris';
+                else if (townText.includes('Cinderhold')) currentTown = 'cinderhold';
             }
             let availableQuests = [];
             if (currentTown === 'brighthollow') {
@@ -23378,7 +23604,8 @@
                     if (this.party.encounterStepsRemaining <= 0) this.party.encounterModifier = 1.0;
                 }
                 updateFieldMonstersOnFloor(this.world, px, py, isWalkableFn, wardActive);
-                monster = (this.world.liveMonsters || []).find(m => m.alive && m.x === px && m.y === py) || null;
+                monster = (this.world.liveMonsters || []).find(m => m.alive && m.x === px && m.y === py) || null
+                    || getAdjacentChasingMonster(this.world, px, py);
                 if (monster) {
                     moverIsMonster = true;
                     moverDx = monster.facing === 'left' ? -1 : monster.facing === 'right' ? 1 : 0;
@@ -23739,7 +23966,8 @@
             let moverDx = moveDx, moverDy = moveDy;
             if (!monster) {
                 this.dungeonMap.updateFieldMonsters();
-                monster = this.dungeonMap.getFieldMonsterAt(px, py);
+                monster = this.dungeonMap.getFieldMonsterAt(px, py)
+                    || getAdjacentChasingMonster(this.dungeonMap, px, py);
                 if (monster) {
                     moverIsMonster = true;
                     moverDx = monster.facing === 'left' ? -1 : monster.facing === 'right' ? 1 : 0;
@@ -23824,7 +24052,17 @@
             if (!chest || chest.opened) return;
             chest.opened = true;
             const lootTable = LOOT_TABLES[getCurrentLootQuadrant()] || LOOT_TABLES.brighthollow;
-            const goldFound = (80 + Math.floor(Math.random() * 60)) * chest.itemCount;
+            // Level-aware now (was a flat formula that didn't know which
+            // quadrant it was in) - now that quadrants span wildly
+            // different level ranges (1-13/13-26/26-39/39-52), a flat
+            // per-floor formula would be trivial in Q1 and worthless in Q4,
+            // or the reverse. Anchored to roughly 1.1x an on-level monster
+            // kill's worth of gold (see monsterGoldForLevel) per chest.
+            const quadrant = getCurrentWorldQuadrant();
+            const quadrantData = QUADRANTS[quadrant] || QUADRANTS.CORNELIA;
+            const anchorLevel = (quadrantData.minLevel + quadrantData.maxLevel) / 2;
+            const perKillGold = monsterGoldForLevel(anchorLevel);
+            const goldFound = Math.round(perKillGold * (0.9 + Math.random() * 0.4) * chest.itemCount);
             this.party.gold += goldFound;
             this.updateGoldDisplays();
             this.audio.play('coin');
@@ -23835,7 +24073,17 @@
                 if (roll < 0.08 && lootTable.legendary && lootTable.legendary.length) pool = lootTable.legendary;
                 else if (roll < 0.32 && lootTable.rare && lootTable.rare.length) pool = lootTable.rare;
                 if (pool && pool.length) {
-                    const item = pool[Math.floor(Math.random() * pool.length)];
+                    // Each LOOT_TABLES tier mixes consumables/materials in
+                    // with actual weapons/armor - a chest used to roll the
+                    // WHOLE mixed pool every time, meaning it almost always
+                    // handed out sellable gear on top of its gold. Per Ray:
+                    // chests should mostly be consumables/materials, with
+                    // real equipment as a genuine rare bonus find instead
+                    // of the default outcome.
+                    const nonGearPool = pool.filter(it => it.type === 'consumable' || it.type === 'material');
+                    const GEAR_CHANCE = 0.15;
+                    const rollPool = (nonGearPool.length > 0 && Math.random() > GEAR_CHANCE) ? nonGearPool : pool;
+                    const item = rollPool[Math.floor(Math.random() * rollPool.length)];
                     this.party.addItem({ ...item });
                     foundNames.push(item.name);
                 }
@@ -23860,7 +24108,16 @@
             }
             f.vaultOpened = true;
             const lootTable = LOOT_TABLES[getCurrentLootQuadrant()] || LOOT_TABLES.brighthollow;
-            const goldFound = 700 * this.dungeonMap.currentFloorIndex;
+            // Level-aware, same reasoning as the chest above - roughly 6x an
+            // on-level kill's gold, a real payoff without dwarfing
+            // everything else the dungeon offered along the way. (Vaults
+            // only ever appear on a dungeon's LAST floor - see
+            // generateDungeonFloor's exitType logic - so there's no floor-
+            // depth term needed here the way chests have via itemCount.)
+            const quadrant = getCurrentWorldQuadrant();
+            const quadrantData = QUADRANTS[quadrant] || QUADRANTS.CORNELIA;
+            const anchorLevel = (quadrantData.minLevel + quadrantData.maxLevel) / 2;
+            const goldFound = Math.round(monsterGoldForLevel(anchorLevel) * 6);
             this.party.gold += goldFound;
             this.updateGoldDisplays();
             this.audio.play('coin');
@@ -24615,6 +24872,7 @@
                     if (townText.includes('Brighthollow')) townName = 'brighthollow';
                     else if (townText.includes('Duskmere')) townName = 'duskmere';
                     else if (townText.includes('Sylvaris')) townName = 'sylvaris';
+                    else if (townText.includes('Cinderhold')) townName = 'cinderhold';
                     else townName = 'brighthollow';
                 } else {
                     townName = 'brighthollow';
@@ -24713,6 +24971,7 @@
                 if (townText.includes('Brighthollow')) townName = 'Brighthollow';
                 else if (townText.includes('Duskmere')) townName = 'Duskmere';
                 else if (townText.includes('Sylvaris')) townName = 'Sylvaris';
+                else if (townText.includes('Cinderhold')) townName = 'Cinderhold';
             }
             // backgroundKey: none of the uploaded 16:9 art is a literal
             // throne room yet, so each ruler borrows the best-fitting
@@ -24724,7 +24983,8 @@
             const kingDialogues = {
                 'Brighthollow': { name: 'King Aldric', portraitKey: 'king_aldric', backgroundKey: 'temple', dialogue: "Welcome, brave adventurer! Our kingdom has been fractured since Voraxis appeared. Each region has its own ruler now, but we all face the same threat.", quest: "Defeat the Goblin King to reopen the mountain pass. That's your first step toward uniting the kingdoms against Voraxis.", reward: "the pass reopened, and my gratitude", questId: 'brighthollow_envoy' },
                 'Duskmere': { name: 'Queen Seraphina', portraitKey: 'queen_seraphina', backgroundKey: 'library', dialogue: "The undead plague my lands. The Dark Fortress to the south is the source, but I lack the strength to assault it.", quest: "Defeat the Dread Knight in the Dark Fortress. He leads the undead army.", reward: "the Shadow Blade, effective against dark creatures", questId: 'duskmere_watchtower', followUpQuestId: 'duskmere_shrine_awaits', followUpUnlockFlag: 'archetype_shrine_unlocked' },
-                'Sylvaris': { name: 'King Theron', portraitKey: 'king_theron', backgroundKey: 'garden_shrine', dialogue: "The desert expands each year. The Sunken Temple holds the key to stopping it, but it's guarded by powerful elementals.", quest: "Explore the Sunken Temple and find the Orb of Seasons. It can restore the land.", reward: "the ultimate elemental spells", questId: 'sylvaris_oasis_advisor' }
+                'Sylvaris': { name: 'King Theron', portraitKey: 'king_theron', backgroundKey: 'garden_shrine', dialogue: "The desert expands each year. The Sunken Temple holds the key to stopping it, but it's guarded by powerful elementals.", quest: "Explore the Sunken Temple and find the Orb of Seasons. It can restore the land.", reward: "the ultimate elemental spells", questId: 'sylvaris_oasis_advisor' },
+                'Cinderhold': { name: 'Warmarshal Draven', portraitKey: 'soldier', backgroundKey: 'town', dialogue: "There's no throne here, adventurer - just a line we haven't let break yet. Ashveil Spire sits at our doorstep, and Voraxis knows it.", quest: "Every company we've sent to the Spire has come back short of whole, if it came back at all. Finish this, or there won't be a fifth attempt.", reward: "whatever's left in our armory - it's yours if you end this", questId: 'chaos_final_boss' }
             };
             const king = kingDialogues[townName] || kingDialogues['Brighthollow'];
             const lead = this.party && this.party.heroes && this.party.heroes[0];
@@ -24893,6 +25153,7 @@
                 if (townText.includes('Brighthollow')) currentRegion = 'brighthollow';
                 else if (townText.includes('Duskmere')) currentRegion = 'duskmere';
                 else if (townText.includes('Sylvaris')) currentRegion = 'sylvaris';
+                else if (townText.includes('Cinderhold')) currentRegion = 'cinderhold';
             }
             const regionSecrets = this.world.secretLocations.filter(secret => {
                 if (currentRegion === 'brighthollow') {
@@ -25574,6 +25835,7 @@
                 if (townText.includes('Brighthollow')) currentTown = 'brighthollow';
                 else if (townText.includes('Duskmere')) currentTown = 'duskmere';
                 else if (townText.includes('Sylvaris')) currentTown = 'sylvaris';
+                else if (townText.includes('Cinderhold')) currentTown = 'cinderhold';
             }
             console.log('Current town for available quests:', currentTown);
             let availableQuests = [];
@@ -28821,7 +29083,7 @@ const QUEST_DATA = [
         quadrant: 'brighthollow',
         goal: 5,
         progress: 0,
-        reward: { gold: 500, item: 'Iron Sword' },
+        reward: { gold: 520, item: 'Iron Sword' },
         npc: 'Guild Master',
         town: 'brighthollow',
         dialogue: {
@@ -28839,7 +29101,7 @@ const QUEST_DATA = [
         quadrant: 'brighthollow',
         goal: 8,
         progress: 0,
-        reward: { gold: 400, item: 'Potion x3' },
+        reward: { gold: 410, item: 'Potion x3' },
         npc: 'Merchant',
         town: 'brighthollow',
         dialogue: {
@@ -28875,7 +29137,7 @@ const QUEST_DATA = [
         quadrant: 'brighthollow',
         goal: 5,
         progress: 0,
-        reward: { gold: 450, item: 'Steel Blade' },
+        reward: { gold: 460, item: 'Steel Blade' },
         npc: 'Captain',
         town: 'brighthollow',
         dialogue: {
@@ -28911,7 +29173,7 @@ const QUEST_DATA = [
         quadrant: 'brighthollow',
         goal: 4,
         progress: 0,
-        reward: { gold: 500, item: 'Hi-Potion' },
+        reward: { gold: 520, item: 'Hi-Potion' },
         npc: 'Farmer',
         town: 'brighthollow',
         dialogue: {
@@ -28929,7 +29191,7 @@ const QUEST_DATA = [
         quadrant: 'brighthollow',
         goal: 6,
         progress: 0,
-        reward: { gold: 400, item: 'Ether' },
+        reward: { gold: 410, item: 'Ether' },
         npc: 'Woodcutter',
         town: 'brighthollow',
         dialogue: {
@@ -28947,7 +29209,7 @@ const QUEST_DATA = [
         quadrant: 'brighthollow',
         goal: 5,
         progress: 0,
-        reward: { gold: 450, item: 'Leather Shield' },
+        reward: { gold: 460, item: 'Leather Shield' },
         npc: 'Guard Captain',
         town: 'brighthollow',
         dialogue: {
@@ -28965,7 +29227,7 @@ const QUEST_DATA = [
         quadrant: 'brighthollow',
         goal: 4,
         progress: 0,
-        reward: { gold: 600, item: 'Chain Mail' },
+        reward: { gold: 620, item: 'Chain Mail' },
         npc: 'Guard Captain',
         town: 'brighthollow',
         dialogue: {
@@ -28982,7 +29244,7 @@ const QUEST_DATA = [
         quadrant: 'brighthollow',
         goal: 2,
         progress: 0,
-        reward: { gold: 600, item: 'Goblin Axe' },
+        reward: { gold: 620, item: 'Goblin Axe' },
         npc: 'Explorer',
         town: 'brighthollow',
         dialogue: {
@@ -29000,7 +29262,7 @@ const QUEST_DATA = [
         goal: 3,
         progress: 0,
         currentStreak: 0,
-        reward: { gold: 450, item: 'Cabin' },
+        reward: { gold: 460, item: 'Cabin' },
         npc: 'Warrior Trainer',
         town: 'brighthollow',
         dialogue: {
@@ -29017,7 +29279,7 @@ const QUEST_DATA = [
         quadrant: 'brighthollow',
         goal: 5,
         progress: 0,
-        reward: { gold: 400, item: 'Focus Tome' },
+        reward: { gold: 410, item: 'Focus Tome' },
         npc: 'Warrior Trainer',
         town: 'brighthollow',
         dialogue: {
@@ -29034,7 +29296,7 @@ const QUEST_DATA = [
         quadrant: 'brighthollow',
         goal: 3,
         progress: 0,
-        reward: { gold: 500, item: 'Potion', quantity: 5 },
+        reward: { gold: 520, item: 'Potion', quantity: 5 },
         npc: 'Merchant',
         town: 'brighthollow',
         dialogue: {
@@ -29056,7 +29318,7 @@ const QUEST_DATA = [
         },
         progress: 0,
         goal: 5,
-        reward: { gold: 800, item: 'Amethyst Fragment x20' },
+        reward: { gold: 840, item: 'Amethyst Fragment x20' },
         npc: 'Ancient Spirit',
         town: 'brighthollow',
         dialogue: {
@@ -29072,7 +29334,7 @@ const QUEST_DATA = [
     type: 'treasure_find',
     targetLocation: 'Mystic Cave',
     goal: 3,
-    reward: { gold: 600, item: 'Topaz Fragment x18' }
+    reward: { gold: 620, item: 'Topaz Fragment x18' }
 },
     {
         id: 'brighthollow_mini_boss',
@@ -29083,7 +29345,7 @@ const QUEST_DATA = [
         quadrant: 'brighthollow',
         goal: 1,
         progress: 0,
-        reward: { gold: 1500, item: 'Flametongue Blade' },
+        reward: { gold: 1600, item: 'Flametongue Blade' },
         npc: 'King',
         town: 'brighthollow',
         dialogue: {
@@ -29120,7 +29382,7 @@ const QUEST_DATA = [
         quadrant: 'duskmere',
         goal: 8,
         progress: 0,
-        reward: { gold: 900, item: 'Silver Ring' },
+        reward: { gold: 1740, item: 'Silver Ring' },
         npc: 'Wizard',
         town: 'duskmere',
         dialogue: {
@@ -29138,7 +29400,7 @@ const QUEST_DATA = [
         quadrant: 'duskmere',
         goal: 6,
         progress: 0,
-        reward: { gold: 1000, item: 'Battle Axe' },
+        reward: { gold: 1910, item: 'Battle Axe' },
         npc: 'Captain',
         town: 'duskmere',
         dialogue: {
@@ -29156,7 +29418,7 @@ const QUEST_DATA = [
         quadrant: 'duskmere',
         goal: 5,
         progress: 0,
-        reward: { gold: 1300, item: 'Magician Robe' },
+        reward: { gold: 2400, item: 'Magician Robe' },
         npc: 'Wizard',
         town: 'duskmere',
         dialogue: {
@@ -29174,7 +29436,7 @@ const QUEST_DATA = [
         quadrant: 'duskmere',
         goal: 8,
         progress: 0,
-        reward: { gold: 800, item: 'Holy Water x3' },
+        reward: { gold: 1580, item: 'Holy Water x3' },
         npc: 'Priest',
         town: 'duskmere',
         dialogue: {
@@ -29192,7 +29454,7 @@ const QUEST_DATA = [
         quadrant: 'duskmere',
         goal: 6,
         progress: 0,
-        reward: { gold: 900, item: 'Steel Armor' },
+        reward: { gold: 1740, item: 'Steel Armor' },
         npc: 'Gravedigger',
         town: 'duskmere',
         dialogue: {
@@ -29210,7 +29472,7 @@ const QUEST_DATA = [
         quadrant: 'duskmere',
         goal: 4,
         progress: 0,
-        reward: { gold: 1000, item: 'Mega-Potion' },
+        reward: { gold: 1910, item: 'Mega-Potion' },
         npc: 'Hermit',
         town: 'duskmere',
         dialogue: {
@@ -29228,7 +29490,7 @@ const QUEST_DATA = [
         quadrant: 'duskmere',
         goal: 4,
         progress: 0,
-        reward: { gold: 1200, item: 'Magic Tome' },
+        reward: { gold: 2240, item: 'Magic Tome' },
         npc: 'Wizard',
         town: 'duskmere',
         dialogue: {
@@ -29246,7 +29508,7 @@ const QUEST_DATA = [
         quadrant: 'duskmere',
         goal: 3,
         progress: 0,
-        reward: { gold: 1800, item: 'Knight Sword' },
+        reward: { gold: 3220, item: 'Knight Sword' },
         npc: 'King',
         town: 'duskmere',
         dialogue: {
@@ -29265,7 +29527,7 @@ const QUEST_DATA = [
         quadrant: 'duskmere',
         goal: 4,
         progress: 0,
-        reward: { gold: 1500, item: 'Crystal Shield' },
+        reward: { gold: 2730, item: 'Crystal Shield' },
         npc: 'Guild Master',
         town: 'duskmere',
         dialogue: {
@@ -29282,7 +29544,7 @@ const QUEST_DATA = [
         quadrant: 'duskmere',
         goal: 2,
         progress: 0,
-        reward: { gold: 1200, item: 'Wizard Staff' },
+        reward: { gold: 2240, item: 'Wizard Staff' },
         npc: 'Wizard',
         town: 'duskmere',
         dialogue: {
@@ -29301,7 +29563,7 @@ const QUEST_DATA = [
         progress: 0,
         fireKills: 0,
         iceKills: 0,
-        reward: { gold: 1400, item: 'Glacial Scepter' },
+        reward: { gold: 2560, item: 'Glacial Scepter' },
         npc: 'Archmage',
         town: 'duskmere',
         dialogue: {
@@ -29318,7 +29580,7 @@ const QUEST_DATA = [
         quadrant: 'duskmere',
         goal: 2,
         progress: 0,
-        reward: { gold: 1300, item: 'Elixir x2' },
+        reward: { gold: 2400, item: 'Elixir x2' },
         npc: 'General',
         town: 'duskmere',
         dialogue: {
@@ -29336,7 +29598,7 @@ const QUEST_DATA = [
         quadrant: 'duskmere',
         goal: 1,
         progress: 0,
-        reward: { gold: 3000, item: 'Hellfire Greatsword' },
+        reward: { gold: 5200, item: 'Hellfire Greatsword' },
         npc: 'King',
         town: 'duskmere',
         dialogue: {
@@ -29372,7 +29634,7 @@ const QUEST_DATA = [
         quadrant: 'sylvaris',
         goal: 7,
         progress: 0,
-        reward: { gold: 1600, item: 'Mega-Potion x3' },
+        reward: { gold: 4940, item: 'Mega-Potion x3' },
         npc: 'Merchant',
         town: 'sylvaris',
         dialogue: {
@@ -29388,7 +29650,7 @@ const QUEST_DATA = [
     type: 'boss_defeat',
     targetMonster: 'Ancient Mummy Lord',
     goal: 1,
-    reward: { gold: 2800, item: 'Pharaoh\'s Mask' },
+    reward: { gold: 8850, item: 'Pharaoh\'s Mask' },
     npc: 'Tomb Robber',
     town: 'sylvaris',
     dialogue: {
@@ -29406,7 +29668,7 @@ const QUEST_DATA = [
         quadrant: 'sylvaris',
         goal: 6,
         progress: 0,
-        reward: { gold: 1700, item: 'Antidote x5' },
+        reward: { gold: 5260, item: 'Antidote x5' },
         npc: 'Nomad',
         town: 'sylvaris',
         dialogue: {
@@ -29424,7 +29686,7 @@ const QUEST_DATA = [
         quadrant: 'sylvaris',
         goal: 4,
         progress: 0,
-        reward: { gold: 2200, item: 'Djinn Lamp' },
+        reward: { gold: 6890, item: 'Djinn Lamp' },
         npc: 'Sage',
         town: 'sylvaris',
         dialogue: {
@@ -29442,7 +29704,7 @@ const QUEST_DATA = [
         quadrant: 'sylvaris',
         goal: 4,
         progress: 0,
-        reward: { gold: 2000, item: 'Golem Core' },
+        reward: { gold: 6240, item: 'Golem Core' },
         npc: 'Explorer',
         town: 'sylvaris',
         dialogue: {
@@ -29460,7 +29722,7 @@ const QUEST_DATA = [
         quadrant: 'sylvaris',
         goal: 5,
         progress: 0,
-        reward: { gold: 1500, item: 'Hi-Potion x4' },
+        reward: { gold: 4610, item: 'Hi-Potion x4' },
         npc: 'Merchant',
         town: 'sylvaris',
         dialogue: {
@@ -29478,7 +29740,7 @@ const QUEST_DATA = [
         quadrant: 'sylvaris',
         goal: 4,
         progress: 0,
-        reward: { gold: 1800, item: 'Ether x4' },
+        reward: { gold: 5590, item: 'Ether x4' },
         npc: 'Wizard',
         town: 'sylvaris',
         dialogue: {
@@ -29497,7 +29759,7 @@ const QUEST_DATA = [
         quadrant: 'sylvaris',
         goal: 4,
         progress: 0,
-        reward: { gold: 2500, item: 'Firaga Tome' },
+        reward: { gold: 7870, item: 'Firaga Tome' },
         npc: 'Guild Master',
         town: 'sylvaris',
         dialogue: {
@@ -29516,7 +29778,7 @@ const QUEST_DATA = [
         quadrant: 'sylvaris',
         goal: 3,
         progress: 0,
-        reward: { gold: 2800, item: 'Ancient Tome' },
+        reward: { gold: 8850, item: 'Ancient Tome' },
         npc: 'Archaeologist',
         town: 'sylvaris',
         dialogue: {
@@ -29535,7 +29797,7 @@ const QUEST_DATA = [
         progress: 0,
         fireKills: 0,
         iceKills: 0,
-        reward: { gold: 3000, item: 'Elemental Rod' },
+        reward: { gold: 9500, item: 'Elemental Rod' },
         npc: 'Archmage',
         town: 'sylvaris',
         dialogue: {
@@ -29552,7 +29814,7 @@ const QUEST_DATA = [
         quadrant: 'sylvaris',
         goal: 15,
         progress: 0,
-        reward: { gold: 2200, item: 'Critical Tome' },
+        reward: { gold: 6890, item: 'Critical Tome' },
         npc: 'Warrior Trainer',
         town: 'sylvaris',
         dialogue: {
@@ -29569,7 +29831,7 @@ const QUEST_DATA = [
         quadrant: 'sylvaris',
         goal: 4,
         progress: 0,
-        reward: { gold: 2400, item: 'Megalixir' },
+        reward: { gold: 7540, item: 'Megalixir' },
         npc: 'Nomad',
         town: 'sylvaris',
         dialogue: {
@@ -29587,7 +29849,7 @@ const QUEST_DATA = [
         quadrant: 'sylvaris',
         goal: 1,
         progress: 0,
-        reward: { gold: 2500, item: 'Elemental Rod' },
+        reward: { gold: 7870, item: 'Elemental Rod' },
         npc: 'King Theron',
         town: 'sylvaris',
         dialogue: {
@@ -29610,7 +29872,7 @@ const QUEST_DATA = [
         quadrant: 'chaos',
         goal: 8,
         progress: 0,
-        reward: { gold: 4000, item: 'Demon Bane' },
+        reward: { gold: 4890, item: 'Demon Bane' },
         npc: 'King',
         town: 'sylvaris',
         dialogue: {
@@ -29628,7 +29890,7 @@ const QUEST_DATA = [
         quadrant: 'chaos',
         goal: 1,
         progress: 0,
-        reward: { gold: 8000, item: 'Dragon Scale Mail' },
+        reward: { gold: 8670, item: 'Dragon Scale Mail' },
         npc: 'King',
         town: 'sylvaris',
         dialogue: {
@@ -29646,7 +29908,7 @@ const QUEST_DATA = [
         quadrant: 'chaos',
         goal: 1,
         progress: 0,
-        reward: { gold: 10000, item: 'Dragon Crown' },
+        reward: { gold: 10560, item: 'Dragon Crown' },
         npc: 'Elder',
         town: 'sylvaris',
         dialogue: {
@@ -29664,7 +29926,7 @@ const QUEST_DATA = [
         quadrant: 'chaos',
         goal: 6,
         progress: 0,
-        reward: { gold: 4500, item: 'Magma Shield' },
+        reward: { gold: 5360, item: 'Magma Shield' },
         npc: 'Guild Master',
         town: 'sylvaris',
         dialogue: {
@@ -29682,7 +29944,7 @@ const QUEST_DATA = [
         quadrant: 'chaos',
         goal: 5,
         progress: 0,
-        reward: { gold: 5000, item: 'Flametongue' },
+        reward: { gold: 5830, item: 'Flametongue' },
         npc: 'Warrior Trainer',
         town: 'sylvaris',
         dialogue: {
@@ -29700,7 +29962,7 @@ const QUEST_DATA = [
         quadrant: 'chaos',
         goal: 4,
         progress: 0,
-        reward: { gold: 4800, item: 'Glacial Blade' },
+        reward: { gold: 5640, item: 'Glacial Blade' },
         npc: 'Wizard',
         town: 'sylvaris',
         dialogue: {
@@ -29718,7 +29980,7 @@ const QUEST_DATA = [
         quadrant: 'chaos',
         goal: 4,
         progress: 0,
-        reward: { gold: 5200, item: 'Voidblade' },
+        reward: { gold: 6020, item: 'Voidblade' },
         npc: 'King',
         town: 'sylvaris',
         dialogue: {
@@ -29736,7 +29998,7 @@ const QUEST_DATA = [
         quadrant: 'chaos',
         goal: 3,
         progress: 0,
-        reward: { gold: 6000, item: 'Void Crystal' },
+        reward: { gold: 6780, item: 'Void Crystal' },
         npc: 'Archmage',
         town: 'sylvaris',
         dialogue: {
@@ -29755,7 +30017,7 @@ const QUEST_DATA = [
         quadrant: 'chaos',
         goal: 4,
         progress: 0,
-        reward: { gold: 7000, item: 'Abyssal Armor' },
+        reward: { gold: 7720, item: 'Abyssal Armor' },
         npc: 'Guild Master',
         town: 'sylvaris',
         dialogue: {
@@ -29774,7 +30036,7 @@ const QUEST_DATA = [
         quadrant: 'chaos',
         goal: 3,
         progress: 0,
-        reward: { gold: 9000, item: 'Dragon Crown' },
+        reward: { gold: 9610, item: 'Dragon Crown' },
         npc: 'King',
         town: 'sylvaris',
         dialogue: {
@@ -29791,7 +30053,7 @@ const QUEST_DATA = [
         quadrant: 'chaos',
         goal: 3,
         progress: 0,
-        reward: { gold: 5500, item: 'Archmage Robe' },
+        reward: { gold: 6310, item: 'Archmage Robe' },
         npc: 'Archmage',
         town: 'sylvaris',
         dialogue: {
@@ -29810,7 +30072,7 @@ const QUEST_DATA = [
         progress: 0,
         fireKills: 0,
         iceKills: 0,
-        reward: { gold: 8000, item: 'Elemental Crown' },
+        reward: { gold: 8670, item: 'Elemental Crown' },
         npc: 'Archmage',
         town: 'sylvaris',
         dialogue: {
@@ -29827,7 +30089,7 @@ const QUEST_DATA = [
         quadrant: 'chaos',
         goal: 3,
         progress: 0,
-        reward: { gold: 9000, item: 'Prismatic Gem' },
+        reward: { gold: 9610, item: 'Prismatic Gem' },
         npc: 'Legend',
         town: 'sylvaris',
         dialogue: {
@@ -29844,7 +30106,7 @@ const QUEST_DATA = [
         quadrant: 'chaos',
         goal: 25,
         progress: 0,
-        reward: { gold: 7500, item: 'Godslayer' },
+        reward: { gold: 8190, item: 'Godslayer' },
         npc: 'Warrior God',
         town: 'sylvaris',
         dialogue: {
@@ -29861,7 +30123,7 @@ const QUEST_DATA = [
         quadrant: 'chaos',
         goal: 5,
         progress: 0,
-        reward: { gold: 8500, item: 'Megalixir x3' },
+        reward: { gold: 9140, item: 'Megalixir x3' },
         npc: 'Hermit',
         town: 'sylvaris',
         dialogue: {
@@ -29923,7 +30185,7 @@ const QUEST_DATA = [
         quadrant: 'brighthollow',
         goal: 1,
         progress: 0,
-        reward: { gold: 600, item: 'Royal Signet' },
+        reward: { gold: 620, item: 'Royal Signet' },
         npc: 'King Aldric',
         town: 'brighthollow',
         dialogue: {
@@ -29941,7 +30203,7 @@ const QUEST_DATA = [
         quadrant: 'brighthollow',
         goal: 1,
         progress: 0,
-        reward: { gold: 500, item: 'Brighthollow Tome' },
+        reward: { gold: 520, item: 'Brighthollow Tome' },
         npc: 'Toran',
         town: 'brighthollow',
         dialogue: {
@@ -29959,7 +30221,7 @@ const QUEST_DATA = [
         quadrant: 'brighthollow',
         goal: 1,
         progress: 0,
-        reward: { gold: 450, item: 'Ether x2' },
+        reward: { gold: 460, item: 'Ether x2' },
         npc: 'Petra',
         town: 'brighthollow',
         dialogue: {
@@ -29977,7 +30239,7 @@ const QUEST_DATA = [
         quadrant: 'brighthollow',
         goal: 1,
         progress: 0,
-        reward: { gold: 400, item: 'Potion x3' },
+        reward: { gold: 410, item: 'Potion x3' },
         npc: 'Royal Herald',
         town: 'brighthollow',
         dialogue: {
@@ -29998,7 +30260,7 @@ const QUEST_DATA = [
         quadrant: 'duskmere',
         goal: 1,
         progress: 0,
-        reward: { gold: 700, item: 'Ether x3' },
+        reward: { gold: 1410, item: 'Ether x3' },
         npc: 'Wren',
         town: 'duskmere',
         dialogue: {
@@ -30015,7 +30277,7 @@ const QUEST_DATA = [
         quadrant: 'duskmere',
         goal: 1,
         progress: 0,
-        reward: { gold: 800, item: 'Silver Ring' },
+        reward: { gold: 1580, item: 'Silver Ring' },
         npc: 'Queen Seraphina',
         town: 'duskmere',
         dialogue: {
@@ -30033,7 +30295,7 @@ const QUEST_DATA = [
         quadrant: 'duskmere',
         goal: 1,
         progress: 0,
-        reward: { gold: 500, item: 'Ether x2' },
+        reward: { gold: 1080, item: 'Ether x2' },
         npc: 'Queen Seraphina',
         town: 'duskmere',
         dialogue: {
@@ -30051,7 +30313,7 @@ const QUEST_DATA = [
         quadrant: 'duskmere',
         goal: 1,
         progress: 0,
-        reward: { gold: 550, item: 'Duskmere Tome' },
+        reward: { gold: 1160, item: 'Duskmere Tome' },
         npc: 'Nessa',
         town: 'duskmere',
         dialogue: {
@@ -30068,7 +30330,7 @@ const QUEST_DATA = [
         quadrant: 'duskmere',
         goal: 1,
         progress: 0,
-        reward: { gold: 500, item: 'Hi-Potion x2' },
+        reward: { gold: 1080, item: 'Hi-Potion x2' },
         npc: 'Mora',
         town: 'duskmere',
         dialogue: {
@@ -30086,7 +30348,7 @@ const QUEST_DATA = [
         quadrant: 'duskmere',
         goal: 1,
         progress: 0,
-        reward: { gold: 450, item: 'Potion x3' },
+        reward: { gold: 1000, item: 'Potion x3' },
         npc: 'Border Scout',
         town: 'duskmere',
         dialogue: {
@@ -30107,7 +30369,7 @@ const QUEST_DATA = [
         quadrant: 'sylvaris',
         goal: 1,
         progress: 0,
-        reward: { gold: 900, item: 'Ether x3' },
+        reward: { gold: 2650, item: 'Ether x3' },
         npc: 'Yara',
         town: 'sylvaris',
         dialogue: {
@@ -30124,7 +30386,7 @@ const QUEST_DATA = [
         quadrant: 'sylvaris',
         goal: 1,
         progress: 0,
-        reward: { gold: 1000, item: 'Desert Rose Pendant' },
+        reward: { gold: 2980, item: 'Desert Rose Pendant' },
         npc: 'King Theron',
         town: 'sylvaris',
         dialogue: {
@@ -30142,7 +30404,7 @@ const QUEST_DATA = [
         quadrant: 'sylvaris',
         goal: 1,
         progress: 0,
-        reward: { gold: 700, item: 'Sylvaris Tome' },
+        reward: { gold: 2000, item: 'Sylvaris Tome' },
         npc: 'Nadir',
         town: 'sylvaris',
         dialogue: {
@@ -30159,7 +30421,7 @@ const QUEST_DATA = [
         quadrant: 'sylvaris',
         goal: 1,
         progress: 0,
-        reward: { gold: 850, item: 'Hi-Potion x2' },
+        reward: { gold: 2490, item: 'Hi-Potion x2' },
         npc: 'Tessa',
         town: 'sylvaris',
         dialogue: {
@@ -30177,7 +30439,7 @@ const QUEST_DATA = [
         quadrant: 'sylvaris',
         goal: 1,
         progress: 0,
-        reward: { gold: 1200, item: 'Ether x3' },
+        reward: { gold: 3630, item: 'Ether x3' },
         npc: 'Temple Attendant',
         town: 'sylvaris',
         dialogue: {
@@ -30195,21 +30457,21 @@ const QUEST_DATA = [
     // their NPC silently failed. Registering them here fixes that without
     // touching the NPCs themselves.
     // =============================================================
-    { id: 'brighthollow_pass_clear', name: 'Clear the Pass', description: 'Defeat 8 monsters in the mountain pass area.', type: 'cave_encounters', targetLocation: 'mountain_pass', goal: 8, reward: { gold: 700, item: 'Hi-Potion x3' }, quadrant: 'brighthollow', progress: 0 },
-    { id: 'duskmere_forest_spirits', name: 'Forest Spirits', description: 'Collect 5 soul essences from wraiths in the Whispering Woods.', type: 'monster_kill', targetMonster: 'Wraith', goal: 5, reward: { gold: 1300, item: 'Spirit Robe' }, quadrant: 'duskmere', progress: 0 },
-    { id: 'chaos_lava_beast_hunt', name: 'Lava Beast Hunt', description: 'Defeat 8 lava beasts and collect their cores.', type: 'monster_kill', targetMonster: 'Lava Beast', goal: 8, reward: { gold: 3800, item: 'Magma Shield' }, quadrant: 'chaos', progress: 0 },
-    { id: 'chaos_ice_dragon', name: 'Ice Demon Slayer', description: 'Defeat the Ice Demon and collect its heart.', type: 'boss_defeat', targetMonster: 'Ice Demon', goal: 1, reward: { gold: 3500, item: 'Dragon Scale Mail' }, quadrant: 'chaos', progress: 0 },
-    { id: 'duskmere_crystal_heart', name: 'Crystal Heart', description: 'Defeat the Dread Wraith and retrieve the Crystal Heart it guards.', type: 'boss_defeat', targetMonster: 'Dread Wraith', goal: 1, reward: { gold: 1500, item: 'Crystal Armor' }, quadrant: 'duskmere', progress: 0 },
-    { id: 'sylvaris_ancient_wisdom', name: 'Ancient Wisdom', description: 'Collect ancient tomes from each region\'s library.', type: 'treasure_find', targets: ['Brighthollow Tome', 'Duskmere Tome', 'Sylvaris Tome'], goal: 3, reward: { gold: 3000, item: 'Sage\'s Staff' }, quadrant: 'sylvaris', progress: 0 },
-    { id: 'sylvaris_fire_core', name: 'Fire Core Collection', description: 'Collect 3 fire cores from fire elementals.', type: 'treasure_find', targetLocation: 'Fire Grotto', goal: 3, reward: { gold: 2200, item: 'Ruby Fragment x40' }, quadrant: 'sylvaris', progress: 0 },
-    { id: 'duskmere_dread_knight_intel', name: 'Dread Knight Intelligence', description: 'Defeat 3 dark knights and bring back their steel.', type: 'monster_kill', targetMonster: 'Dark Knight', goal: 3, reward: { gold: 1800, item: 'Darksteel Sword' }, quadrant: 'duskmere', progress: 0 },
-    { id: 'sylvaris_desert_survivor', name: 'Desert Survivor', description: 'Survive 5 encounters in the desert without using items.', type: 'no_item_battle', goal: 5, reward: { gold: 2000, item: 'Nomad\'s Cloak' }, quadrant: 'sylvaris', progress: 0 },
-    { id: 'sylvaris_elemental_trials', name: 'Elemental Trials', description: 'Defeat the Fire, Ice, and Lightning guardians in the Sunken Temple.', type: 'elemental_kills', goal: 3, reward: { gold: 2500, item: 'Elemental Crown' }, quadrant: 'sylvaris', progress: 0 },
-    { id: 'brighthollow_goblin_intel', name: 'Goblin Intelligence', description: 'Defeat 5 goblin warriors and bring back their ears for analysis.', type: 'monster_kill', targetMonster: 'Goblin Warrior', goal: 5, reward: { gold: 500, item: 'Ruby Fragment x15' }, quadrant: 'brighthollow', progress: 0 },
-    { id: 'chaos_abyssal_hunter', name: 'Abyssal Hunter', description: 'Defeat 10 abyssal demons and collect their essence.', type: 'monster_kill', targetMonster: 'Abyssal Demon', goal: 10, reward: { gold: 4000, item: 'Void Shield' }, quadrant: 'chaos', progress: 0 },
-    { id: 'chaos_legendary_weapons', name: 'Legendary Arsenal', description: 'Collect all four legendary weapons from the regional bosses.', type: 'treasure_find', targets: ['Goblin Crown', 'Darksteel Plate', 'Pharaoh\'s Staff', 'Ashen Core'], goal: 4, reward: { gold: 10000, item: 'Blade of Dawn' }, quadrant: 'chaos', progress: 0 },
-    { id: 'duskmere_trade_route', name: 'Secure the Trade Route', description: 'Clear 10 monsters from the roads around Duskmere.', type: 'monster_kill', targetMonster: 'any', goal: 10, reward: { gold: 1200, item: 'Merchant\'s Badge' }, quadrant: 'duskmere', progress: 0 },
-    { id: 'brighthollow_explorer', name: 'Regional Explorer', description: 'Visit all locations in the Brighthollow region.', type: 'visit_locations', targets: ['Mystic Cave', 'Shadow Grove', 'Goblin Keep'], goal: 3, reward: { gold: 1000, item: 'Explorer\'s Map' }, quadrant: 'brighthollow', progress: 0 },
+    { id: 'brighthollow_pass_clear', name: 'Clear the Pass', description: 'Defeat 8 monsters in the mountain pass area.', type: 'cave_encounters', targetLocation: 'mountain_pass', goal: 8, reward: { gold: 730, item: 'Hi-Potion x3' }, quadrant: 'brighthollow', progress: 0 },
+    { id: 'duskmere_forest_spirits', name: 'Forest Spirits', description: 'Collect 5 soul essences from wraiths in the Whispering Woods.', type: 'monster_kill', targetMonster: 'Wraith', goal: 5, reward: { gold: 2400, item: 'Spirit Robe' }, quadrant: 'duskmere', progress: 0 },
+    { id: 'chaos_lava_beast_hunt', name: 'Lava Beast Hunt', description: 'Defeat 8 lava beasts and collect their cores.', type: 'monster_kill', targetMonster: 'Lava Beast', goal: 8, reward: { gold: 4700, item: 'Magma Shield' }, quadrant: 'chaos', progress: 0 },
+    { id: 'chaos_ice_dragon', name: 'Ice Demon Slayer', description: 'Defeat the Ice Demon and collect its heart.', type: 'boss_defeat', targetMonster: 'Ice Demon', goal: 1, reward: { gold: 4420, item: 'Dragon Scale Mail' }, quadrant: 'chaos', progress: 0 },
+    { id: 'duskmere_crystal_heart', name: 'Crystal Heart', description: 'Defeat the Dread Wraith and retrieve the Crystal Heart it guards.', type: 'boss_defeat', targetMonster: 'Dread Wraith', goal: 1, reward: { gold: 2730, item: 'Crystal Armor' }, quadrant: 'duskmere', progress: 0 },
+    { id: 'sylvaris_ancient_wisdom', name: 'Ancient Wisdom', description: 'Collect ancient tomes from each region\'s library.', type: 'treasure_find', targets: ['Brighthollow Tome', 'Duskmere Tome', 'Sylvaris Tome'], goal: 3, reward: { gold: 9500, item: 'Sage\'s Staff' }, quadrant: 'sylvaris', progress: 0 },
+    { id: 'sylvaris_fire_core', name: 'Fire Core Collection', description: 'Collect 3 fire cores from fire elementals.', type: 'treasure_find', targetLocation: 'Fire Grotto', goal: 3, reward: { gold: 6890, item: 'Ruby Fragment x40' }, quadrant: 'sylvaris', progress: 0 },
+    { id: 'duskmere_dread_knight_intel', name: 'Dread Knight Intelligence', description: 'Defeat 3 dark knights and bring back their steel.', type: 'monster_kill', targetMonster: 'Dark Knight', goal: 3, reward: { gold: 3220, item: 'Darksteel Sword' }, quadrant: 'duskmere', progress: 0 },
+    { id: 'sylvaris_desert_survivor', name: 'Desert Survivor', description: 'Survive 5 encounters in the desert without using items.', type: 'no_item_battle', goal: 5, reward: { gold: 6240, item: 'Nomad\'s Cloak' }, quadrant: 'sylvaris', progress: 0 },
+    { id: 'sylvaris_elemental_trials', name: 'Elemental Trials', description: 'Defeat the Fire, Ice, and Lightning guardians in the Sunken Temple.', type: 'elemental_kills', goal: 3, reward: { gold: 7870, item: 'Elemental Crown' }, quadrant: 'sylvaris', progress: 0 },
+    { id: 'brighthollow_goblin_intel', name: 'Goblin Intelligence', description: 'Defeat 5 goblin warriors and bring back their ears for analysis.', type: 'monster_kill', targetMonster: 'Goblin Warrior', goal: 5, reward: { gold: 520, item: 'Ruby Fragment x15' }, quadrant: 'brighthollow', progress: 0 },
+    { id: 'chaos_abyssal_hunter', name: 'Abyssal Hunter', description: 'Defeat 10 abyssal demons and collect their essence.', type: 'monster_kill', targetMonster: 'Abyssal Demon', goal: 10, reward: { gold: 4890, item: 'Void Shield' }, quadrant: 'chaos', progress: 0 },
+    { id: 'chaos_legendary_weapons', name: 'Legendary Arsenal', description: 'Collect all four legendary weapons from the regional bosses.', type: 'treasure_find', targets: ['Goblin Crown', 'Darksteel Plate', 'Pharaoh\'s Staff', 'Ashen Core'], goal: 4, reward: { gold: 10560, item: 'Blade of Dawn' }, quadrant: 'chaos', progress: 0 },
+    { id: 'duskmere_trade_route', name: 'Secure the Trade Route', description: 'Clear 10 monsters from the roads around Duskmere.', type: 'monster_kill', targetMonster: 'any', goal: 10, reward: { gold: 2240, item: 'Merchant\'s Badge' }, quadrant: 'duskmere', progress: 0 },
+    { id: 'brighthollow_explorer', name: 'Regional Explorer', description: 'Visit all locations in the Brighthollow region.', type: 'visit_locations', targets: ['Mystic Cave', 'Shadow Grove', 'Goblin Keep'], goal: 3, reward: { gold: 1060, item: 'Explorer\'s Map' }, quadrant: 'brighthollow', progress: 0 },
 
     // =============================================================
     // LEGENDARY WEAPON QUESTLINE (see LEGENDARY_WEAPONS)
@@ -30254,7 +30516,7 @@ const QUEST_DATA = [
         id: 'warrior_legendary_ore', name: 'Skyiron in the Deep',
         description: "The Duskmere smiths know Skyiron Ore on sight. The vein lies just west of town, near Crystal Caverns - Orcs have been guarding it. Bring back enough to forge with.",
         type: 'monster_kill', targetMonster: 'Orc', targetLocation: 'Crystal Caverns', quadrant: 'duskmere', goal: 6, progress: 0,
-        reward: { gold: 500, item: 'Skyiron Ore x5' }, npc: 'Shrine Keeper', town: 'duskmere',
+        reward: { gold: 1080, item: 'Skyiron Ore x5' }, npc: 'Shrine Keeper', town: 'duskmere',
         dialogue: {
             start: "Skyiron doesn't turn up often - storm-forged ore, they call it. There's a vein just west of town, out by Crystal Caverns, but orcs have claimed it. Bring back all you can carry.",
             progress: "Still not enough Skyiron in hand. {progress}/6 orcs cleared from the vein near Crystal Caverns.",
@@ -30265,7 +30527,7 @@ const QUEST_DATA = [
         id: 'mage_legendary_wood', name: 'Sunroot in the Swamp',
         description: "Sunroot Wood only grows where fire has burned deep underground for years. The grove is southwest of town, near Whispering Woods - Swamp Things guard it. Gather enough to forge with.",
         type: 'monster_kill', targetMonster: 'Swamp Thing', targetLocation: 'Whispering Woods', quadrant: 'duskmere', goal: 6, progress: 0,
-        reward: { gold: 500, item: 'Sunroot Wood x5' }, npc: 'Shrine Keeper', town: 'duskmere',
+        reward: { gold: 1080, item: 'Sunroot Wood x5' }, npc: 'Shrine Keeper', town: 'duskmere',
         dialogue: {
             start: "There's a grove southwest of town, out in the marsh near Whispering Woods, that's stayed warm as long as anyone remembers. The Swamp Things there won't let it go easily.",
             progress: "Still not enough Sunroot Wood in hand. {progress}/6 cleared from the grove near Whispering Woods.",
@@ -30276,7 +30538,7 @@ const QUEST_DATA = [
         id: 'paladin_legendary_ore', name: 'Frostglass in the Dark',
         description: "Frostglass Ore stays cold no matter the forge. The vein lies southeast of town, along the road toward the old Dark Fortress - Wraiths guard it. Gather enough to work with.",
         type: 'monster_kill', targetMonster: 'Wraith', targetLocation: 'Dark Fortress', quadrant: 'duskmere', goal: 6, progress: 0,
-        reward: { gold: 500, item: 'Frostglass Ore x5' }, npc: 'Shrine Keeper', town: 'duskmere',
+        reward: { gold: 1080, item: 'Frostglass Ore x5' }, npc: 'Shrine Keeper', town: 'duskmere',
         dialogue: {
             start: "Frostglass never warms, not even near a forge - the local smiths gave up trying to work it years ago. There's a vein southeast of town, toward the old Dark Fortress, and the wraiths guarding it won't have given up either.",
             progress: "Still not enough Frostglass in hand. {progress}/6 wraiths cleared from the road toward Dark Fortress.",
@@ -30287,7 +30549,7 @@ const QUEST_DATA = [
         id: 'warrior_legendary_tome', name: 'The Tempest Tome',
         description: "A Djinn is said to guard a tome of storm-runes, somewhere in the dunes northwest of town, past the Sand Crypts. Defeat enough of them to recover it.",
         type: 'monster_kill', targetMonster: 'Djinn', targetLocation: 'Sand Crypts', quadrant: 'sylvaris', goal: 6, progress: 0,
-        reward: { gold: 900, item: 'Tempest Rune Tome' }, npc: 'Shrine Keeper', town: 'sylvaris',
+        reward: { gold: 2650, item: 'Tempest Rune Tome' }, npc: 'Shrine Keeper', town: 'sylvaris',
         dialogue: {
             start: "The djinn of the dunes hoard more than gold - out past the Sand Crypts, northwest of town, one of them is said to carry a tome of storm-runes. Track it down.",
             progress: "Still no sign of the tome near the Sand Crypts. {progress}/6 djinn defeated.",
@@ -30298,7 +30560,7 @@ const QUEST_DATA = [
         id: 'mage_legendary_tome', name: 'The Cinder Tome',
         description: "A Sand Worm's lair is said to hide a half-burned tome of ember-runes, just southeast of town near the Fire Grotto. Defeat enough of them to recover it.",
         type: 'monster_kill', targetMonster: 'Sand Worm', targetLocation: 'Fire Grotto', quadrant: 'sylvaris', goal: 6, progress: 0,
-        reward: { gold: 900, item: 'Cinder Rune Tome' }, npc: 'Shrine Keeper', town: 'sylvaris',
+        reward: { gold: 2650, item: 'Cinder Rune Tome' }, npc: 'Shrine Keeper', town: 'sylvaris',
         dialogue: {
             start: "Something in the sand worm burrows near the Fire Grotto, just southeast of town, is scorched black but still legible, according to the caravan traders. Worth a look.",
             progress: "Still no sign of the tome near the Fire Grotto. {progress}/6 sand worms defeated.",
@@ -30309,7 +30571,7 @@ const QUEST_DATA = [
         id: 'paladin_legendary_tome', name: 'The Frost Tome',
         description: "A Desert Scorpion's nest is said to hide a tome of frost-runes, southeast of town along the road to the Sunken Temple. Defeat enough of them to recover it.",
         type: 'monster_kill', targetMonster: 'Desert Scorpion', targetLocation: 'Sunken Temple', quadrant: 'sylvaris', goal: 6, progress: 0,
-        reward: { gold: 900, item: 'Frost Rune Tome' }, npc: 'Shrine Keeper', town: 'sylvaris',
+        reward: { gold: 2650, item: 'Frost Rune Tome' }, npc: 'Shrine Keeper', town: 'sylvaris',
         dialogue: {
             start: "Strange, finding a frost-tome out here in the desert - but the scorpion nests along the road to the Sunken Temple, southeast of town, are said to guard exactly that.",
             progress: "Still no sign of the tome near the Sunken Temple road. {progress}/6 scorpions defeated.",
@@ -30320,7 +30582,7 @@ const QUEST_DATA = [
         id: 'warrior_legendary_trial', name: "Trial of the Storm",
         description: "A Flame Knight in the Ashen Wastes, east of the Ashveil Spire near Dragon's Lair, carries the final piece of Stormbreaker, tempered in its own fire. Defeat enough of them to claim it.",
         type: 'monster_kill', targetMonster: 'Flame Knight', targetLocation: 'Dragon\'s Lair', quadrant: 'chaos', goal: 5, progress: 0,
-        reward: { gold: 2000, item: 'Stormbreaker Edge' }, npc: 'Shrine Keeper', town: 'sylvaris',
+        reward: { gold: 3000, item: 'Stormbreaker Edge' }, npc: 'Shrine Keeper', town: 'sylvaris',
         dialogue: {
             start: "The Ashen Wastes are no place for the unprepared - but east of the Ashveil Spire, near Dragon's Lair, a Flame Knight carries an edge of tempered storm-steel. It's the last piece.",
             progress: "The edge is still out there, east of the Spire. {progress}/5 Flame Knights defeated.",
@@ -30331,7 +30593,7 @@ const QUEST_DATA = [
         id: 'mage_legendary_trial', name: "Trial of the Ember",
         description: "An Abyssal Demon guards the final runes for Emberwoven Staff, in the Abyssal Depths south of the Ashveil Spire. Defeat enough of them to claim them.",
         type: 'monster_kill', targetMonster: 'Abyssal Demon', targetLocation: 'Abyssal Depths', quadrant: 'chaos', goal: 5, progress: 0,
-        reward: { gold: 2000, item: 'Emberwoven Runes' }, npc: 'Shrine Keeper', town: 'sylvaris',
+        reward: { gold: 3000, item: 'Emberwoven Runes' }, npc: 'Shrine Keeper', town: 'sylvaris',
         dialogue: {
             start: "Deep in the Abyssal Depths, south of the Ashveil Spire, something has been guarding a set of binding runes that shouldn't have survived the heat around them. Worth the risk.",
             progress: "The runes are still out there, in the Depths. {progress}/5 Abyssal Demons defeated.",
@@ -30342,7 +30604,7 @@ const QUEST_DATA = [
         id: 'paladin_legendary_trial', name: "Trial of the Glacier",
         description: "An Ice Demon carries the final edge for Glacial Aegis Blade, holed up in the Frost Cave west of the Ashveil Spire. Defeat enough of them to claim it.",
         type: 'monster_kill', targetMonster: 'Ice Demon', targetLocation: 'Frost Cave', quadrant: 'chaos', goal: 5, progress: 0,
-        reward: { gold: 2000, item: 'Aegis Edge' }, npc: 'Shrine Keeper', town: 'sylvaris',
+        reward: { gold: 3000, item: 'Aegis Edge' }, npc: 'Shrine Keeper', town: 'sylvaris',
         dialogue: {
             start: "In the Frost Cave, west of the Ashveil Spire, an Ice Demon carries an edge forged in its own endless winter - by far the hardest-won of the three pieces.",
             progress: "The edge is still out there, in the Frost Cave. {progress}/5 Ice Demons defeated.",
