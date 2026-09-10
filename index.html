@@ -5448,7 +5448,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v155</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v156</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -12418,7 +12418,7 @@
                     quest: { id: 'sylvaris_elemental_trials', name: 'Elemental Trials', description: 'Defeat the Fire, Ice, and Lightning guardians in the Sunken Temple.', type: 'elemental_kills', goal: 3, reward: { gold: 2500, item: 'Elemental Crown' } } },
                 { x: 83, y: 87, name: 'Fire Mage', sprite: '🔥', type: 'quest_giver',
                     dialogue: ["The heat here is intense! Perfect for training.", "Fire elementals are immune to fire, so don't bother.", "They're weak to ice though. Bring your coldest spells."],
-                    hint: "Fire elementals are weak to ice. Blizzaga works, but Firaga is useless!",
+                    hint: "Fire elementals are weak to ice. Frostfall works, but Wildfire is useless!",
                     quest: { id: 'sylvaris_fire_core', name: 'Fire Core Collection', description: 'Collect 3 fire cores from fire elementals.', type: 'treasure_find', targetLocation: 'Fire Grotto', goal: 3, reward: { gold: 2200, item: 'Ruby Fragment x40' } } },
                 { x: 74, y: 88, name: 'Elf Sage', sprite: '🧝', type: 'quest_giver',
                     dialogue: ["Welcome to Sylvaris, child of man. The elder trees speak highly of you.", "The Ashveil Spire to the northeast is where the final battle awaits.", "You are not ready yet. Gain more power, learn more spells, then return."],
@@ -12426,7 +12426,7 @@
                     quest: { id: 'sylvaris_ancient_wisdom', name: 'Ancient Wisdom', description: 'Collect ancient tomes from each region\'s library.', type: 'treasure_find', targets: ['Brighthollow Tome', 'Duskmere Tome', 'Sylvaris Tome'], goal: 3, reward: { gold: 3000, item: 'Sage\'s Staff' } } },
                 { x: 61, y: 78, name: 'Tomb Robber', sprite: '⚰️', type: 'quest_giver',
                     dialogue: ["Shhh! I'm trying to be quiet!", "The mummies here don't like intruders. They REALLY don't like fire.", "I saw a huge sarcophagus deeper in. Probably a boss or something."],
-                    hint: "The Ancient Mummy Lord is vulnerable to fire. Bring Firaga or napalm!",
+                    hint: "The Ancient Mummy Lord is vulnerable to fire. Bring Wildfire or napalm!",
                     quest: { id: 'sylvaris_mummy_curse', name: 'Break the Mummy\'s Curse', description: 'Defeat the Ancient Mummy Lord and destroy 5 mummy wrappings.', type: 'boss_defeat', targetMonster: 'Ancient Mummy Lord', goal: 1, reward: { gold: 2800, item: 'Pharaoh\'s Mask' } } },
                 { x: 263, y: 163, name: 'Frozen Traveler', sprite: '❄️', type: 'quest_giver',
                     dialogue: ["C-c-cold... so c-c-cold...", "The ice demon sleeps in the deepest chamber. Don't wake it!", "Unless... unless you have fire magic. Lots of it."],
@@ -19332,7 +19332,7 @@
             legendary: [
                 { name: 'Knight Sword', type: 'weapon', attack: 18, defense: 3, price: 1600, paladinOnly: true, desc: 'Fine paladin blade' },
                 { name: 'Darksteel Plate', type: 'armor', defense: 18, price: 900, warriorOnly: true, desc: 'Powerful darksteel armor' },
-                { name: 'Ancient Tome', type: 'spell_tome', spell: 'Blizzara', price: 1000, desc: 'Contains powerful ice magic' },
+                { name: 'Ancient Tome', type: 'spell_tome', spell: 'Frostbite', price: 1000, desc: 'Contains powerful ice magic' },
                 { name: 'Crystal Skull', type: 'material', price: 400, desc: 'Mysterious crystal skull - ultra rare' },
                 { name: 'Hellfire Greatsword', type: 'weapon', attack: 32, magic: 12, element: 'fire', price: 3600, warriorOnly: true, desc: 'Wreathed in demonic flames' },
                 { name: 'Glacial Scepter', type: 'weapon', attack: 10, magic: 35, element: 'ice', price: 3800, mageOnly: true, desc: 'Freezes the very air around it' },
@@ -19359,7 +19359,7 @@
                 { name: 'Elemental Rod', type: 'weapon', magic: 25, attack: 10, price: 6000, mageOnly: true, desc: 'Rod of the elements' },
                 { name: 'Fire Core', type: 'material', price: 500, desc: 'Pure fire elemental core' },
                 { name: 'Golden Idol', type: 'material', price: 600, desc: 'Priceless golden idol' },
-                { name: 'Firaga Tome', type: 'spell_tome', spell: 'Firaga', price: 2500, desc: 'Ultimate fire magic tome' },
+                { name: 'Wildfire Tome', type: 'spell_tome', spell: 'Wildfire', price: 2500, desc: 'Ultimate fire magic tome' },
                 { name: 'Sandwarden Scepter', type: 'weapon', magic: 24, attack: 10, price: 6300, mageOnly: true, bonusVsFamily: { elemental: 0.2, construct: 0.15 }, desc: 'Attuned to the desert\'s restless spirits. 20% more damage to elemental creatures, 15% to constructs.' }
             ]
         },
@@ -20122,35 +20122,35 @@
                 { name: 'Protect Tome', type: 'spell', price: 1250, spell: { name: 'Protect', cost: 5, power: 1.5, type: 'buff', stat: 'defense', duration: 4, tier: 1 }, desc: 'Raises defense by 50% for 4 turns.', class: 'paladin' }
             ];
             const town2Spells = [
-                { name: 'Fira Tome', type: 'spell', price: 1290, spell: { name: 'Fira', cost: 12, power: 70, type: 'damage', element: 'fire', tier: 2 }, desc: 'Stronger fire magic. Deals 70 fire damage.', class: 'mage' },
-                { name: 'Blizzara Tome', type: 'spell', price: 1290, spell: { name: 'Blizzara', cost: 12, power: 70, type: 'damage', element: 'ice', tier: 2 }, desc: 'Stronger ice magic. Deals 70 ice damage.', class: 'mage' },
-                { name: 'Thundara Tome', type: 'spell', price: 1290, spell: { name: 'Thundara', cost: 12, power: 65, type: 'damage', element: 'lightning', tier: 2 }, desc: 'Stronger lightning magic. Deals 65 lightning damage.', class: 'mage' },
-                { name: 'Firaga Tome', type: 'spell', price: 2160, spell: { name: 'Firaga', cost: 18, power: 55, type: 'all_damage', element: 'fire', tier: 2 }, desc: 'Fire magic hitting all enemies for 55 damage.', class: 'mage' },
-                { name: 'Blizzaga Tome', type: 'spell', price: 2160, spell: { name: 'Blizzaga', cost: 18, power: 55, type: 'all_damage', element: 'ice', tier: 2 }, desc: 'Ice magic hitting all enemies for 55 damage.', class: 'mage' },
-                { name: 'Thundaga Tome', type: 'spell', price: 2160, spell: { name: 'Thundaga', cost: 18, power: 55, type: 'all_damage', element: 'lightning', tier: 2 }, desc: 'Lightning magic hitting all enemies for 55 damage.', class: 'mage' },
+                { name: 'Scorch Tome', type: 'spell', price: 1290, spell: { name: 'Scorch', cost: 12, power: 70, type: 'damage', element: 'fire', tier: 2 }, desc: 'Stronger fire magic. Deals 70 fire damage.', class: 'mage' },
+                { name: 'Frostbite Tome', type: 'spell', price: 1290, spell: { name: 'Frostbite', cost: 12, power: 70, type: 'damage', element: 'ice', tier: 2 }, desc: 'Stronger ice magic. Deals 70 ice damage.', class: 'mage' },
+                { name: 'Surge Tome', type: 'spell', price: 1290, spell: { name: 'Surge', cost: 12, power: 65, type: 'damage', element: 'lightning', tier: 2 }, desc: 'Stronger lightning magic. Deals 65 lightning damage.', class: 'mage' },
+                { name: 'Wildfire Tome', type: 'spell', price: 2160, spell: { name: 'Wildfire', cost: 18, power: 55, type: 'all_damage', element: 'fire', tier: 2 }, desc: 'Fire magic hitting all enemies for 55 damage.', class: 'mage' },
+                { name: 'Frostfall Tome', type: 'spell', price: 2160, spell: { name: 'Frostfall', cost: 18, power: 55, type: 'all_damage', element: 'ice', tier: 2 }, desc: 'Ice magic hitting all enemies for 55 damage.', class: 'mage' },
+                { name: 'Chain Lightning Tome', type: 'spell', price: 2160, spell: { name: 'Chain Lightning', cost: 18, power: 55, type: 'all_damage', element: 'lightning', tier: 2 }, desc: 'Lightning magic hitting all enemies for 55 damage.', class: 'mage' },
                 { name: 'Might Tome', type: 'spell', price: 1080, spell: { name: 'Might', cost: 8, power: 1.8, type: 'buff', stat: 'attack', duration: 4, tier: 2 }, desc: 'Raises attack by 80% for 4 turns.', class: 'warrior' },
                 { name: 'Critical 2 Tome', type: 'spell', price: 1080, spell: { name: 'Critical 2', cost: 8, power: 0.25, type: 'buff', stat: 'crit', duration: 4, tier: 2 }, desc: 'Raises critical hit chance by 25% for 4 turns.', class: 'warrior' },
-                { name: 'Cura Tome', type: 'spell', price: 1080, spell: { name: 'Cura', cost: 10, power: 120, type: 'heal', tier: 2 }, desc: 'Stronger healing. Restores 120 HP.', class: 'paladin' },
+                { name: 'Mend Tome', type: 'spell', price: 1080, spell: { name: 'Mend', cost: 10, power: 120, type: 'heal', tier: 2 }, desc: 'Stronger healing. Restores 120 HP.', class: 'paladin' },
                 { name: 'Protect 2 Tome', type: 'spell', price: 1080, spell: { name: 'Protect 2', cost: 8, power: 1.8, type: 'buff', stat: 'defense', duration: 4, tier: 2 }, desc: 'Raises defense by 80% for 4 turns.', class: 'paladin' },
                 { name: 'Shell Tome', type: 'spell', price: 1080, spell: { name: 'Shell', cost: 8, power: 0.5, type: 'buff', stat: 'magic_defense', duration: 4, tier: 2 }, desc: 'Raises magic defense by 50% for 4 turns.', class: 'paladin' }
             ];
             const town3Spells = [
-                { name: 'Firaja Tome', type: 'spell', price: 1600, spell: { name: 'Firaja', cost: 20, power: 140, type: 'damage', element: 'fire', tier: 3 }, desc: 'Ultimate fire magic. Deals 140 fire damage.', class: 'mage' },
-                { name: 'Blizzaja Tome', type: 'spell', price: 1600, spell: { name: 'Blizzaja', cost: 20, power: 140, type: 'damage', element: 'ice', tier: 3 }, desc: 'Ultimate ice magic. Deals 140 ice damage.', class: 'mage' },
-                { name: 'Thundaja Tome', type: 'spell', price: 1600, spell: { name: 'Thundaja', cost: 20, power: 140, type: 'damage', element: 'lightning', tier: 3 }, desc: 'Ultimate lightning magic. Deals 140 lightning damage.', class: 'mage' },
+                { name: 'Inferno Tome', type: 'spell', price: 1600, spell: { name: 'Inferno', cost: 20, power: 140, type: 'damage', element: 'fire', tier: 3 }, desc: 'Ultimate fire magic. Deals 140 fire damage.', class: 'mage' },
+                { name: 'Deep Freeze Tome', type: 'spell', price: 1600, spell: { name: 'Deep Freeze', cost: 20, power: 140, type: 'damage', element: 'ice', tier: 3 }, desc: 'Ultimate ice magic. Deals 140 ice damage.', class: 'mage' },
+                { name: 'Thunderclap Tome', type: 'spell', price: 1600, spell: { name: 'Thunderclap', cost: 20, power: 140, type: 'damage', element: 'lightning', tier: 3 }, desc: 'Ultimate lightning magic. Deals 140 lightning damage.', class: 'mage' },
                 { name: 'Meteor Tome', type: 'spell', price: 2130, spell: { name: 'Meteor', cost: 28, power: 110, type: 'all_damage', element: 'fire', tier: 3 }, desc: 'Calls meteors on all enemies for 110 damage.', class: 'mage' },
                 { name: 'Glacier Tome', type: 'spell', price: 2130, spell: { name: 'Glacier', cost: 28, power: 110, type: 'all_damage', element: 'ice', tier: 3 }, desc: 'Frozen avalanche hitting all enemies for 110 damage.', class: 'mage' },
                 { name: 'Thunderstorm Tome', type: 'spell', price: 2130, spell: { name: 'Thunderstorm', cost: 28, power: 110, type: 'all_damage', element: 'lightning', tier: 3 }, desc: 'Massive lightning storm hitting all enemies for 110 damage.', class: 'mage' },
                 { name: 'Berserk Tome', type: 'spell', price: 1280, spell: { name: 'Berserk', cost: 15, power: 2.5, type: 'buff', stat: 'attack', duration: 5, tier: 3 }, desc: 'Greatly increases attack by 150% for 5 turns.', class: 'warrior' },
                 { name: 'Haste Tome', type: 'spell', price: 1280, spell: { name: 'Haste', cost: 15, power: 0, type: 'all_buff', stat: 'speed', duration: 5, tier: 3 }, desc: 'Increases speed for entire party for 5 turns.', class: 'warrior' },
                 { name: 'War Cry Tome', type: 'spell', price: 1600, spell: { name: 'War Cry', cost: 20, power: 0.35, type: 'all_buff', stat: 'crit', duration: 5, tier: 3 }, desc: 'Raises whole party crit chance by 35% for 5 turns.', class: 'warrior' },
-                { name: 'Curaja Tome', type: 'spell', price: 1600, spell: { name: 'Curaja', cost: 18, power: 250, type: 'heal', tier: 3 }, desc: 'Powerful healing. Restores 250 HP to one ally.', class: 'paladin' },
-                { name: 'Curaja All Tome', type: 'spell', price: 2340, spell: { name: 'Curaja All', cost: 28, power: 150, type: 'all_heal', tier: 3 }, desc: 'Heals all allies for 150 HP.', class: 'paladin' },
+                { name: 'Restore Tome', type: 'spell', price: 1600, spell: { name: 'Restore', cost: 18, power: 250, type: 'heal', tier: 3 }, desc: 'Powerful healing. Restores 250 HP to one ally.', class: 'paladin' },
+                { name: 'Mass Renewal Tome', type: 'spell', price: 2340, spell: { name: 'Mass Renewal', cost: 28, power: 150, type: 'all_heal', tier: 3 }, desc: 'Heals all allies for 150 HP.', class: 'paladin' },
                 { name: 'Barrier Tome', type: 'spell', price: 1600, spell: { name: 'Barrier', cost: 18, power: 2.0, type: 'all_buff', stat: 'defense', duration: 5, tier: 3 }, desc: 'Doubles defense for entire party for 5 turns.', class: 'paladin' },
                 { name: 'Holy Tome', type: 'spell', price: 2660, spell: { name: 'Holy', cost: 32, power: 200, type: 'damage', element: 'holy', tier: 4 }, desc: 'Legendary holy magic. Deals 200 damage to one enemy.', class: 'paladin' }
             ];
             // Ray's note for a future pass: town1-3's "-ja" tome naming
-            // (Firaja/Blizzaja/Thundaja/Curaja) still reads as straight FF
+            // (Inferno/Deep Freeze/Thunderclap/Restore) still reads as straight FF
             // terminology and should get renamed eventually - NOT doing
             // that rename here, but making sure these NEW tier-4 spells
             // don't repeat that pattern.
@@ -21955,7 +21955,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v155]');
+            console.log('Game starting... [build v156]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
@@ -26982,7 +26982,7 @@
                     var div = document.createElement('div');
                     div.className = 'shop-item';
                     var isUsable = (spell.type === 'heal' || spell.type === 'all_heal' || 
-                                   spell.name === 'Cure' || spell.name === 'Cura' || spell.name === 'Curaja' ||
+                                   spell.name === 'Cure' || spell.name === 'Mend' || spell.name === 'Restore' ||
                                    spell.name === 'Cure 2' || spell.name === 'Cure 3' ||
                                    spell.name === 'Antidote' || spell.name === 'Esuna' ||
                                    spell.type === 'cure_poison');
@@ -27387,7 +27387,7 @@
                 return;
             }
             var isUsable = (spell.type === 'heal' || spell.type === 'all_heal' || 
-                           spell.name === 'Cure' || spell.name === 'Cura' || spell.name === 'Curaja' ||
+                           spell.name === 'Cure' || spell.name === 'Mend' || spell.name === 'Restore' ||
                            spell.name === 'Cure 2' || spell.name === 'Cure 3' ||
                            spell.name === 'Antidote' || spell.name === 'Esuna' ||
                            spell.type === 'cure_poison');
@@ -27395,7 +27395,7 @@
                 this.ui.showPopup('Cannot Use', spell.name + ' can only be used in battle!');
                 return;
             }
-            if (spell.type === 'heal' || spell.name === 'Cure' || spell.name === 'Cura' || spell.name === 'Curaja' ||
+            if (spell.type === 'heal' || spell.name === 'Cure' || spell.name === 'Mend' || spell.name === 'Restore' ||
                 spell.name === 'Cure 2' || spell.name === 'Cure 3') {
                 this.showHealTargets(heroIndex, spellIndex);
                 return;
@@ -28214,8 +28214,8 @@
 const CRAFTED_SPELLS = {
     // Tier 1 combos - built purely from Brighthollow's own starter tomes, so
     // the Spell Weaver has something worth doing before anyone's been to
-    // Duskmere. Deliberately weaker than the real Tier 2 tomes (Fira/Might/
-    // Cura etc. at 65-120 power) so buying those later still feels like a
+    // Duskmere. Deliberately weaker than the real Tier 2 tomes (Scorch/Might/
+    // Mend etc. at 65-120 power) so buying those later still feels like a
     // genuine upgrade, not a redundant purchase.
     'Flarespark': { name: 'Flarespark', cost: 7, power: 48, type: 'damage', element: 'fire', tier: 1, crafted: true },
     'Frostshock': { name: 'Frostshock', cost: 7, power: 48, type: 'damage', element: 'ice', tier: 1, crafted: true },
@@ -28223,15 +28223,15 @@ const CRAFTED_SPELLS = {
     'Blessing': { name: 'Blessing', cost: 8, power: 90, type: 'heal', tier: 1, crafted: true },
 
     // Mage - Tier 3 Single Target (requires two Tier 2 spells)
-    'Firaga': { name: 'Firaga', cost: 25, power: 90, type: 'damage', element: 'fire', tier: 3, crafted: true },
-    'Blizzaga': { name: 'Blizzaga', cost: 25, power: 90, type: 'damage', element: 'ice', tier: 3, crafted: true },
+    'Wildfire': { name: 'Wildfire', cost: 25, power: 90, type: 'damage', element: 'fire', tier: 3, crafted: true },
+    'Frostfall': { name: 'Frostfall', cost: 25, power: 90, type: 'damage', element: 'ice', tier: 3, crafted: true },
     
     // Mage - Tier 4 Ultimate (requires Tier 3 + Tier 2)
     'Lava Bolt': { name: 'Lava Bolt', cost: 35, power: 130, type: 'damage', element: 'fire', tier: 4, crafted: true },
     'Arctic Blast': { name: 'Arctic Blast', cost: 35, power: 130, type: 'damage', element: 'ice', tier: 4, crafted: true },
     
     // Paladin - Tier 3 Heal
-    'Cura': { name: 'Cura', cost: 20, power: 120, type: 'heal', tier: 3, crafted: true },
+    'Mend': { name: 'Mend', cost: 20, power: 120, type: 'heal', tier: 3, crafted: true },
     
     // Paladin - Multi-target Buff
     'Fortify': { name: 'Fortify', cost: 20, power: 0, type: 'all_buff', stat: 'defense', duration: 4, tier: 3, crafted: true },
@@ -28262,9 +28262,9 @@ const DROPPED_SPELLS = {
 const BASE_TOME_SPELLS = {
     'Fire': { name: 'Fire', cost: 6, power: 35, type: 'damage', element: 'fire', tier: 1, forClass: 'mage' },
     'Cure': { name: 'Cure', cost: 5, power: 50, type: 'heal', tier: 1, forClass: 'paladin' },
-    'Fira': { name: 'Fira', cost: 12, power: 70, type: 'damage', element: 'fire', tier: 2, forClass: 'mage' },
-    'Blizzara': { name: 'Blizzara', cost: 12, power: 70, type: 'damage', element: 'ice', tier: 2, forClass: 'mage' },
-    'Thundara': { name: 'Thundara', cost: 12, power: 65, type: 'damage', element: 'lightning', tier: 2, forClass: 'mage' }
+    'Scorch': { name: 'Scorch', cost: 12, power: 70, type: 'damage', element: 'fire', tier: 2, forClass: 'mage' },
+    'Frostbite': { name: 'Frostbite', cost: 12, power: 70, type: 'damage', element: 'ice', tier: 2, forClass: 'mage' },
+    'Surge': { name: 'Surge', cost: 12, power: 65, type: 'damage', element: 'lightning', tier: 2, forClass: 'mage' }
 };
 
 /**
@@ -28289,7 +28289,7 @@ function getCurrentLootQuadrant() {
 /**
  * Resolves a tome's `spell` field into a full spell object, whether it was
  * already stored as one (shop tomes) or as a bare name string (LOOT_TABLES
- * tomes, e.g. `spell: 'Blizzara'`) - checking crafted, dropped, and base
+ * tomes, e.g. `spell: 'Frostbite'`) - checking crafted, dropped, and base
  * spell tables in turn. Falls back to a minimal stand-in object rather
  * than undefined so the "teach spell" UI never breaks on an unknown name.
  */
@@ -28332,7 +28332,7 @@ function spellScopeBadgeHTML(spell) {
 }
 
 /** One-line plain-English summary of what a spell actually does - used by
- *  the Spell Weaving guide so a result like "Firaga" reads as "90 damage to
+ *  the Spell Weaving guide so a result like "Wildfire" reads as "90 damage to
  *  one enemy (fire)" instead of just a name. */
 function describeSpellEffect(spell) {
     if (!spell) return 'Special effect';
@@ -28505,7 +28505,7 @@ const SPELL_COMBINATIONS = [
     { 
         spell1: 'Fire 2', 
         spell2: 'Fire 2', 
-        result: CRAFTED_SPELLS['Firaga']
+        result: CRAFTED_SPELLS['Wildfire']
     },
     { 
         spell1: 'Magma', 
@@ -28517,7 +28517,7 @@ const SPELL_COMBINATIONS = [
     { 
         spell1: 'Ice 2', 
         spell2: 'Ice 2', 
-        result: CRAFTED_SPELLS['Blizzaga']
+        result: CRAFTED_SPELLS['Frostfall']
     },
     { 
         spell1: 'Wind Chill', 
@@ -28529,7 +28529,7 @@ const SPELL_COMBINATIONS = [
     { 
         spell1: 'Cure 2', 
         spell2: 'Cure 2', 
-        result: CRAFTED_SPELLS['Cura']
+        result: CRAFTED_SPELLS['Mend']
     },
     
     // Buff combinations
@@ -29759,7 +29759,7 @@ const QUEST_DATA = [
         quadrant: 'sylvaris',
         goal: 4,
         progress: 0,
-        reward: { gold: 7870, item: 'Firaga Tome' },
+        reward: { gold: 7870, item: 'Wildfire Tome' },
         npc: 'Guild Master',
         town: 'sylvaris',
         dialogue: {
