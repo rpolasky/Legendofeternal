@@ -5448,7 +5448,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v156</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v157</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -8810,7 +8810,7 @@
         if (!isShrine) {
             const quadrant = getCurrentWorldQuadrant();
             const quadrantData = QUADRANTS[quadrant] || QUADRANTS.CORNELIA;
-            const spawnCount = Math.min(4 + floorIndex, Math.max(3, Math.floor(reachable.length / 16))); // was min(3+floorIndex, max(2, /18)) - Ray asked for ~15% more dungeon spawns
+            const spawnCount = Math.min(6 + floorIndex, Math.max(4, Math.floor(reachable.length / 13))); // was min(4+floorIndex, max(3, /16)) - Ray wants a further, smaller bump here (not as much as the world map)
             let attempts = 0;
             while (monsterSpawns.length < spawnCount && attempts < reachable.length) {
                 // Walk the same shuffled list chests used, but from the far
@@ -9321,6 +9321,18 @@
             Math.max(Math.abs(m.x - x), Math.abs(m.y - y)) <= 1) || null;
     }
 
+    /** Marks a field monster cleared and starts its respawn timer (longer
+     *  for elite/rare - see the constants above). ALSO re-rolls which
+     *  species respawns there, biased toward the party's CURRENT level with
+     *  a floor of partyLevel-5 (per Ray), rather than keeping whatever
+     *  species the original one-time world/floor-gen roll happened to
+     *  land on forever. Without this, a spawn point's species was locked
+     *  in permanently with no way to "graduate" as the party leveled up -
+     *  exactly why a level 13 party could still keep finding level 1
+     *  trash in already-explored territory. Keeps the same elite/rare TIER
+     *  (a regular spawn re-rolls among regulars, an elite among elites) so
+     *  the visual tag stays meaningful; only the specific species within
+     *  that tier is re-picked. */
     function clearFieldMonster(monster) {
         if (!monster) return;
         monster.alive = false;
@@ -9328,6 +9340,27 @@
         const minMs = isBigSpawn ? FIELD_MONSTER_ELITE_RESPAWN_MIN_MS : FIELD_MONSTER_RESPAWN_MIN_MS;
         const maxMs = isBigSpawn ? FIELD_MONSTER_ELITE_RESPAWN_MAX_MS : FIELD_MONSTER_RESPAWN_MAX_MS;
         monster.respawnAt = Date.now() + minMs + Math.random() * (maxMs - minMs);
+        if (window.game && window.game.party) {
+            // Dungeon respawns only ever tick while the party is physically
+            // inside that dungeon, so the CURRENT world quadrant is always
+            // correct there. World-map respawns can tick for a spawn point
+            // far from wherever the party actually is right now, so those
+            // need the quadrant looked up from the SPAWN's own stored
+            // position instead - using the party's position would attribute
+            // a respawn in one quadrant to a totally different one.
+            const quadrant = window.game.dungeonMap
+                ? getCurrentWorldQuadrant()
+                : getWorldQuadrantForPos(monster.spawnX, monster.spawnY);
+            const quadrantData = QUADRANTS[quadrant] || QUADRANTS.CORNELIA;
+            const partyLevel = window.game.party.getAverageLevel();
+            const levelFloor = Math.max(quadrantData.minLevel, partyLevel - 5);
+            let tierPool = quadrantData.monsters.filter(m => isBigSpawn ? m.isElite : !m.isElite);
+            if (tierPool.length === 0) tierPool = quadrantData.monsters;
+            const eligible = tierPool.filter(m => m.level >= levelFloor);
+            const finalPool = eligible.length > 0 ? eligible : tierPool;
+            const picked = pickLevelBiasedTemplate(finalPool, Math.random, 1);
+            if (picked) monster.speciesName = picked.name;
+        }
     }
 
     /** Who gets the jump on a field contact. `moverFacing`/`moverDx,moverDy`
@@ -11555,9 +11588,13 @@
         generateWorldMonsterSpawns() {
             const rng = mulberry32(hashStringToSeed('world_field_monsters_v1'));
             const spawns = [];
-            const targetCount = 113; // was 90 - Ray asked for ~25% more world spawns
+            // Bumped again - Ray could still walk across large stretches of
+            // the world map without crossing paths with anything. Tightened
+            // minimum spacing (12->9 tiles) to comfortably fit the higher
+            // count without the placement loop starving for valid spots.
+            const targetCount = 180;
             let attempts = 0;
-            while (spawns.length < targetCount && attempts < 6000) {
+            while (spawns.length < targetCount && attempts < 9000) {
                 attempts++;
                 const x = Math.floor(rng() * this.width);
                 const y = Math.floor(rng() * this.height);
@@ -11571,7 +11608,7 @@
                 if (nearLocation) continue;
                 let tooClose = false;
                 for (const s of spawns) {
-                    if (Math.max(Math.abs(s.x - x), Math.abs(s.y - y)) < 12) { tooClose = true; break; }
+                    if (Math.max(Math.abs(s.x - x), Math.abs(s.y - y)) < 9) { tooClose = true; break; }
                 }
                 if (tooClose) continue;
                 const quadrant = getWorldQuadrantForPos(x, y);
@@ -20125,12 +20162,12 @@
                 { name: 'Scorch Tome', type: 'spell', price: 1290, spell: { name: 'Scorch', cost: 12, power: 70, type: 'damage', element: 'fire', tier: 2 }, desc: 'Stronger fire magic. Deals 70 fire damage.', class: 'mage' },
                 { name: 'Frostbite Tome', type: 'spell', price: 1290, spell: { name: 'Frostbite', cost: 12, power: 70, type: 'damage', element: 'ice', tier: 2 }, desc: 'Stronger ice magic. Deals 70 ice damage.', class: 'mage' },
                 { name: 'Surge Tome', type: 'spell', price: 1290, spell: { name: 'Surge', cost: 12, power: 65, type: 'damage', element: 'lightning', tier: 2 }, desc: 'Stronger lightning magic. Deals 65 lightning damage.', class: 'mage' },
-                { name: 'Wildfire Tome', type: 'spell', price: 2160, spell: { name: 'Wildfire', cost: 18, power: 55, type: 'all_damage', element: 'fire', tier: 2 }, desc: 'Fire magic hitting all enemies for 55 damage.', class: 'mage' },
-                { name: 'Frostfall Tome', type: 'spell', price: 2160, spell: { name: 'Frostfall', cost: 18, power: 55, type: 'all_damage', element: 'ice', tier: 2 }, desc: 'Ice magic hitting all enemies for 55 damage.', class: 'mage' },
+                { name: 'Firestorm Tome', type: 'spell', price: 2160, spell: { name: 'Firestorm', cost: 18, power: 55, type: 'all_damage', element: 'fire', tier: 2 }, desc: 'Fire magic hitting all enemies for 55 damage.', class: 'mage' },
+                { name: 'Hailstorm Tome', type: 'spell', price: 2160, spell: { name: 'Hailstorm', cost: 18, power: 55, type: 'all_damage', element: 'ice', tier: 2 }, desc: 'Ice magic hitting all enemies for 55 damage.', class: 'mage' },
                 { name: 'Chain Lightning Tome', type: 'spell', price: 2160, spell: { name: 'Chain Lightning', cost: 18, power: 55, type: 'all_damage', element: 'lightning', tier: 2 }, desc: 'Lightning magic hitting all enemies for 55 damage.', class: 'mage' },
                 { name: 'Might Tome', type: 'spell', price: 1080, spell: { name: 'Might', cost: 8, power: 1.8, type: 'buff', stat: 'attack', duration: 4, tier: 2 }, desc: 'Raises attack by 80% for 4 turns.', class: 'warrior' },
                 { name: 'Critical 2 Tome', type: 'spell', price: 1080, spell: { name: 'Critical 2', cost: 8, power: 0.25, type: 'buff', stat: 'crit', duration: 4, tier: 2 }, desc: 'Raises critical hit chance by 25% for 4 turns.', class: 'warrior' },
-                { name: 'Mend Tome', type: 'spell', price: 1080, spell: { name: 'Mend', cost: 10, power: 120, type: 'heal', tier: 2 }, desc: 'Stronger healing. Restores 120 HP.', class: 'paladin' },
+                { name: 'Recover Tome', type: 'spell', price: 1080, spell: { name: 'Recover', cost: 10, power: 120, type: 'heal', tier: 2 }, desc: 'Stronger healing. Restores 120 HP.', class: 'paladin' },
                 { name: 'Protect 2 Tome', type: 'spell', price: 1080, spell: { name: 'Protect 2', cost: 8, power: 1.8, type: 'buff', stat: 'defense', duration: 4, tier: 2 }, desc: 'Raises defense by 80% for 4 turns.', class: 'paladin' },
                 { name: 'Shell Tome', type: 'spell', price: 1080, spell: { name: 'Shell', cost: 8, power: 0.5, type: 'buff', stat: 'magic_defense', duration: 4, tier: 2 }, desc: 'Raises magic defense by 50% for 4 turns.', class: 'paladin' }
             ];
@@ -21955,7 +21992,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v156]');
+            console.log('Game starting... [build v157]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
@@ -26982,7 +27019,7 @@
                     var div = document.createElement('div');
                     div.className = 'shop-item';
                     var isUsable = (spell.type === 'heal' || spell.type === 'all_heal' || 
-                                   spell.name === 'Cure' || spell.name === 'Mend' || spell.name === 'Restore' ||
+                                   spell.name === 'Cure' || spell.name === 'Recover' || spell.name === 'Restore' ||
                                    spell.name === 'Cure 2' || spell.name === 'Cure 3' ||
                                    spell.name === 'Antidote' || spell.name === 'Esuna' ||
                                    spell.type === 'cure_poison');
@@ -27387,7 +27424,7 @@
                 return;
             }
             var isUsable = (spell.type === 'heal' || spell.type === 'all_heal' || 
-                           spell.name === 'Cure' || spell.name === 'Mend' || spell.name === 'Restore' ||
+                           spell.name === 'Cure' || spell.name === 'Recover' || spell.name === 'Restore' ||
                            spell.name === 'Cure 2' || spell.name === 'Cure 3' ||
                            spell.name === 'Antidote' || spell.name === 'Esuna' ||
                            spell.type === 'cure_poison');
@@ -27395,7 +27432,7 @@
                 this.ui.showPopup('Cannot Use', spell.name + ' can only be used in battle!');
                 return;
             }
-            if (spell.type === 'heal' || spell.name === 'Cure' || spell.name === 'Mend' || spell.name === 'Restore' ||
+            if (spell.type === 'heal' || spell.name === 'Cure' || spell.name === 'Recover' || spell.name === 'Restore' ||
                 spell.name === 'Cure 2' || spell.name === 'Cure 3') {
                 this.showHealTargets(heroIndex, spellIndex);
                 return;
