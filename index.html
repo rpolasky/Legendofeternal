@@ -5448,7 +5448,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v157</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v158</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -5879,6 +5879,7 @@
                     <div class="item" id="menu2-nav-lore" onclick="window.game.openLoreJournal()"><span>&#128220;</span><span class="label">Lore</span></div>
                     <div class="item" id="menu2-nav-legendary" onclick="window.game.openLegendaryJournal()"><span>&#127775;</span><span class="label">Legendary</span></div>
                     <div class="item" id="menu2-nav-dualtech" onclick="window.game.openDualTechGuide()"><span>&#129309;</span><span class="label">Dual Techs</span></div>
+                    <div class="item" id="menu2-nav-handbook" onclick="window.game.openAdventurersHandbook()"><span>&#128212;</span><span class="label">Handbook</span></div>
                     <div class="item" id="menu2-nav-settings" onclick="window.game.showMenuPanel('settings')"><span>&#9881;&#65039;</span><span class="label">Settings</span></div>
                 </div>
 
@@ -5969,7 +5970,8 @@
                 <div id="menu-settings-panel" class="menu2-panelwrap menu2-silbg menu-subpanel" style="display: none;">
                     <div class="menu2-panelinner">
                         <button class="menu2-backbtn" onclick="window.game.showQuestCompassMenu()" style="padding: 8px; width: 100%; font-size: 13px; margin-bottom: 10px;">&#129517; Track a Quest</button>
-                        <button class="menu2-backbtn" onclick="toggleFullscreen()" style="padding: 8px; width: 100%; font-size: 13px; margin-bottom: 16px;">&#9974; Fullscreen</button>
+                        <button class="menu2-backbtn" onclick="toggleFullscreen()" style="padding: 8px; width: 100%; font-size: 13px; margin-bottom: 10px;">&#9974; Fullscreen</button>
+                        <button class="menu2-backbtn" onclick="window.game.confirmReplayTutorials()" style="padding: 8px; width: 100%; font-size: 13px; margin-bottom: 16px;">&#128260; Replay Tutorials</button>
 
                         <div class="audio-controls">
                             <h3 class="audio-title">&#128266; Audio</h3>
@@ -6172,6 +6174,19 @@
                 <h3 style="color: var(--highlight); flex-shrink: 0;">🌟 Dual Tech Guide</h3>
                 <div class="message" id="dualtech-guide-content" style="overflow-y: auto; text-align: left; flex: 1; padding-right: 6px;"></div>
                 <button class="menu-button" onclick="window.game.closeDualTechGuide()" style="flex-shrink: 0;">Close</button>
+            </div>
+        </div>
+        <!-- Adventurer's Handbook - New Player Onboarding, Layer 2. Permanent,
+             always-available lookup for every tip Master Aldous (or whoever)
+             ever gave in a Layer 1 mentor scene, indexed by topic, so a
+             player who skipped or forgot a scene can still find the answer.
+             Same lore-box popup shape as the journals above, on purpose.
+             See renderHandbookContent(). -->
+        <div class="popup-overlay" id="handbook-overlay">
+            <div class="popup-box lore-box" id="handbook-box" style="max-width: 640px; width: 90%; max-height: 80vh; display: flex; flex-direction: column;">
+                <h3 style="color: var(--highlight); flex-shrink: 0;">📔 Adventurer's Handbook</h3>
+                <div class="message" id="handbook-content" style="overflow-y: auto; text-align: left; flex: 1; padding-right: 6px;"></div>
+                <button class="menu-button" onclick="window.game.closeAdventurersHandbook()" style="flex-shrink: 0;">Close</button>
             </div>
         </div>
 
@@ -16124,6 +16139,18 @@
             const hero = this.party.heroes[this.selectedHeroIndex];
             const limitReady = hero && !hero.isDead && hero.isLimitBreakReady();
             const dualTechOptions = (hero && !hero.isDead) ? this.getDualTechOptions(hero) : [];
+            // First time ANY hero's Limit Break gauge is actually ready,
+            // pause for a short one-time mentor scene - same pattern as the
+            // Dual Tech intro just below, just gated on its own flag so it
+            // fires first (a fresh party hits Limit Break readiness before
+            // Dual Tech eligibility).
+            if (limitReady && window.game && !window.game.limitBreakIntroSeen && !window.game.limitBreakIntroShowing) {
+                window.game.limitBreakIntroSeen = true;
+                window.game.limitBreakIntroShowing = true;
+                window.game.showLimitBreakMentorIntro(() => {
+                    window.game.limitBreakIntroShowing = false;
+                });
+            }
             // First time a Dual Tech is actually available to pick, pause for
             // a short one-time mentor scene explaining the mechanic (Ray's
             // "Master Aldous" onboarding request) rather than just letting
@@ -21934,6 +21961,15 @@
             // never repeats for a given save.
             this.dualTechIntroSeen = false;
             this.dualTechIntroShowing = false;
+            // Same one-time-mentor-scene pattern as Dual Tech above, reused
+            // for the rest of the New Player Onboarding pass (see design
+            // doc): Limit Break fires the first time any hero's gauge is
+            // actually ready, Echoes fires the first time the Echoes tab is
+            // opened while the party holds one. Both persisted the same way.
+            this.limitBreakIntroSeen = false;
+            this.limitBreakIntroShowing = false;
+            this.echoIntroSeen = false;
+            this.echoIntroShowing = false;
             this.setupInput();
             this.state.currentScreen = 'start';
             setTimeout(() => {
@@ -21992,7 +22028,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v157]');
+            console.log('Game starting... [build v158]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
@@ -22291,6 +22327,55 @@
             const overlay = document.getElementById('dualtech-guide-overlay');
             if (overlay) overlay.classList.remove('active');
             if (this.state) this.state.resume();
+        }
+
+        /** New Player Onboarding, Layer 2. Renders every tip Master Aldous's
+         *  Layer 1 mentor scenes ever cover, indexed by topic, so a player
+         *  who skipped/missed a scene (or just forgot) can look it back up
+         *  any time. Each entry mirrors the corresponding showXIntro()
+         *  scene's content - keep them in sync if either changes. New
+         *  entries just get appended to this array as more Layer 1 scenes
+         *  are added (gems, Merchant upgrading, Milo's Charm, etc). */
+        renderHandbookContent() {
+            const entries = [
+                { icon: '💥', title: 'Limit Break', text: "Land enough blows, or take enough punishment, and a hero's gauge fills - once it does, their attack button glows gold. Use it to unleash a single devastating move far beyond their normal attack. The gauge empties once spent, so save it for a tough foe or a fight that's slipping away." },
+                { icon: '🌟', title: 'Dual Tech', text: "When two heroes both stand ready with a full Limit Break gauge at the same time, they can combine it into a Dual Tech instead - spending both gauges and both turns for a combo that hits far harder than either alone. Which technique you get depends on both heroes' archetypes; tap the book icon on the Dual Tech button any time for the full combination reference." },
+                { icon: '🌀', title: 'Echoes', text: "Monster Echoes are rare drops - left behind by tougher foes, and guaranteed the first time certain bosses fall. Attune one permanently to a hero from the Echoes tab in your pack for a lasting passive gift; each Echo offers a few different ways to bind it. A hero can only hold one Echo at a time, and attuning a new one destroys whatever was bound before." }
+            ];
+            return entries.map(e => `<h4 style="color: var(--highlight); margin-bottom: 4px;">${e.icon} ${e.title}</h4><p style="margin-bottom: 16px;">${e.text}</p>`).join('');
+        }
+
+        openAdventurersHandbook() {
+            const content = document.getElementById('handbook-content');
+            if (content) content.innerHTML = this.renderHandbookContent();
+            const overlay = document.getElementById('handbook-overlay');
+            if (overlay) overlay.classList.add('active');
+            if (this.state) this.state.pause();
+        }
+
+        closeAdventurersHandbook() {
+            const overlay = document.getElementById('handbook-overlay');
+            if (overlay) overlay.classList.remove('active');
+            if (this.state) this.state.resume();
+        }
+
+        /** Settings > Replay Tutorials - confirms, then clears every Layer 1
+         *  mentor-scene "seen" flag so they'll fire again on the next
+         *  opportunity in THIS save, same as a save that predates the
+         *  feature. Useful for testing, and for a player who wants to
+         *  revisit the tips (or was skipping them too fast to read). */
+        confirmReplayTutorials() {
+            this.ui.showPopup('Replay Tutorials?', 'This will make every one-time mentor tip (Limit Break, Dual Tech, Echoes) play again the next time it comes up in this save.<br><br>' +
+                '<button class="menu-button" onclick="window.game.resetTutorialFlags()" style="width:100%; margin-top:10px;">Yes, Replay Them</button>' +
+                '<button class="menu-button" onclick="window.game.ui.closePopup()" style="width:100%; margin-top:6px; background:#555;">Cancel</button>', true);
+        }
+
+        resetTutorialFlags() {
+            this.limitBreakIntroSeen = false;
+            this.dualTechIntroSeen = false;
+            this.echoIntroSeen = false;
+            this.ui.closePopup();
+            this.ui.showPopup('Tutorials Reset', 'Mentor tips will play again the next time they come up.');
         }
 
         openWorldMap() {
@@ -23502,6 +23587,44 @@
                     text: "Which technique you get depends on both heroes' training - their archetypes. Look for the golden DUAL TECH button whenever it lights up, and tap the little book inside it any time you want the full reference of every combination." },
                 { speaker: 'Master Aldous', portraitKey: 'wizard', side: 'left',
                     text: "Go on - try it now, while the moment is with you." }
+            ];
+            this.dialogue.start({ background: 'wizard_tower', lines, onEnd: onEnd || null });
+        }
+
+        /** New Player Onboarding, Layer 1 - fires once, the first time any
+         *  hero's Limit Break gauge is actually full (see renderMainCommands()).
+         *  Same Master Aldous / dialogue-scene shape as the Dual Tech intro
+         *  above, deliberately - one consistent voice for combat mechanics. */
+        showLimitBreakMentorIntro(onEnd) {
+            const lines = [
+                { speaker: 'Master Aldous', portraitKey: 'wizard', side: 'left',
+                    text: "There - do you feel that? One of your own has fought hard enough that their strength has begun to overflow." },
+                { speaker: 'Master Aldous', portraitKey: 'wizard', side: 'left',
+                    text: "That's a Limit Break. Land enough blows, or take enough punishment, and a hero's gauge fills - once it does, their attack button lights up gold. Use it, and they'll unleash a single devastating move far beyond anything they could normally manage." },
+                { speaker: 'Master Aldous', portraitKey: 'wizard', side: 'left',
+                    text: "The gauge empties once spent, so choose the moment well - against a tough foe, or when you need to turn a losing fight around." },
+                { speaker: 'Master Aldous', portraitKey: 'wizard', side: 'left',
+                    text: "Go on. Show me what they can do." }
+            ];
+            this.dialogue.start({ background: 'wizard_tower', lines, onEnd: onEnd || null });
+        }
+
+        /** New Player Onboarding, Layer 1 - fires once, the first time the
+         *  player opens the Echoes tab while holding at least one Echo (see
+         *  showMenuItemsTab()). This is the mechanic Ray himself forgot
+         *  existed, so it's flagged as highest priority in the design doc -
+         *  keep this text in sync with however applyEcho()/ECHO_DATA
+         *  actually behaves if that ever changes. */
+        showEchoMentorIntro(onEnd) {
+            const lines = [
+                { speaker: 'Master Aldous', portraitKey: 'wizard', side: 'left',
+                    text: "Ah - a monster's Echo, still clinging to this world after its death. Fallen foes sometimes leave these behind, more often the stronger ones." },
+                { speaker: 'Master Aldous', portraitKey: 'wizard', side: 'left',
+                    text: "An Echo can be permanently attuned to one of your heroes from the Echoes tab in your pack. Each one offers a choice of a few different ways to bind it - a passive gift that stays with that hero from then on." },
+                { speaker: 'Master Aldous', portraitKey: 'wizard', side: 'left',
+                    text: "Mind you - a hero can only hold one Echo's power at a time. Attuning a new one unravels whatever was bound before, so choose with care." },
+                { speaker: 'Master Aldous', portraitKey: 'wizard', side: 'left',
+                    text: "Take a look at what you've found." }
             ];
             this.dialogue.start({ background: 'wizard_tower', lines, onEnd: onEnd || null });
         }
@@ -24740,6 +24863,16 @@
                 echoesBtn.style.color = '#000';
                 details.innerHTML = '<p>Select an Echo to permanently attune it to a hero.</p>';
                 this.renderMenuEchoes();
+                // First time this tab is opened while actually holding an
+                // Echo, pause for the one-time mentor scene (see
+                // showEchoMentorIntro()) - same flag/showing-guard pattern
+                // as the Limit Break/Dual Tech intros in renderMainCommands().
+                const hasEcho = (this.party.inventory.items || []).some(i => i.type === 'echo' && i.quantity > 0);
+                if (hasEcho && !this.echoIntroSeen && !this.echoIntroShowing) {
+                    this.echoIntroSeen = true;
+                    this.echoIntroShowing = true;
+                    this.showEchoMentorIntro(() => { this.echoIntroShowing = false; });
+                }
             } else {
                 itemsList.style.display = 'block';
                 itemsBtn.style.background = 'var(--highlight)';
@@ -27734,6 +27867,8 @@
                     ? this.world.liveMonsters.map(m => !!m.alive)
                     : [],
                 dualTechIntroSeen: !!this.dualTechIntroSeen,
+                limitBreakIntroSeen: !!this.limitBreakIntroSeen,
+                echoIntroSeen: !!this.echoIntroSeen,
                 state: {
                     flags: this.state.flags || {},
                     currentScreen: this.state.currentScreen
@@ -27947,6 +28082,12 @@
                     });
                 }
                 this.dualTechIntroSeen = !!saveData.dualTechIntroSeen;
+                // Same undefined-defaults-to-false behavior as above, which
+                // is exactly what we want: saves from before this feature
+                // existed correctly read as "not seen yet" rather than
+                // accidentally skipping the tip.
+                this.limitBreakIntroSeen = !!saveData.limitBreakIntroSeen;
+                this.echoIntroSeen = !!saveData.echoIntroSeen;
                 if (!this.achievements) this.achievements = new AchievementManager();
                 this.achievements.loadSaveData(saveData.achievements);
                 if (!this.monsterCodex) this.monsterCodex = new MonsterCodex();
