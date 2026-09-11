@@ -5673,7 +5673,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v165</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v166</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -7289,7 +7289,7 @@
     // shows. Two playback paths, resolved automatically per line:
     //
     //   1. PREMIUM: a real recorded/AI-generated audio file, if one has
-    //      been dropped into assets/voices/<profile>/<lineHash>.mp3. Full
+    //      been dropped into assets/voices/<profile>/<lineHash>.wav. Full
     //      Web Audio processing (reverb/warmth/distortion) is available on
     //      this path since it's a real decodable audio source.
     //   2. FALLBACK: the browser's speechSynthesis, voiced/paced per
@@ -7435,7 +7435,7 @@
 
     /** Deterministic 32-bit hash of a line's own text, used as its stable
      *  "line ID" for the premium-audio drop-in path (assets/voices/
-     *  <profile>/<hash>.mp3). Same algorithm shape already used elsewhere
+     *  <profile>/<hash>.wav). Same algorithm shape already used elsewhere
      *  in this file (portraitKeyForNPC) for consistency. Returned as an
      *  unsigned base36 string to keep filenames short. */
     function hashVoiceLine(text) {
@@ -21486,7 +21486,10 @@
                 this.speakFallback(line, profile, profileKey, myToken);
                 return;
             }
-            const url = `assets/voices/${profileKey}/${hash}.mp3`;
+            // .wav, not .mp3 - the batch generator tool produces WAV files
+            // directly (no in-browser MP3 encoder was worth the added
+            // dependency for this), so the real playback path matches.
+            const url = `assets/voices/${profileKey}/${hash}.wav`;
             this._tryPremiumAudio(url, hash, profile, myToken, () => {
                 // Only fall back if this is still the "current" line -
                 // otherwise a slow 404 for an old line could start
@@ -23039,7 +23042,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v165]');
+            console.log('Game starting... [build v166]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
