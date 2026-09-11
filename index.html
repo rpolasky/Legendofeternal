@@ -5783,7 +5783,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v184</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v185</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -16693,7 +16693,13 @@
                     const extraCount = Math.floor(Math.random() * 2) + 1;
                     for (let i = 0; i < extraCount; i++) {
                         const regular = quadrantData.monsters.filter(m => !m.isElite);
-                        const t = regular.length > 0 ? regular[Math.floor(Math.random() * regular.length)] : quadrantData.monsters[0];
+                        let t = regular.length > 0 ? regular[Math.floor(Math.random() * regular.length)] : quadrantData.monsters[0];
+                        // Same level-gate as the anchor above - pack-mates
+                        // were being picked from the ENTIRE regular pool
+                        // with no level check at all, so a correctly-gated
+                        // anchor could still drag in a wildly-off-level
+                        // extra monster right alongside it.
+                        t = levelGateTemplate(t, quadrantData.monsters, partyLevel, 3);
                         this.monsters.push(new Monster(t, false));
                     }
                 }
@@ -16723,9 +16729,15 @@
             if (isRareWorldEncounter) {
                 const quadrantData = QUADRANTS[quadrant];
                 const eliteCandidates = quadrantData.monsters.filter(m => m.isElite);
-                const template = (eliteCandidates.length > 0 ? eliteCandidates : quadrantData.monsters)[
+                let template = (eliteCandidates.length > 0 ? eliteCandidates : quadrantData.monsters)[
                     Math.floor(Math.random() * (eliteCandidates.length > 0 ? eliteCandidates.length : quadrantData.monsters.length))
                 ];
+                // Wider tolerance than the usual +/-3 (a "rare" encounter is
+                // deliberately meant to feel like a real, uncommon threat -
+                // some extra reach above party level is the point) but
+                // still gated, so a level 1 party can't roll a quadrant's
+                // max-level rare on their very first steps.
+                template = levelGateTemplate(template, quadrantData.monsters, partyLevel, 5);
                 const monster = new Monster(template, false);
                 monster.name = `Menacing ${monster.name.replace(/^Elite /, '')}`;
                 monster.maxHp = Math.floor(monster.maxHp * 2.4);
@@ -16760,6 +16772,14 @@
                     template = candidates[Math.floor(Math.random() * candidates.length)];
                 }
                 if (!template) template = quadrantData.monsters[0];
+                // This whole non-fieldAnchor path (cave/ruins/dungeon
+                // encounters, and any world encounter that for whatever
+                // reason has no visible field-monster anchor) had NO level
+                // filtering at all until now - completely separate bug
+                // from the fieldAnchor path fixed earlier, and the more
+                // likely explanation for a level 1 party running into a
+                // level 9 Wild Boar with no field sprite involved.
+                template = levelGateTemplate(template, quadrantData.monsters, partyLevel, 3);
                 const monster = new Monster(template, false);
                 // Only apply the extra "Elite X" boost to a monster that
                 // ISN'T already pulled from the elite-tagged template pool
@@ -23618,7 +23638,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v184]');
+            console.log('Game starting... [build v185]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
