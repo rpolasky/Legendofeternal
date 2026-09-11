@@ -1375,11 +1375,34 @@
            following the fluid column-width rule above - it's always alone
            in the grid (no neighboring cells to overlap), so there's no
            overlap risk to guard against, and a big fixed size reads as
-           more imposing than one tied to a single 1/3-width column. */
+           more imposing than one tied to a single 1/3-width column. Bumped
+           150px -> 195px per Ray's "bigger for that big boss feel" request
+           once BOSS_SLOT (see JS) also moved lower/more centered to fix
+           the top-of-screen clipping that was happening at the old
+           higher anchor point. */
         .monster-sprite.boss {
-            width: 150px;
-            max-width: 150px;
+            width: 195px;
+            max-width: 195px;
             filter: drop-shadow(0 10px 8px rgba(0,0,0,0.5)) drop-shadow(0 0 24px rgba(255,68,68,0.6));
+        }
+
+        /* Boss phase transition flashes (see Monster.updateBossPhase() /
+         *  Battle.showDamage()) - phase 2 "hardens" (cool blue pulse),
+         *  phase 3 "enrages" (hot red pulse). Applied briefly to the boss's
+         *  own .monster-sprite div, then removed via setTimeout in JS. */
+        @keyframes bossPhaseHardenFlash {
+            0%, 100% { filter: drop-shadow(0 10px 8px rgba(0,0,0,0.5)) drop-shadow(0 0 24px rgba(255,68,68,0.6)); }
+            30% { filter: brightness(1.6) drop-shadow(0 0 40px #66ccff) drop-shadow(0 0 70px #1a3a6a); }
+        }
+        .monster-sprite.boss-phase-harden {
+            animation: bossPhaseHardenFlash 1.1s ease;
+        }
+        @keyframes bossPhaseEnrageFlash {
+            0%, 100% { filter: drop-shadow(0 10px 8px rgba(0,0,0,0.5)) drop-shadow(0 0 24px rgba(255,68,68,0.6)); }
+            30% { filter: brightness(1.8) saturate(1.6) drop-shadow(0 0 40px #ff3300) drop-shadow(0 0 70px #8a1a1a); }
+        }
+        .monster-sprite.boss-phase-enrage {
+            animation: bossPhaseEnrageFlash 1.1s ease;
         }
 
         /* Level badge, top-right corner of the sprite frame. Pulled out of
@@ -2475,6 +2498,41 @@
         @keyframes limitBreakPulse {
             0%, 100% { box-shadow: 0 0 10px rgba(255,102,204,0.4), 0 2px 10px rgba(0,0,0,0.3); }
             50% { box-shadow: 0 0 26px rgba(255,102,204,0.9), 0 2px 10px rgba(0,0,0,0.3); }
+        }
+
+        /* ====================================================================== */
+        /*         NEW PLAYER ONBOARDING - VISUAL LAYER (spotlight + badges)      */
+        /* Added after Ray's in-battle feedback: a mentor scene describing a UI   */
+        /* element needs the element itself to visibly stand out once the scene  */
+        /* ends, not just words. See Game.activateSpotlight()/hasUnseenBadge().  */
+        /* ====================================================================== */
+        @keyframes onboardingSpotlightPulse {
+            0%, 100% { box-shadow: 0 0 10px 2px rgba(255,215,0,0.55), inset 0 0 0 2px rgba(255,215,0,0.65); }
+            50% { box-shadow: 0 0 26px 8px rgba(255,215,0,0.95), inset 0 0 0 3px rgba(255,215,0,0.95); }
+        }
+        .onboarding-spotlight {
+            animation: onboardingSpotlightPulse 1s ease-in-out infinite;
+            border-radius: 8px;
+        }
+        @keyframes onboardingNewBounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-3px); }
+        }
+        .onboarding-new-badge {
+            position: absolute;
+            top: -7px;
+            right: -7px;
+            background: #ff3b3b;
+            color: #fff;
+            font-size: 9px;
+            font-weight: 700;
+            line-height: 1;
+            padding: 2px 5px;
+            border-radius: 10px;
+            animation: onboardingNewBounce 0.6s ease-in-out infinite;
+            z-index: 20;
+            pointer-events: none;
+            box-shadow: 0 0 6px rgba(255,59,59,0.8);
         }
 
         .cmd-btn:disabled {
@@ -5448,7 +5506,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v158</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v161</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -5823,7 +5881,7 @@
                 </div>
                 <div class="shop2-right">
                     <span class="shop2-gold" id="spellweaver-gold">G: 0</span>
-                    <div class="shop2-btn" onclick="window.game.openSpellComboGuide()">&#128214; Combo Guide</div>
+                    <div class="shop2-btn" id="spellweaver-combo-guide-btn" onclick="window.game.openSpellComboGuide()">&#128214; Combo Guide</div>
                     <div class="shop2-btn leave" onclick="window.game.exitShop()">&#128682; Leave</div>
                 </div>
             </div>
@@ -10759,7 +10817,14 @@
             // Goblin" still reads as meaningfully tougher than a same-level
             // regular Goblin even though both derive from the same curve.
             const templateEliteMult = template.isElite ? 1.5 : 1;
-            const bossHpMult = isBoss ? 3 : 1;
+            // Story boss HP pool bumped from 3x to 5.5x after Ray's Goblin
+            // King playtest - 2-3 crafted fire spells (exploiting his 1.5x
+            // fire weakness) were doing ~60% of his total HP, since the
+            // level-formula HP (594 at the old 3x) just isn't enough runway
+            // for a "epic story boss" fight once real gear/spells are
+            // involved. See updateBossPhase() below for the phase system
+            // this HP bump is designed to give room for.
+            const bossHpMult = isBoss ? 5.5 : 1;
             const bossAtkMult = isBoss ? 1.5 : 1;
             const bossRewardMult = isBoss ? 5 : 1;
             this.maxHp = Math.round(monsterHpForLevel(this.level) * templateEliteMult * bossHpMult);
@@ -10767,6 +10832,15 @@
             this.attack = Math.round(monsterAttackForLevel(this.level) * templateEliteMult * bossAtkMult);
             this.defense = Math.round(monsterDefenseForLevel(this.level) * templateEliteMult);
             this.speed = template.speed;
+            // Base stats snapshotted here so the boss phase system below can
+            // always scale FROM the original numbers rather than compounding
+            // on top of whatever the previous phase already changed them to.
+            this.baseAttack = this.attack;
+            this.baseDefense = this.defense;
+            this.baseSpeed = this.speed;
+            this.bossPhase = 1;
+            this.phaseDamageReduction = 0;
+            this.bossPhaseMessage = null;
             this.expReward = Math.round(monsterExpForLevel(this.level) * templateEliteMult * bossRewardMult);
             this.goldReward = Math.round(monsterGoldForLevel(this.level) * templateEliteMult * bossRewardMult);
             this.isBoss = isBoss;
@@ -10813,12 +10887,62 @@
         }
 
         takeDamage(amount) {
-            const actualDamage = Math.max(1, amount - Math.floor(this.defense / 2));
+            let actualDamage = Math.max(1, amount - Math.floor(this.defense / 2));
+            // Phase 2's "more resistant" bonus is a flat percentage cut on
+            // top of the normal defense mitigation above, since defense/2
+            // alone barely dents a big elemental-weakness spell hit (see
+            // updateBossPhase()'s comment for the numbers that drove this).
+            if (this.phaseDamageReduction) {
+                actualDamage = Math.max(1, Math.floor(actualDamage * (1 - this.phaseDamageReduction)));
+            }
             this.currentHp = Math.max(0, this.currentHp - actualDamage);
+            if (this.isBoss) this.updateBossPhase();
             return actualDamage;
         }
 
         isAlive() { return this.currentHp > 0; }
+
+        /** New Player... no, this one's for Ray, not the player - boss phase
+         *  system added after the Goblin King playtest report (melted in
+         *  2-3 spells). Story bosses (the only monsters ever constructed
+         *  with isBoss=true - see CASTLE_BOSSES) now step through 3 phases
+         *  as their HP drops, checked here right after every hit lands:
+         *    Phase 1 (100%-50% HP): baseline stats, business as usual.
+         *    Phase 2 (50%-20% HP): "hardens up" - defense +40% AND a flat
+         *      25% damage reduction on top (see takeDamage() above), so
+         *      burst/elemental-weakness spam stops trivializing the fight
+         *      partway through.
+         *    Phase 3 (20%-0% HP): "enrages" - drops the phase 2 defensive
+         *      bonus entirely (back to base defense, no damage reduction)
+         *      but attack jumps to 1.75x base and speed to 1.3x base - a
+         *      real "wounded animal is more dangerous" spike, and a signal
+         *      to the player that the fight is nearly over but the last
+         *      stretch hits harder.
+         *  bossPhaseMessage is picked up and logged/announced by
+         *  Battle.showDamage() (the one place nearly every damage instance
+         *  already flows through) rather than needing every takeDamage()
+         *  callsite in Battle to handle it individually. */
+        updateBossPhase() {
+            if (this.maxHp <= 0) return;
+            const pct = this.currentHp / this.maxHp;
+            let newPhase = 1;
+            if (pct <= 0.20) newPhase = 3;
+            else if (pct <= 0.50) newPhase = 2;
+            if (newPhase === this.bossPhase) return;
+            this.bossPhase = newPhase;
+            if (newPhase === 2) {
+                this.phaseDamageReduction = 0.25;
+                this.attack = this.baseAttack;
+                this.defense = Math.round(this.baseDefense * 1.4);
+                this.bossPhaseMessage = `${this.name} hardens its defenses!`;
+            } else if (newPhase === 3) {
+                this.phaseDamageReduction = 0;
+                this.attack = Math.round(this.baseAttack * 1.75);
+                this.defense = this.baseDefense;
+                this.speed = Math.round(this.baseSpeed * 1.3);
+                this.bossPhaseMessage = `${this.name} flies into a desperate rage!`;
+            }
+        }
 
         /** This mirrors Hero.getEvadeChance()/getSpeedCritBonus() - `speed`
          *  was defined on every single monster template (used to compute it
@@ -16025,7 +16149,7 @@
                     </div>
                     <div class="hud-limit-row" title="Limit Break: ${hero.limitBreakCharge}/${hero.getLimitBreakMax()}">
                         <div class="hud-limit-label">LIMIT</div>
-                        <div class="hud-limit-bar"><div class="hud-limit-fill ${hero.isLimitBreakReady() ? 'ready' : ''}" style="width: ${(hero.limitBreakCharge/hero.getLimitBreakMax())*100}%"></div></div>
+                        <div class="hud-limit-bar ${(window.game && window.game.onboardingSpotlight === 'limitbreak' && hero.isLimitBreakReady()) ? 'onboarding-spotlight' : ''}"><div class="hud-limit-fill ${hero.isLimitBreakReady() ? 'ready' : ''}" style="width: ${(hero.limitBreakCharge/hero.getLimitBreakMax())*100}%"></div></div>
                     </div>
                     <div class="stat-bar exp-row">
                         EXP ${Math.floor((hero.experience/hero.experienceToNext)*100)}%
@@ -16084,6 +16208,24 @@
         showDamage(target, amount, isHeal = false, isCrit = false) {
             const battleScreen = document.getElementById('battle-window');
             if (!battleScreen) return;
+            // Boss phase transitions are picked up right here rather than
+            // at every individual takeDamage() callsite in this file -
+            // showDamage() is the one place nearly all of them already
+            // funnel through. See Monster.updateBossPhase().
+            if (!isHeal && target && target.isBoss && target.bossPhaseMessage) {
+                const msg = target.bossPhaseMessage;
+                target.bossPhaseMessage = null;
+                this.log(`⚡ ${msg}`);
+                playBossPhaseBanner(target.name, target.bossPhase);
+                const bossIdx = this.monsters.indexOf(target);
+                const bossDiv = document.getElementById(`monster-${bossIdx}`);
+                if (bossDiv) {
+                    bossDiv.classList.add(target.bossPhase === 3 ? 'boss-phase-enrage' : 'boss-phase-harden');
+                    setTimeout(() => {
+                        bossDiv.classList.remove('boss-phase-enrage', 'boss-phase-harden');
+                    }, 1200);
+                }
+            }
             const isNumeric = typeof amount === 'number' || !isNaN(parseFloat(amount));
             // "Big hit" = a real crit, Limit Break, or Dual Tech - every call
             // site that reaches for one of those already passes isCrit=true
@@ -16149,6 +16291,15 @@
                 window.game.limitBreakIntroShowing = true;
                 window.game.showLimitBreakMentorIntro(() => {
                     window.game.limitBreakIntroShowing = false;
+                    // Per Ray's in-battle feedback: describing the gauge in
+                    // dialogue isn't enough on its own - highlight the
+                    // actual button/gauge once the scene ends so it's
+                    // obvious where to look. Clears itself after a few
+                    // seconds, or as soon as Limit Break is actually used
+                    // (see selectCommand()).
+                    window.game.activateSpotlight('limitbreak');
+                    this.renderMainCommands();
+                    this.updatePartyDisplay();
                 });
             }
             // First time a Dual Tech is actually available to pick, pause for
@@ -16162,19 +16313,21 @@
                 window.game.dualTechIntroShowing = true;
                 window.game.showDualTechMentorIntro(() => {
                     window.game.dualTechIntroShowing = false;
+                    window.game.activateSpotlight('dualtech');
+                    this.renderMainCommands();
                 });
             }
             // Attack/Magic/Item/Run are icon-only (self-explanatory), but
             // Limit Break/Dual Tech keep their text labels since that's
             // genuinely useful to read in the moment, per request.
             const attackBtnHTML = limitReady
-                ? `<button class="cmd-btn limit-break-btn" title="Limit Break" onclick="window.game.battle.selectCommand('limitbreak')">💥 LIMIT BREAK</button>`
+                ? `<button class="cmd-btn limit-break-btn ${window.game && window.game.onboardingSpotlight === 'limitbreak' ? 'onboarding-spotlight' : ''}" title="Limit Break" onclick="window.game.battle.selectCommand('limitbreak')">💥 LIMIT BREAK</button>`
                 : `<button class="cmd-btn" title="Attack" onclick="window.game.battle.selectCommand('attack')">⚔️</button>`;
             // Shown alongside (not instead of) the Limit Break/Attack button -
             // per the design, spending the combo is a real choice against
             // just cashing in a solo Limit Break right now.
             const dualTechBtnHTML = dualTechOptions.length
-                ? `<button class="cmd-btn dual-tech-btn" title="Dual Tech" onclick="window.game.battle.selectCommand('dualtech')">🌟 DUAL TECH</button>`
+                ? `<button class="cmd-btn dual-tech-btn ${window.game && window.game.onboardingSpotlight === 'dualtech' ? 'onboarding-spotlight' : ''}" title="Dual Tech" onclick="window.game.battle.selectCommand('dualtech')">🌟 DUAL TECH</button>`
                 : '';
             commandArea.innerHTML = `
                 ${attackBtnHTML}
@@ -16201,11 +16354,13 @@
 
             if (command === 'limitbreak') {
                 if (!hero.isLimitBreakReady()) return;
+                if (window.game) window.game.clearSpotlight('limitbreak');
                 this.showLimitBreakMenu(hero);
                 return;
             }
 
             if (command === 'dualtech') {
+                if (window.game) window.game.clearSpotlight('dualtech');
                 this.showDualTechMenu(hero);
                 return;
             }
@@ -19610,67 +19765,84 @@
             this.renderSellInventory();
         }
 
+        /** Renders the Sell tab's item rail. Rewritten defensively after a
+         *  report of this coming up completely blank on a real device -
+         *  every source array is now defaulted to [] rather than assumed
+         *  to exist (a save with any of these missing/malformed would have
+         *  thrown on the very first .forEach() and left the container
+         *  empty, with nothing else able to run afterward), and the whole
+         *  per-item build is wrapped so one bad item can't blank the rest
+         *  of the list. Also now excludes anything that shouldn't be
+         *  sellable in the first place: legendary quest weapons
+         *  (item.isLegendary) and Milo's Charm (any MILO_CHARM_TIERS name) -
+         *  equipped gear is already excluded for free, since equipping
+         *  moves an item OUT of these inventory arrays entirely (see
+         *  equipMenuItem()). */
         renderSellInventory() {
             const container = document.getElementById('shop-items');
+            if (!container || !this.party) return;
             container.innerHTML = '';
+            const inv = this.party.inventory || {};
             const sellableItems = [];
-            this.party.inventory.items.forEach(item => {
+            const isUnsellable = (item) => !!(item && (item.isLegendary || MILO_CHARM_TIERS[item.name]));
+            (inv.items || []).forEach(item => {
+                if (isUnsellable(item)) return;
                 sellableItems.push({ ...item, source: 'inventory', displayName: `${item.name} x${item.quantity}` });
             });
-            this.party.inventory.weapons.forEach(item => {
+            (inv.weapons || []).forEach(item => {
+                if (isUnsellable(item)) return;
                 sellableItems.push({ ...item, source: 'weapons', displayName: item.name });
             });
-            this.party.inventory.armor.forEach(item => {
+            (inv.armor || []).forEach(item => {
+                if (isUnsellable(item)) return;
                 sellableItems.push({ ...item, source: 'armor', displayName: item.name });
             });
-            if (this.party.inventory.shields) {
-                this.party.inventory.shields.forEach(item => {
-                    sellableItems.push({ ...item, source: 'shields', displayName: item.name });
-                });
-            }
-            if (this.party.inventory.jewelry) {
-                this.party.inventory.jewelry.forEach(item => {
-                    sellableItems.push({ ...item, source: 'jewelry', displayName: item.name });
-                });
-            }
-            if (this.party.gems && this.party.gems.length > 0) {
-                this.party.gems.forEach((gem, index) => {
-                    sellableItems.push({ ...gem, source: 'gems', gemIndex: index, displayName: `${gem.name} (Gem)`, price: this.gemSellValue(gem) });
-                });
-            }
-            if (this.party.materials && Object.keys(this.party.materials).length > 0) {
-                for (let [material, quantity] of Object.entries(this.party.materials)) {
-                    sellableItems.push({ name: material, type: 'material', source: 'materials', displayName: `${material} x${quantity}`, price: 25, quantity: quantity });
+            (inv.shields || []).forEach(item => {
+                if (isUnsellable(item)) return;
+                sellableItems.push({ ...item, source: 'shields', displayName: item.name });
+            });
+            (inv.jewelry || []).forEach(item => {
+                if (isUnsellable(item)) return;
+                sellableItems.push({ ...item, source: 'jewelry', displayName: item.name });
+            });
+            (this.party.gems || []).forEach((gem, index) => {
+                sellableItems.push({ ...gem, source: 'gems', gemIndex: index, displayName: `${gem.name} (Gem)`, price: this.gemSellValue(gem) });
+            });
+            const materials = this.party.materials || {};
+            Object.entries(materials).forEach(([material, quantity]) => {
+                if (quantity > 0) sellableItems.push({ name: material, type: 'material', source: 'materials', displayName: `${material} x${quantity}`, price: 25, quantity: quantity });
+            });
+            const fragments = this.party.fragments || {};
+            Object.entries(fragments).forEach(([color, quantity]) => {
+                if (quantity > 0 && GEM_FRAGMENT_INFO[color]) {
+                    sellableItems.push({ name: `${color} Fragment`, color: color, type: 'fragment', source: 'fragments', displayName: `${GEM_FRAGMENT_INFO[color].icon} ${color} Fragment x${quantity}`, price: 10, quantity: quantity });
                 }
-            }
-            if (this.party.fragments && Object.keys(this.party.fragments).length > 0) {
-                for (let [color, quantity] of Object.entries(this.party.fragments)) {
-                    if (quantity > 0) {
-                        sellableItems.push({ name: `${color} Fragment`, color: color, type: 'fragment', source: 'fragments', displayName: `${GEM_FRAGMENT_INFO[color].icon} ${color} Fragment x${quantity}`, price: 10, quantity: quantity });
-                    }
-                }
-            }
+            });
             if (sellableItems.length === 0) {
                 container.innerHTML = '<div class="shop2-empty">Nothing to sell</div>';
                 return;
             }
             sellableItems.forEach((item) => {
-                const div = document.createElement('div');
-                let sellPrice = 0;
-                if (item.source === 'materials') sellPrice = 15;
-                else if (item.source === 'fragments') sellPrice = 10;
-                else if (item.source === 'gems') sellPrice = this.gemSellValue(item);
-                else sellPrice = Math.floor((item.price || 50) / 2);
-                const rarity = (item.source === 'gems' || item.source === 'materials' || item.source === 'fragments') ? 'common' : getItemRarity(item);
-                div.className = `shop2-row r-${rarity}`;
-                const iconPath = getItemIconPath(item);
-                div.innerHTML = `
-                    <div class="shop2-icon">${iconPath ? `<img src="${iconPath}" onerror="this.parentElement.style.display='none'">` : ''}</div>
-                    <div class="shop2-name">${item.displayName || item.name}</div>
-                    <span class="shop2-price">${sellPrice} G</span>
-                `;
-                div.onclick = () => this.selectSellItem(item, div);
-                container.appendChild(div);
+                try {
+                    const div = document.createElement('div');
+                    let sellPrice = 0;
+                    if (item.source === 'materials') sellPrice = 15;
+                    else if (item.source === 'fragments') sellPrice = 10;
+                    else if (item.source === 'gems') sellPrice = this.gemSellValue(item);
+                    else sellPrice = Math.floor((item.price || 50) / 2);
+                    const rarity = (item.source === 'gems' || item.source === 'materials' || item.source === 'fragments') ? 'common' : getItemRarity(item);
+                    div.className = `shop2-row r-${rarity}`;
+                    const iconPath = getItemIconPath(item);
+                    div.innerHTML = `
+                        <div class="shop2-icon">${iconPath ? `<img src="${iconPath}" onerror="this.parentElement.style.display='none'">` : ''}</div>
+                        <div class="shop2-name">${item.displayName || item.name}</div>
+                        <span class="shop2-price">${sellPrice} G</span>
+                    `;
+                    div.onclick = () => this.selectSellItem(item, div);
+                    container.appendChild(div);
+                } catch (e) {
+                    console.error('renderSellInventory: skipped one item that failed to render', item, e);
+                }
             });
         }
 
@@ -21970,6 +22142,22 @@
             this.limitBreakIntroShowing = false;
             this.echoIntroSeen = false;
             this.echoIntroShowing = false;
+            // Second pass of the same onboarding system - gems, Merchant
+            // upgrading, the Spell Weaving nudge, and Milo's Charm. See the
+            // showXIntro() methods below for each trigger point.
+            this.gemIntroSeen = false;
+            this.gemIntroShowing = false;
+            this.merchantIntroSeen = false;
+            this.merchantIntroShowing = false;
+            this.spellWeaveIntroSeen = false;
+            this.miloCharmIntroSeen = false;
+            this.miloCharmIntroShowing = false;
+            // Spotlight/badge state for the visual half of onboarding (Ray's
+            // in-battle feedback: describing something in dialogue needs a
+            // visible highlight too). See activateSpotlight()/
+            // hasUnseenBadge() below. seenBadges persisted as an array.
+            this.onboardingSpotlight = null;
+            this.seenBadges = new Set();
             this.setupInput();
             this.state.currentScreen = 'start';
             setTimeout(() => {
@@ -22028,7 +22216,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v158]');
+            console.log('Game starting... [build v161]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
@@ -22277,6 +22465,10 @@
             const overlay = document.getElementById('spell-guide-overlay');
             if (overlay) overlay.classList.add('active');
             if (this.state) this.state.pause();
+            // Tapping it once counts as "noticed" for the Layer 3 badge -
+            // clear it here so it doesn't reappear once seen.
+            this.markBadgeSeen('spellweave_combo');
+            this.updateNewBadge('spellweaver-combo-guide-btn', false);
         }
 
         closeSpellComboGuide() {
@@ -22340,7 +22532,10 @@
             const entries = [
                 { icon: '💥', title: 'Limit Break', text: "Land enough blows, or take enough punishment, and a hero's gauge fills - once it does, their attack button glows gold. Use it to unleash a single devastating move far beyond their normal attack. The gauge empties once spent, so save it for a tough foe or a fight that's slipping away." },
                 { icon: '🌟', title: 'Dual Tech', text: "When two heroes both stand ready with a full Limit Break gauge at the same time, they can combine it into a Dual Tech instead - spending both gauges and both turns for a combo that hits far harder than either alone. Which technique you get depends on both heroes' archetypes; tap the book icon on the Dual Tech button any time for the full combination reference." },
-                { icon: '🌀', title: 'Echoes', text: "Monster Echoes are rare drops - left behind by tougher foes, and guaranteed the first time certain bosses fall. Attune one permanently to a hero from the Echoes tab in your pack for a lasting passive gift; each Echo offers a few different ways to bind it. A hero can only hold one Echo at a time, and attuning a new one destroys whatever was bound before." }
+                { icon: '🌀', title: 'Echoes', text: "Monster Echoes are rare drops - left behind by tougher foes, and guaranteed the first time certain bosses fall. Attune one permanently to a hero from the Echoes tab in your pack for a lasting passive gift; each Echo offers a few different ways to bind it. A hero can only hold one Echo at a time, and attuning a new one destroys whatever was bound before." },
+                { icon: '💎', title: 'Socket Gems', text: "The Gem Crafter fuses fragments dropped by monsters into socket gems. In the Apply/Remove tab, pick a gem, then tap an empty socket on a hero's weapon or armor to fit it in for a permanent stat boost - you can pry it back out later, but you'll lose some of its power doing so." },
+                { icon: '🔨', title: 'Equipment Upgrading', text: "The Merchant refines gear you already own instead of selling new gear. Bring a rare or legendary weapon or armor piece (300G+ value) and enough gold, and he'll upgrade it in place - worth doing on a piece you plan to keep." },
+                { icon: '📿', title: "Milo's Charm", text: "A keepsake accessory that also works as a free, once-per-battle party heal and mana restore - no item cost, ready again every fight. It automatically grows stronger after each of the game's first few story bosses falls." }
             ];
             return entries.map(e => `<h4 style="color: var(--highlight); margin-bottom: 4px;">${e.icon} ${e.title}</h4><p style="margin-bottom: 16px;">${e.text}</p>`).join('');
         }
@@ -22365,7 +22560,7 @@
          *  feature. Useful for testing, and for a player who wants to
          *  revisit the tips (or was skipping them too fast to read). */
         confirmReplayTutorials() {
-            this.ui.showPopup('Replay Tutorials?', 'This will make every one-time mentor tip (Limit Break, Dual Tech, Echoes) play again the next time it comes up in this save.<br><br>' +
+            this.ui.showPopup('Replay Tutorials?', 'This will make every one-time mentor tip (Limit Break, Dual Tech, Echoes, Gems, Merchant, Spell Weaving, Milo\'s Charm) play again the next time it comes up in this save.<br><br>' +
                 '<button class="menu-button" onclick="window.game.resetTutorialFlags()" style="width:100%; margin-top:10px;">Yes, Replay Them</button>' +
                 '<button class="menu-button" onclick="window.game.ui.closePopup()" style="width:100%; margin-top:6px; background:#555;">Cancel</button>', true);
         }
@@ -22374,8 +22569,71 @@
             this.limitBreakIntroSeen = false;
             this.dualTechIntroSeen = false;
             this.echoIntroSeen = false;
+            this.gemIntroSeen = false;
+            this.merchantIntroSeen = false;
+            this.spellWeaveIntroSeen = false;
+            this.miloCharmIntroSeen = false;
+            this.seenBadges = new Set();
             this.ui.closePopup();
             this.ui.showPopup('Tutorials Reset', 'Mentor tips will play again the next time they come up.');
+        }
+
+        /** New Player Onboarding, visual half - added after Ray's in-battle
+         *  feedback that describing a UI element in a mentor scene isn't
+         *  enough on its own; the element itself needs to visibly stand out
+         *  once the scene ends. Sets a key that the relevant render
+         *  function checks for (see renderMainCommands(), renderMenuEchoes(),
+         *  getApplyGemTabHTML(), renderMerchantRail()) to add the
+         *  '.onboarding-spotlight' CSS class, and auto-clears after a few
+         *  seconds so it doesn't linger forever if the player looks away. */
+        activateSpotlight(key, durationMs = 6000) {
+            this.onboardingSpotlight = key;
+            clearTimeout(this._spotlightTimer);
+            this._spotlightTimer = setTimeout(() => { this.clearSpotlight(key); }, durationMs);
+        }
+
+        /** Clears the spotlight - called either by the auto-clear timer
+         *  above or immediately once the player actually taps the
+         *  highlighted thing (see selectCommand(), renderMenuEchoes()'s
+         *  onclick, etc). The key check means a late-firing timer from an
+         *  older spotlight can't stomp a newer one that's since replaced it. */
+        clearSpotlight(key) {
+            if (key && this.onboardingSpotlight !== key) return;
+            this.onboardingSpotlight = null;
+        }
+
+        /** Layer 3 "NEW" badges - a lightweight, separately-persisted
+         *  seen/unseen flag per UI element, for things noticed rather than
+         *  explained (see design doc: the Combo Guide button, the Echoes
+         *  tab). Cleared just by tapping the thing once, unlike the Layer 1
+         *  intro-seen flags above which require sitting through the scene. */
+        hasUnseenBadge(key) {
+            return !(this.seenBadges && this.seenBadges.has(key));
+        }
+
+        markBadgeSeen(key) {
+            if (!this.seenBadges) this.seenBadges = new Set();
+            this.seenBadges.add(key);
+        }
+
+        /** Injects (or removes) a bouncing NEW badge onto a button that
+         *  ISN'T rebuilt via innerHTML on every render (the Combo Guide and
+         *  Echoes-tab buttons live in the static screen shell) - baking the
+         *  badge into a template string like the spotlight class above
+         *  doesn't work for those since the markup itself never re-renders. */
+        updateNewBadge(elId, show) {
+            const el = document.getElementById(elId);
+            if (!el) return;
+            let badge = el.querySelector('.onboarding-new-badge');
+            if (show && !badge) {
+                if (!el.style.position) el.style.position = 'relative';
+                badge = document.createElement('span');
+                badge.className = 'onboarding-new-badge';
+                badge.textContent = 'NEW';
+                el.appendChild(badge);
+            } else if (!show && badge) {
+                badge.remove();
+            }
         }
 
         openWorldMap() {
@@ -23398,6 +23656,16 @@
             if (quest.reward.item) this.grantQuestRewardItem(quest.reward.item, quest.reward.quantity);
             this.quests.splice(questIndex, 1);
             this.updateGoldDisplays();
+            // First (and only) time Milo's Charm is actually granted, pause
+            // for the one-time mentor scene explaining its battle ability
+            // (see showMiloCharmMentorIntro()) - fires right after the
+            // reward item lands in inventory, same guard pattern as
+            // elsewhere even though this quest can't realistically repeat.
+            if (quest.reward.item === "Milo's Charm" && !this.miloCharmIntroSeen && !this.miloCharmIntroShowing) {
+                this.miloCharmIntroSeen = true;
+                this.miloCharmIntroShowing = true;
+                this.showMiloCharmMentorIntro(() => { this.miloCharmIntroShowing = false; });
+            }
             return { ok: true, quest };
         }
 
@@ -23627,6 +23895,77 @@
                     text: "Take a look at what you've found." }
             ];
             this.dialogue.start({ background: 'wizard_tower', lines, onEnd: onEnd || null });
+        }
+
+        /** New Player Onboarding, Layer 1 - fires once, the first time the
+         *  player opens the Gem Crafter's Apply/Remove tab while actually
+         *  holding a socket gem (see showApplyGemTab()). */
+        showGemMentorIntro(onEnd) {
+            const lines = [
+                { speaker: 'Master Aldous', portraitKey: 'wizard', side: 'left',
+                    text: "A socket gem, freshly cut - the Gem Crafter fuses those from fragments monsters leave behind." },
+                { speaker: 'Master Aldous', portraitKey: 'wizard', side: 'left',
+                    text: "Choose a gem here, then tap an empty socket on a hero's weapon or armor to fit it in - a permanent boost to that piece of gear, so long as the socket holds it." },
+                { speaker: 'Master Aldous', portraitKey: 'wizard', side: 'left',
+                    text: "You can always pry a gem back out later if you change your mind, though you'll lose some of its power breaking it free." }
+            ];
+            this.dialogue.start({ background: 'wizard_tower', lines, onEnd: onEnd || null });
+        }
+
+        /** New Player Onboarding, Layer 1 - fires once, the first time the
+         *  player actually enters the Merchant shop screen (see
+         *  _openMerchantShop()). */
+        showMerchantMentorIntro(onEnd) {
+            const lines = [
+                { speaker: 'Master Aldous', portraitKey: 'wizard', side: 'left',
+                    text: "The Merchant deals in something different from the blacksmith - he won't sell you new gear, but he'll refine what you already carry." },
+                { speaker: 'Master Aldous', portraitKey: 'wizard', side: 'left',
+                    text: "Bring him a rare or legendary weapon or piece of armor and enough gold, and he'll upgrade it in place - the same item, stronger than before. Worth doing once a piece is one you plan to keep for a while." }
+            ];
+            this.dialogue.start({ background: 'wizard_tower', lines, onEnd: onEnd || null });
+        }
+
+        /** New Player Onboarding, Layer 1 - fires once, when Milo's Charm is
+         *  actually granted as the "Milo's Big Adventure" quest reward (see
+         *  completeQuestState()). */
+        showMiloCharmMentorIntro(onEnd) {
+            const lines = [
+                { speaker: 'Master Aldous', portraitKey: 'wizard', side: 'left',
+                    text: "That charm Milo's family gave you is more than a trinket - keep it on a hero, and once per battle they can call on it for a free burst of healing and mana, no item cost." },
+                { speaker: 'Master Aldous', portraitKey: 'wizard', side: 'left',
+                    text: "It grows stronger too - it seems to remember the great battles you've survived, and grows more powerful after each one." }
+            ];
+            this.dialogue.start({ background: 'wizard_tower', lines, onEnd: onEnd || null });
+        }
+
+        /** New Player Onboarding, Layer 3 - a small one-time toast (not a
+         *  full mentor scene, per the design doc's "this tip is really just
+         *  'go look at that book icon'" call) pointing at the Combo Guide
+         *  button, fired the first time the Spell Weaver shop is entered.
+         *  Reuses the same toast shape as showAutosaveToast(), just longer
+         *  and with custom text - see showHintToast(). */
+        showSpellWeaveNudge() {
+            this.showHintToast('📖 Tap Combo Guide to see every spell weave you can make');
+        }
+
+        /** Small, unobtrusive hint toast in the corner - generalized from
+         *  showAutosaveToast() so any one-time onboarding nudge can reuse
+         *  the same shape/timing instead of writing its own DOM plumbing. */
+        showHintToast(text, durationMs = 3200) {
+            let toast = document.getElementById('hint-toast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'hint-toast';
+                toast.style.cssText = 'position:fixed; bottom:14px; left:50%; transform:translateX(-50%); ' +
+                    'background:rgba(20,20,30,0.92); color:#ffd700; border:1px solid #6a5a2a; ' +
+                    'padding:8px 16px; border-radius:6px; font-size:12px; z-index:99999; ' +
+                    'pointer-events:none; opacity:0; transition:opacity 0.3s ease; max-width:80%; text-align:center;';
+                document.body.appendChild(toast);
+            }
+            toast.textContent = text;
+            toast.style.opacity = '1';
+            clearTimeout(this._hintToastTimer);
+            this._hintToastTimer = setTimeout(() => { toast.style.opacity = '0'; }, durationMs);
         }
 
         /** Presents a Lore journal chapter's paragraphs as a narrated
@@ -24863,6 +25202,11 @@
                 echoesBtn.style.color = '#000';
                 details.innerHTML = '<p>Select an Echo to permanently attune it to a hero.</p>';
                 this.renderMenuEchoes();
+                // Opening the tab counts as "noticed" for the Layer 3
+                // badge, regardless of whether the mentor scene below also
+                // fires this same visit.
+                this.markBadgeSeen('echoes_tab');
+                this.updateNewBadge('menu-echoes-tab-btn', false);
                 // First time this tab is opened while actually holding an
                 // Echo, pause for the one-time mentor scene (see
                 // showEchoMentorIntro()) - same flag/showing-guard pattern
@@ -24871,7 +25215,11 @@
                 if (hasEcho && !this.echoIntroSeen && !this.echoIntroShowing) {
                     this.echoIntroSeen = true;
                     this.echoIntroShowing = true;
-                    this.showEchoMentorIntro(() => { this.echoIntroShowing = false; });
+                    this.showEchoMentorIntro(() => {
+                        this.echoIntroShowing = false;
+                        this.activateSpotlight('echo');
+                        this.renderMenuEchoes();
+                    });
                 }
             } else {
                 itemsList.style.display = 'block';
@@ -24879,6 +25227,14 @@
                 itemsBtn.style.color = '#000';
                 details.innerHTML = '<p>Select an item to use</p>';
                 this.renderMenuInventory();
+            }
+            // Whichever sub-tab was actually opened, the Echoes tab button
+            // itself is always visible along the top row - keep its badge
+            // in sync with whether the party holds an unseen Echo, since
+            // this is the "I never even opened that tab" catch (Layer 3).
+            if (tab !== 'echoes') {
+                const hasUnseenEcho = (this.party.inventory.items || []).some(i => i.type === 'echo' && i.quantity > 0) && this.hasUnseenBadge('echoes_tab');
+                this.updateNewBadge('menu-echoes-tab-btn', hasUnseenEcho);
             }
         }
 
@@ -24938,13 +25294,20 @@
                 container.innerHTML = '<p style="color: #888; text-align: center; padding: 20px;">No Echoes yet. Rare monster drops - elites and certain bosses have a much better chance.</p>';
                 return;
             }
-            echoItems.forEach((item) => {
+            echoItems.forEach((item, index) => {
                 const def = ECHO_DATA[item.name];
                 if (!def) return;
                 const div = document.createElement('div');
                 div.className = 'shop-item';
+                // Highlight the first row when the Echo mentor scene just
+                // finished, per Ray's feedback - describing "the Echoes
+                // tab" in dialogue isn't enough, the actual thing to tap
+                // needs to visibly stand out.
+                if (index === 0 && window.game && window.game.onboardingSpotlight === 'echo') {
+                    div.classList.add('onboarding-spotlight');
+                }
                 div.innerHTML = `<span>${def.icon} ${item.name} x${item.quantity}</span><span style="color: #888;">Tap to attune</span>`;
-                div.onclick = () => this.selectMenuEcho(item.name);
+                div.onclick = () => { if (window.game) window.game.clearSpotlight('echo'); this.selectMenuEcho(item.name); };
                 container.appendChild(div);
             });
         }
@@ -25398,6 +25761,18 @@
             let menuHTML = this.gemCrafterTabBar('apply');
             menuHTML += this.getApplyGemTabHTML();
             this.ui.showPopup('Gem Crafter', menuHTML, true);
+            // First time this tab is opened while actually holding a gem,
+            // pause for the one-time mentor scene - same guard pattern as
+            // the Limit Break/Echo intros (see showGemMentorIntro()).
+            if (this.party.gems.length > 0 && !this.gemIntroSeen && !this.gemIntroShowing) {
+                this.gemIntroSeen = true;
+                this.gemIntroShowing = true;
+                this.showGemMentorIntro(() => {
+                    this.gemIntroShowing = false;
+                    this.activateSpotlight('gem');
+                    this.showApplyGemTab();
+                });
+            }
         }
 
         gemSellValue(gem) {
@@ -25498,8 +25873,9 @@
                 html += '<div style="margin-bottom: 20px;">';
                 this.party.gems.forEach((gem, index) => {
                     const selected = this.selectedGemIndex === index;
+                    const spotlightClass = (index === 0 && window.game && window.game.onboardingSpotlight === 'gem') ? 'onboarding-spotlight' : '';
                     html += `
-                        <div class="shop-item" onclick="window.game.selectGemForSocket(${index})" style="${selected ? 'background: rgba(255,215,0,0.15); border-left: 3px solid gold;' : ''}">
+                        <div class="shop-item ${spotlightClass}" onclick="window.game.clearSpotlight('gem'); window.game.selectGemForSocket(${index})" style="${selected ? 'background: rgba(255,215,0,0.15); border-left: 3px solid gold;' : ''}">
                             <div>
                                 <span style="color: var(--highlight);">💎 ${gem.name}</span>
                                 <div style="font-size: 11px; color: #888;">${gem.desc}</div>
@@ -26765,6 +27141,18 @@
             this.shop.closeDetails();
             this.renderMerchantRail();
             this.state.switchScreen('shop');
+            // First time this shop is actually entered, pause for the
+            // one-time mentor scene explaining upgrading (see
+            // showMerchantMentorIntro()) - same guard pattern as elsewhere.
+            if (!this.merchantIntroSeen && !this.merchantIntroShowing) {
+                this.merchantIntroSeen = true;
+                this.merchantIntroShowing = true;
+                this.showMerchantMentorIntro(() => {
+                    this.merchantIntroShowing = false;
+                    this.activateSpotlight('merchant');
+                    this.renderMerchantRail();
+                });
+            }
         }
 
         renderMerchantRail() {
@@ -26795,13 +27183,16 @@
                 const iconPath = getItemIconPath(item);
                 const row = document.createElement('div');
                 row.className = `shop2-row r-${getItemRarity(item)}`;
+                if (idx === 0 && window.game && window.game.onboardingSpotlight === 'merchant') {
+                    row.classList.add('onboarding-spotlight');
+                }
                 row.style.opacity = (maxedOut || !canAfford) ? '0.5' : '1';
                 row.innerHTML = `
                     <div class="shop2-icon">${iconPath ? `<img src="${iconPath}" onerror="this.parentElement.style.display='none'">` : ''}</div>
                     <div class="shop2-name">${item.name} <span style="color:#9d8bc9;">+${currentUpgrade}</span></div>
                     <span class="shop2-price">${maxedOut ? 'MAX' : item.upgradeCost + ' G'}</span>
                 `;
-                row.onclick = () => this.selectMerchantItem(item, idx, maxedOut, canAfford);
+                row.onclick = () => { if (window.game) window.game.clearSpotlight('merchant'); this.selectMerchantItem(item, idx, maxedOut, canAfford); };
                 container.appendChild(row);
             });
         }
@@ -26850,6 +27241,17 @@
             if (goldEl) goldEl.textContent = `G: ${this.party.gold}`;
             this.renderSpellWeaver();
             this.state.switchScreen('spellweaver');
+            // Layer 3 nudge (not a full mentor scene) - the Combo Guide
+            // button already exists in this screen, so a one-time toast
+            // plus a bouncing NEW badge on the button itself is enough
+            // (see showSpellWeaveNudge()/updateNewBadge()) - the badge
+            // persists across visits until actually tapped, the toast is
+            // just the immediate "hey, look over there" moment.
+            if (!this.spellWeaveIntroSeen) {
+                this.spellWeaveIntroSeen = true;
+                this.showSpellWeaveNudge();
+            }
+            this.updateNewBadge('spellweaver-combo-guide-btn', this.hasUnseenBadge('spellweave_combo'));
         }
 
         renderSpellWeaver() {
@@ -27869,6 +28271,11 @@
                 dualTechIntroSeen: !!this.dualTechIntroSeen,
                 limitBreakIntroSeen: !!this.limitBreakIntroSeen,
                 echoIntroSeen: !!this.echoIntroSeen,
+                gemIntroSeen: !!this.gemIntroSeen,
+                merchantIntroSeen: !!this.merchantIntroSeen,
+                spellWeaveIntroSeen: !!this.spellWeaveIntroSeen,
+                miloCharmIntroSeen: !!this.miloCharmIntroSeen,
+                seenBadges: Array.from(this.seenBadges || []),
                 state: {
                     flags: this.state.flags || {},
                     currentScreen: this.state.currentScreen
@@ -28088,6 +28495,11 @@
                 // accidentally skipping the tip.
                 this.limitBreakIntroSeen = !!saveData.limitBreakIntroSeen;
                 this.echoIntroSeen = !!saveData.echoIntroSeen;
+                this.gemIntroSeen = !!saveData.gemIntroSeen;
+                this.merchantIntroSeen = !!saveData.merchantIntroSeen;
+                this.spellWeaveIntroSeen = !!saveData.spellWeaveIntroSeen;
+                this.miloCharmIntroSeen = !!saveData.miloCharmIntroSeen;
+                this.seenBadges = new Set(Array.isArray(saveData.seenBadges) ? saveData.seenBadges : []);
                 if (!this.achievements) this.achievements = new AchievementManager();
                 this.achievements.loadSaveData(saveData.achievements);
                 if (!this.monsterCodex) this.monsterCodex = new MonsterCodex();
@@ -31733,7 +32145,15 @@ const QUEST_DATA = [
             { x: 45, y: 67, scale: MONSTER_SCALE }, { x: 8, y: 95, scale: MONSTER_SCALE },
             { x: 33, y: 97, scale: MONSTER_SCALE }]
     };
-    const BOSS_SLOT = { x: 22, y: 46, scale: 0.95 };
+    /** Boss floor position - deliberately its own slot rather than reusing
+     *  MONSTER_SLOTS[1], moved lower/more centered (y 46 -> 68, x 22 -> 28)
+     *  after Ray's playtest report that the old higher anchor (bottom=54%)
+     *  clipped the boss's own art off the top of the phone screen, since a
+     *  bottom-anchored sprite only has as much headroom above it as its
+     *  anchor point leaves - see setupBattleUI()'s comment on why bottom-
+     *  anchoring works this way. Scale also bumped (0.95 -> 1.3) for a
+     *  genuinely bigger presence now that it has room to actually fit. */
+    const BOSS_SLOT = { x: 28, y: 68, scale: 1.3 };
 
     /** Hero floor standing positions, mirroring MONSTER_SLOTS but on the
      *  right side of the floor trapezoid (facing the monsters on the left) -
@@ -32386,6 +32806,22 @@ const QUEST_DATA = [
     const LIMIT_BREAK_BANNER_COLORS = { colorA: '#6a1a8a', colorB: '#ff66cc', banner: 'assets/battle/limitbreak_banner.png' };
     function playLimitBreakBanner(heroName, label) {
         playDualTechCutscene(LIMIT_BREAK_BANNER_COLORS, label, `${heroName} — Limit Break`);
+    }
+
+    /** Boss phase transition banners - reuses the exact same cutscene bar
+     *  as Limit Break/Dual Tech (see playDualTechCutscene()) rather than
+     *  building new VFX, just with its own color pairs per phase. Phase 2
+     *  reads as cool/defensive (hardening up), phase 3 as hot/aggressive
+     *  (enraged) - see Monster.updateBossPhase(). */
+    const BOSS_PHASE_BANNER_COLORS = {
+        2: { colorA: '#1a3a6a', colorB: '#66ccff', banner: null },
+        3: { colorA: '#8a1a1a', colorB: '#ff6633', banner: null }
+    };
+    function playBossPhaseBanner(bossName, phase) {
+        const colors = BOSS_PHASE_BANNER_COLORS[phase];
+        if (!colors) return;
+        const label = phase === 3 ? 'ENRAGED!' : 'HARDENED!';
+        playDualTechCutscene(colors, label, bossName);
     }
 
     /** guaranteed_crit is shared by both Warrior and Paladin (see
