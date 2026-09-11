@@ -3626,12 +3626,25 @@
            the frame stepping here - HeroBattlerAnim's JS timer sets
            background-position directly, since which of the 14 pose rows is
            "current" is a runtime battle-state decision, not something a
-           fixed @keyframes timeline could express. */
+           fixed @keyframes timeline could express.
+           v177 real-device fixes: Holder's sheets are drawn facing the
+           opposite direction from this game's walk-sheet convention, so
+           the parent .hero-avatar's scaleX(-1) (correct for the walk-sheet
+           crop) flips these the WRONG way - the extra scaleX(-1) here
+           cancels that back out. They also sit inside a lot of empty
+           per-frame padding (room for weapon swings), which reads as
+           "tiny" at the same 84px box a tightly-cropped portrait used to
+           fill - scaled up to compensate. transform-origin stays centered
+           so the enlarged sprite grows evenly in place rather than
+           shifting off its mark. overflow:visible (not hidden) so the 3x
+           scale isn't clipped back down by its own box. */
         .hero-battler-clip {
             width: 100%;
             height: 100%;
-            overflow: hidden;
+            overflow: visible;
             position: relative;
+            transform: scaleX(-1) scale(3);
+            transform-origin: 50% 50%;
         }
         .hero-battler-sheet {
             width: 100%;
@@ -5728,7 +5741,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v176</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v177</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -23325,7 +23338,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v176]');
+            console.log('Game starting... [build v177]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
@@ -32866,6 +32879,25 @@ const QUEST_DATA = [
         'Sand Golem': 'sand_golem', 'Ancient Dragon': 'ancient_dragon_new'
     };
 
+    /** v175's reskins (Free Foes by Low, Holder's Animated Battlers) were
+     *  authored facing the opposite direction from this game's existing
+     *  monster art, and cropped tighter/smaller relative to their battle
+     *  slot than the original Willibab set - both fixed here per-name
+     *  rather than by touching the shared .monster-portrait rule, so none
+     *  of the untouched original art is affected. flip mirrors the sprite
+     *  horizontally; scale is relative to the image's own already-trimmed
+     *  bounding box (1.0 = no change). */
+    const MONSTER_NAME_ART_FIX = {
+        'Goblin': { flip: true, scale: 1.3 },
+        'Skeleton': { flip: true, scale: 1.25 },
+        'Wolf': { flip: true, scale: 1.3 },
+        'Giant Rat': { flip: true, scale: 1.4 },
+        'Zombie': { flip: true, scale: 1.3 },
+        'Slime': { flip: true, scale: 1.3 },
+        'Djinn': { flip: true, scale: 1.4 },
+        'Hobgob': { flip: true, scale: 1.6 }
+    };
+
     /** Builds the sprite markup for one monster: a real image wrapped in the
      *  same .attack-limb group the SVG archetypes use (so the existing
      *  monsterSwing/bossSwing CSS animations and hitFlash/recoil code all
@@ -32878,8 +32910,10 @@ const QUEST_DATA = [
         const img = MONSTER_IMAGES[imageKey];
         if (img) {
             const filterClass = MONSTER_IMAGE_FILTER_CLASS[archetype] || '';
+            const fix = MONSTER_NAME_ART_FIX[strippedName];
+            const fixTransform = fix ? ` scaleX(${fix.flip ? -1 : 1}) scale(${fix.scale})` : '';
             return `<div class="attack-limb monster-portrait ${filterClass}" style="transform-origin: 50% 65%;">
-                <img src="${img.src}" alt="${monster.name}" draggable="false">
+                <img src="${img.src}" alt="${monster.name}" draggable="false" style="transform:${fixTransform || 'none'};">
             </div>`;
         }
         return MONSTER_ARCHETYPE_SVG[archetype] || monster.sprite;
