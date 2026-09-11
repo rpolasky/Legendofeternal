@@ -3619,6 +3619,28 @@
             image-rendering: crisp-edges;
             max-width: none;
         }
+        /* Real animated battle sprite (v176, battle screen only - see
+           buildHeroBattlerHTML/HeroBattlerAnim). Same .hero-avatar slot as
+           the walk-sheet portrait above, so it inherits the same sizing/
+           glow/dead-greyscale treatment for free. No CSS keyframe drives
+           the frame stepping here - HeroBattlerAnim's JS timer sets
+           background-position directly, since which of the 14 pose rows is
+           "current" is a runtime battle-state decision, not something a
+           fixed @keyframes timeline could express. */
+        .hero-battler-clip {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            position: relative;
+        }
+        .hero-battler-sheet {
+            width: 100%;
+            height: 100%;
+            background-repeat: no-repeat;
+            background-size: 400% 1400%;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
         /* No .weapon-arm rig exists on a flat image, so the attack "swing"
            becomes a quick whole-portrait pulse instead - the actual forward
            lunge toward the enemy is still handled by .battle-hero.lunging
@@ -5706,7 +5728,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v175</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v176</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -7892,6 +7914,119 @@
     const HERO_WALK_SHEET_H = 392;
     const HERO_WALK_ROWS = { down: 0, left: 2, right: 1, up: 3 };
     const HERO_WALK_FRAME_COUNT = 4;
+
+    // --- Real animated battle sprites (v176) ---------------------------
+    // Holder's Animated Battlers (free, "Legend of Free Heroes" pack) -
+    // 640x2240 sheets, 4 columns x 14 rows of 160px frames. This is a
+    // DIFFERENT, separate system from HERO_WALK_SHEETS above (which stays
+    // exactly as-is for the overworld/menu/spell-detail portraits) - only
+    // the actual BATTLE avatar (getHeroIcon/buildHeroBattlerHTML) uses
+    // this, so nothing else changes behavior. Row order is the pack's own
+    // documented standard layout (confirmed via the format's public
+    // plugin docs, not a guess): 0 Idle, 1 Defend, 2 Woozy, 3 Struck,
+    // 4 Attack, 5 Item, 6 Skill, 7 Magic, 8 Advance, 9 Retreat,
+    // 10 Victory, 11 Enter, 12 Dead, 13 Credits (never shown).
+    // Falls back to buildHeroPortraitInner()'s walk-sheet crop for any
+    // class with no battler sheet, same lazy-fallback convention as
+    // everywhere else in this file.
+    const HERO_BATTLER_SHEET_FILES = { warrior: 'warrior_battler', mage: 'mage_battler', paladin: 'paladin_battler' };
+    const HERO_BATTLER_SHEETS = {};
+    Object.keys(HERO_BATTLER_SHEET_FILES).forEach(key => {
+        const img = new Image();
+        img.loaded = false;
+        img.onload = () => { img.loaded = true; };
+        img.src = 'assets/heroes/' + HERO_BATTLER_SHEET_FILES[key] + '.png';
+        HERO_BATTLER_SHEETS[key] = img;
+    });
+    const HERO_BATTLER_COLS = 4;
+    const HERO_BATTLER_ROWS = 14;
+    const HERO_BATTLER_POSE_ROW = {
+        idle: 0, defend: 1, woozy: 2, struck: 3, attack: 4, item: 5, skill: 6,
+        magic: 7, advance: 8, retreat: 9, victory: 10, enter: 11, dead: 12
+    };
+
+    /** Drives one hero battle avatar's sprite-sheet animation - a tiny,
+     *  dependency-free timer that steps background-position through the
+     *  current pose row's 4 frames. Lives on the .hero-battler-sheet DOM
+     *  node itself (el._battlerAnim) so it survives updatePartyDisplay()'s
+     *  frequent re-renders, which only ever touch innerHTML when the
+     *  returned markup string actually changes (see buildHeroBattlerHTML) -
+     *  this controller is created once per element and just keeps running
+     *  underneath those checks. */
+    class HeroBattlerAnim {
+        constructor(el) {
+            this.el = el;
+            this.row = 0;
+            this.frame = 0;
+            this.timer = null;
+        }
+        /** loop=true keeps cycling frames 0-3 forever (idle/victory/dead-hold);
+         *  loop=false plays the 4 frames once then calls onComplete (or just
+         *  stops on the last frame if no onComplete is given - used for
+         *  "dead", which should freeze rather than snap back to idle). */
+        setPose(poseKey, { loop = true, fps = 6, onComplete = null } = {}) {
+            clearInterval(this.timer);
+            this.row = HERO_BATTLER_POSE_ROW[poseKey] ?? 0;
+            this.frame = 0;
+            this._render();
+            if (fps <= 0) return; // static single-frame hold (e.g. dead, no onComplete)
+            this.timer = setInterval(() => {
+                this.frame++;
+                if (this.frame >= HERO_BATTLER_COLS) {
+                    if (loop) {
+                        this.frame = 0;
+                    } else {
+                        clearInterval(this.timer);
+                        this.frame = HERO_BATTLER_COLS - 1;
+                        this._render();
+                        if (onComplete) onComplete();
+                        return;
+                    }
+                }
+                this._render();
+            }, 1000 / fps);
+        }
+        _render() {
+            const x = (this.frame / (HERO_BATTLER_COLS - 1)) * 100;
+            const y = (this.row / (HERO_BATTLER_ROWS - 1)) * 100;
+            this.el.style.backgroundPosition = `${x}% ${y}%`;
+        }
+        destroy() { clearInterval(this.timer); }
+    }
+
+    /** Battle-only hero avatar markup - real multi-frame animation via
+     *  HERO_BATTLER_SHEETS, completely separate from
+     *  buildHeroPortraitInner() (menus/spell-detail keep the old static
+     *  walk-sheet crop untouched). Returns the SAME markup string every
+     *  call for a given class (no frame/row baked in - that's the
+     *  HeroBattlerAnim controller's job) so updatePartyDisplay()'s
+     *  innerHTML-equality guard skips replacing the DOM node - and
+     *  therefore never kills a running animation timer - on every normal
+     *  refresh. Falls back to buildHeroPortraitInner() for any class with
+     *  no battler sheet loaded yet. */
+    function buildHeroBattlerHTML(heroClass) {
+        const sheet = HERO_BATTLER_SHEETS[heroClass];
+        if (sheet && sheet.loaded) {
+            return `<div class="hero-battler-clip"><div class="hero-battler-sheet" style="background-image:url(${sheet.src});"></div></div>`;
+        }
+        return buildHeroPortraitInner(heroClass);
+    }
+
+    /** Looks up (or lazily creates) the running HeroBattlerAnim for a given
+     *  hero avatar DOM element - called after every updatePartyDisplay()
+     *  pass so a freshly-built .hero-battler-sheet div always gets its
+     *  controller wired up, while an already-controlled one is left alone
+     *  (cheap no-op check, avoids ever stacking duplicate timers). */
+    function ensureHeroBattlerAnim(avatarEl) {
+        if (!avatarEl) return null;
+        const sheetDiv = avatarEl.querySelector('.hero-battler-sheet');
+        if (!sheetDiv) return null;
+        if (!sheetDiv._battlerAnim) {
+            sheetDiv._battlerAnim = new HeroBattlerAnim(sheetDiv);
+            sheetDiv._battlerAnim.setPose('idle', { loop: true, fps: 3 });
+        }
+        return sheetDiv._battlerAnim;
+    }
 
     // Five more named-hero sheets (same pack, same extraction/format as the
     // three above) reused as recognizable townsfolk instead of the generic
@@ -16574,6 +16709,7 @@
                 avatarEl.dataset.class = hero.heroClass;
                 const iconHTML = this.getHeroIcon(hero.heroClass);
                 if (avatarEl.innerHTML !== iconHTML) avatarEl.innerHTML = iconHTML;
+                ensureHeroBattlerAnim(avatarEl);
 
                 // --- Status row (buffs/debuffs/poison) as small tappable
                 //     icon badges instead of a single line of text - see the
@@ -16678,7 +16814,7 @@
         }
 
         getHeroIcon(heroClass) {
-            return buildHeroPortraitInner(heroClass);
+            return buildHeroBattlerHTML(heroClass);
         }
 
         log(message) {
@@ -23189,7 +23325,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v175]');
+            console.log('Game starting... [build v176]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
@@ -33828,6 +33964,24 @@ const QUEST_DATA = [
                 }, 110); // small delay so it reads as part of the swing, not the very first frame
             }
         }
+        // Real animated battler (v176) - drives the actual 14-pose sheet
+        // through advance -> attack -> retreat -> idle, timed to roughly
+        // match triggerHeroApproach's existing LUNGE_MS/IMPACT_MS constants
+        // (620ms/260ms) so the pose change and the positional lunge stay in
+        // sync instead of becoming two animations drifting apart. Falls
+        // through silently for any hero with no battler sheet loaded (the
+        // querySelector/anim checks below are just null then).
+        const sheetDiv = avatar.querySelector('.hero-battler-sheet');
+        const battlerAnim = sheetDiv && sheetDiv._battlerAnim;
+        if (battlerAnim) {
+            battlerAnim.setPose('advance', { loop: false, fps: 20, onComplete: () => {
+                battlerAnim.setPose('attack', { loop: false, fps: 20, onComplete: () => {
+                    battlerAnim.setPose('retreat', { loop: false, fps: 20, onComplete: () => {
+                        battlerAnim.setPose('idle', { loop: true, fps: 3 });
+                    }});
+                }});
+            }});
+        }
     }
 
     /** Triggers a small recoil flinch on a hero's sprite when it's hit. */
@@ -33838,6 +33992,20 @@ const QUEST_DATA = [
         void avatar.offsetWidth;
         avatar.classList.add('svg-recoil');
         setTimeout(() => avatar.classList.remove('svg-recoil'), 320);
+
+        // Real animated battler (v176) - "Struck" pose for the same 320ms
+        // window as the CSS recoil above, then back to idle. Only overrides
+        // the pose if nothing else (e.g. an attack sequence already in
+        // flight) needs to keep running - a hero getting hit mid-swing is
+        // rare in this turn-based flow, but harmless either way since the
+        // struck pose is brief and idle is always a safe place to land.
+        const sheetDiv = avatar.querySelector('.hero-battler-sheet');
+        const battlerAnim = sheetDiv && sheetDiv._battlerAnim;
+        if (battlerAnim) {
+            battlerAnim.setPose('struck', { loop: false, fps: 12, onComplete: () => {
+                battlerAnim.setPose('idle', { loop: true, fps: 3 });
+            }});
+        }
     }
 
     /** Triggers the attack-limb lunge/swipe on a monster's sprite (jaw,

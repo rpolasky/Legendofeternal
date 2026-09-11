@@ -5,7 +5,7 @@
 // shell (manifest + icons). Bump CACHE_VERSION any time you ship an
 // updated index.html so installed devices pick up the new build instead
 // of continuing to serve the stale cached copy.
-const CACHE_VERSION = 'legend-of-eternal-v175';
+const CACHE_VERSION = 'legend-of-eternal-v176';
 const CORE_ASSETS = [
     './',
     './index.html',
@@ -91,6 +91,14 @@ const CORE_ASSETS = [
     './assets/heroes/warrior.png',
     './assets/heroes/mage.png',
     './assets/heroes/paladin.png',
+
+    // v176 - real animated battle sprites (Holder's Animated Battlers,
+    // free) for the battle-screen avatar specifically. Separate from the
+    // three walk-cycle sheets above, which stay in use for the overworld/
+    // menu/spell-detail portraits.
+    './assets/heroes/warrior_battler.png',
+    './assets/heroes/mage_battler.png',
+    './assets/heroes/paladin_battler.png',
     './assets/npcs/oratio.png',
     './assets/npcs/ouzo.png',
     './assets/npcs/ley.png',
