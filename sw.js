@@ -5,7 +5,7 @@
 // shell (manifest + icons). Bump CACHE_VERSION any time you ship an
 // updated index.html so installed devices pick up the new build instead
 // of continuing to serve the stale cached copy.
-const CACHE_VERSION = 'legend-of-eternal-v166';
+const CACHE_VERSION = 'legend-of-eternal-v167';
 const CORE_ASSETS = [
     './',
     './index.html',
@@ -200,7 +200,73 @@ const CORE_ASSETS = [
     './assets/audio/dungeon.mp3',
     './assets/audio/battle.mp3',
     './assets/audio/boss.mp3',
-    './assets/audio/victory.mp3'
+    './assets/audio/victory.mp3',
+
+    // --- Pre-generated Kokoro neural-voice lines (see
+    //     voice_batch_generator.html) - every static dialogue line that
+    //     got baked into a real audio file, so first-ever offline play
+    //     doesn't depend on having heard a given line online first. ---
+    './assets/voices/elder/5p6qhy.wav',
+    './assets/voices/elder/7dtfjw.wav',
+    './assets/voices/elder/l8iu4j.wav',
+    './assets/voices/soldier/qa4xbw.wav',
+    './assets/voices/soldier/1yb43c8.wav',
+    './assets/voices/soldier/1ecsnu0.wav',
+    './assets/voices/soldier/1mev6gd.wav',
+    './assets/voices/soldier/11p6wx9.wav',
+    './assets/voices/soldier/s7j39y.wav',
+    './assets/voices/soldier/1kcy8g7.wav',
+    './assets/voices/soldier/1xt6of6.wav',
+    './assets/voices/soldier/1a31gg1.wav',
+    './assets/voices/wizard/1ya0bmt.wav',
+    './assets/voices/wizard/1b4nv3g.wav',
+    './assets/voices/wizard/1rtp9s4.wav',
+    './assets/voices/merchant/438mmv.wav',
+    './assets/voices/merchant/1z0egn9.wav',
+    './assets/voices/merchant/ktj1j5.wav',
+    './assets/voices/priest/bt0vzf.wav',
+    './assets/voices/priest/1457uq9.wav',
+    './assets/voices/priest/1akw6jw.wav',
+    './assets/voices/villager/jjhyz5.wav',
+    './assets/voices/villager/1yr1071.wav',
+    './assets/voices/villager/130h1je.wav',
+    './assets/voices/elder/6y1kv7.wav',
+    './assets/voices/elder/1tjtzer.wav',
+    './assets/voices/elder/wk71vn.wav',
+    './assets/voices/villager/1uixzm9.wav',
+    './assets/voices/villager/1srf65n.wav',
+    './assets/voices/villager/1ss9t36.wav',
+    './assets/voices/soldier/15tj62s.wav',
+    './assets/voices/soldier/mwoi5d.wav',
+    './assets/voices/soldier/n22zol.wav',
+    './assets/voices/villager/1b77761.wav',
+    './assets/voices/villager/1gdgtgg.wav',
+    './assets/voices/villager/14mh0fr.wav',
+    './assets/voices/wizard/s9vlfi.wav',
+    './assets/voices/wizard/1sv8iy9.wav',
+    './assets/voices/wizard/1xy0qwt.wav',
+    './assets/voices/soldier/szjyue.wav',
+    './assets/voices/soldier/iihckk.wav',
+    './assets/voices/soldier/xmajnf.wav',
+    './assets/voices/wizard/1fabnrk.wav',
+    './assets/voices/wizard/1fdnq4w.wav',
+    './assets/voices/wizard/1rvpvn4.wav',
+    './assets/voices/wizard/wvj8be.wav',
+    './assets/voices/wizard/1k3of5u.wav',
+    './assets/voices/wizard/16ohr3d.wav',
+    './assets/voices/wizard/fv31p3.wav',
+    './assets/voices/wizard/1cft956.wav',
+    './assets/voices/wizard/2chib5.wav',
+    './assets/voices/wizard/1bu5b4o.wav',
+    './assets/voices/wizard/248bf5.wav',
+    './assets/voices/wizard/drq65k.wav',
+    './assets/voices/wizard/f0k2oh.wav',
+    './assets/voices/wizard/1ftv5w7.wav',
+    './assets/voices/wizard/1vescog.wav',
+    './assets/voices/wizard/a87gy9.wav',
+    './assets/voices/wizard/1j23t33.wav',
+    './assets/voices/wizard/4mw7rs.wav',
+    './assets/voices/wizard/1g1mwno.wav',
 ];
 
 self.addEventListener('install', (event) => {
