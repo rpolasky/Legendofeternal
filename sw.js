@@ -5,7 +5,7 @@
 // shell (manifest + icons). Bump CACHE_VERSION any time you ship an
 // updated index.html so installed devices pick up the new build instead
 // of continuing to serve the stale cached copy.
-const CACHE_VERSION = 'legend-of-eternal-v173';
+const CACHE_VERSION = 'legend-of-eternal-v175';
 const CORE_ASSETS = [
     './',
     './index.html',
@@ -73,6 +73,21 @@ const CORE_ASSETS = [
     './assets/monsters/shadow_stalker.png',
     './assets/monsters/djinn.png',
     './assets/monsters/sand_golem.png',
+
+    // v175 reskins/additions - Free Foes by Low + Holder's Animated
+    // Battlers (both free) + one dragon-pack boss reskin. See
+    // MONSTER_NAME_IMAGE_OVERRIDE in index.html for exactly which monster
+    // uses which of these.
+    './assets/monsters/goblin_ff.png',
+    './assets/monsters/skeleton_ff.png',
+    './assets/monsters/wolf_ff.png',
+    './assets/monsters/giant_rat_ff.png',
+    './assets/monsters/zombie_ff.png',
+    './assets/monsters/slime_ff.png',
+    './assets/monsters/djinn_holder.png',
+    './assets/monsters/hobgob_holder.png',
+    './assets/monsters/ancient_dragon_new.png',
+    './assets/monsters/ice_demon_dragon.png',
     './assets/heroes/warrior.png',
     './assets/heroes/mage.png',
     './assets/heroes/paladin.png',

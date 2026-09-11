@@ -5706,7 +5706,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v173</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v175</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -11484,7 +11484,12 @@
                     elementalWeakness: { fire: 1.3, lightning: 1.3 }, desc: 'Weak to fire and lightning',
                     drops: { material: 'Rat Tail', chance: 0.6, quantity: 1 },
                     fragment: { color: 'Emerald', chance: 0.25 } },
-                { name: 'Bandit', sprite: '🗡️', level: 5, hp: 40, attack: 10, defense: 5, speed: 5, exp: 20, gold: 25,
+                { name: 'Slime', sprite: '🟢', level: 1, hp: 18, attack: 4, defense: 2, speed: 2, exp: 8, gold: 6,
+                    family: 'slime',
+                    elementalWeakness: { fire: 1.6 }, desc: 'Weak to fire',
+                    drops: { material: 'Slime Gel', chance: 0.75, quantity: 1 },
+                    fragment: { color: 'Emerald', chance: 0.2 } },
+                { name: 'Hobgob', sprite: '👺', level: 5, hp: 40, attack: 10, defense: 5, speed: 5, exp: 20, gold: 25,
                     family: 'raider',
                     desc: 'No elemental affinities',
                     drops: { material: 'Stolen Goods', chance: 0.5, quantity: 1 },
@@ -23184,7 +23189,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v173]');
+            console.log('Game starting... [build v175]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
@@ -30732,10 +30737,10 @@ const QUEST_DATA = [
     },
     {
         id: 'brighthollow_bandit_cleanup',
-        name: 'Bandit Cleanup',
-        description: 'Bandits have set up camp along the trade route. Defeat 5 bandits in the Brighthollow region.',
+        name: 'Hobgob Cleanup',
+        description: 'Hobgobs have set up camp along the trade route. Defeat 5 hobgobs in the Brighthollow region.',
         type: 'monster_kill',
-        targetMonster: 'Bandit',
+        targetMonster: 'Hobgob',
         quadrant: 'brighthollow',
         goal: 5,
         progress: 0,
@@ -30743,8 +30748,8 @@ const QUEST_DATA = [
         npc: 'Captain',
         town: 'brighthollow',
         dialogue: {
-            start: "Those bandits are getting bold. Take out 5 of them for me.",
-            progress: "{progress}/5 bandits dealt with. The roads are safer.",
+            start: "Those hobgobs are getting bold. Take out 5 of them for me.",
+            progress: "{progress}/5 hobgobs dealt with. The roads are safer.",
             complete: "Excellent work! The trade route is secure now."
         }
     },
@@ -32105,12 +32110,12 @@ const QUEST_DATA = [
     },
     {
         id: 'paladin_legendary_vision', name: 'A Shield of Frost',
-        description: "Pike wakes cold every night now, chasing the memory of a blade raised to shield, not strike. The bandit camp west of Brighthollow, along the road to Goblin Keep, is where the cold first crept in.",
-        type: 'monster_kill', targetMonster: 'Bandit', targetLocation: 'Goblin Keep', quadrant: 'brighthollow', goal: 5, progress: 0,
+        description: "Pike wakes cold every night now, chasing the memory of a blade raised to shield, not strike. The hobgob camp west of Brighthollow, along the road to Goblin Keep, is where the cold first crept in.",
+        type: 'monster_kill', targetMonster: 'Hobgob', targetLocation: 'Goblin Keep', quadrant: 'brighthollow', goal: 5, progress: 0,
         reward: { gold: 300, item: 'Frost-touched Shard' }, npc: 'Old Wayfarer', town: 'brighthollow',
         dialogue: {
-            start: "Bandits have been squatting along the western road toward Goblin Keep, on a patch of ground that never quite thaws, even in summer. Clear them out and see for yourself.",
-            progress: "The bandits still hold that frost-touched ground toward Goblin Keep. {progress}/5 cleared.",
+            start: "Hobgobs have been squatting along the western road toward Goblin Keep, on a patch of ground that never quite thaws, even in summer. Clear them out and see for yourself.",
+            progress: "The hobgobs still hold that frost-touched ground toward Goblin Keep. {progress}/5 cleared.",
             complete: "The shard doesn't warm in your hand, no matter how long you hold it. Pike says it's calling him toward Duskmere."
         }
     },
@@ -32638,14 +32643,17 @@ const QUEST_DATA = [
         </svg>`
     };
 
-    /** Real pixel-art battle portraits (Free Mythic Monsters by Willibab, CC0/free
-     *  pack), one per archetype plus the 4 unique castle bosses. Keyed the same
-     *  as MONSTER_ARCHETYPE_SVG/getMonsterArchetype() so the battle screen can
-     *  prefer a photo-real image and only fall back to the hand-drawn SVG body
-     *  (or emoji) for archetypes with no matching image yet (currently just
-     *  'human' - no good match in the pack, so bandits/camel riders keep their
-     *  SVG). Each Image loads once and is reused for every monster that shares
-     *  that archetype, same lazy-load-then-fallback pattern as dungeonTileSheet. */
+    /** Real pixel-art battle portraits. Originally one per archetype plus the
+     *  4 unique castle bosses (Free Mythic Monsters by Willibab, CC0/free
+     *  pack), later joined by per-species art (v105) and now a round of
+     *  specific upgrades/reskins (v175) from Free Foes by Low and Holder's
+     *  Animated Battlers (both free, see MONSTER_NAME_IMAGE_OVERRIDE below
+     *  for exactly which monster names use which). Keyed the same as
+     *  MONSTER_ARCHETYPE_SVG/getMonsterArchetype() so the battle screen can
+     *  prefer a real image and only fall back to the hand-drawn SVG body (or
+     *  emoji) for anything with no matching image at all. Each Image loads
+     *  once and is reused for every monster that shares that key, same
+     *  lazy-load-then-fallback pattern as dungeonTileSheet. */
     const MONSTER_IMAGE_FILES = {
         spider: 'spider', construct: 'construct', demon: 'demon', goblinoid: 'goblinoid',
         knight: 'knight', beast: 'beast', worm: 'worm', scorpion: 'scorpion',
@@ -32658,10 +32666,19 @@ const QUEST_DATA = [
         // a Zombie, a Wolf and a Giant Rat) to all share one picture.
         goblin_scout: 'goblin_scout', goblin_warrior: 'goblin_warrior',
         orc_basic: 'orc_basic', orc_shaman: 'orc_shaman',
-        bandit: 'bandit', camel_rider: 'camel_rider', giant_rat: 'giant_rat',
+        camel_rider: 'camel_rider', giant_rat: 'giant_rat',
         skeleton_new: 'skeleton_new', zombie_new: 'zombie_new', ghoul_new: 'ghoul_new',
         mummy_mob: 'mummy_mob', wraith: 'wraith', shadow_stalker: 'shadow_stalker',
-        djinn: 'djinn', sand_golem: 'sand_golem'
+        djinn: 'djinn', sand_golem: 'sand_golem',
+        // v175 reskins/additions - genre-matched free packs (Free Foes by Low,
+        // Holder's Animated Battlers) chosen specifically to sit alongside the
+        // existing Willibab set without clashing. Old keys above (bandit,
+        // wolf, skeleton_new, zombie_new, djinn) are left in place rather
+        // than overwritten, in case the original art is still wanted later.
+        goblin_ff: 'goblin_ff', skeleton_ff: 'skeleton_ff', wolf_ff: 'wolf_ff',
+        giant_rat_ff: 'giant_rat_ff', zombie_ff: 'zombie_ff', slime_ff: 'slime_ff',
+        djinn_holder: 'djinn_holder', hobgob_holder: 'hobgob_holder',
+        ancient_dragon_new: 'ancient_dragon_new', ice_demon_dragon: 'ice_demon_dragon'
     };
     const MONSTER_IMAGES = {};
     Object.keys(MONSTER_IMAGE_FILES).forEach(key => {
@@ -32703,14 +32720,14 @@ const QUEST_DATA = [
      *  so an elite automatically inherits its base species' art (elites are
      *  already visually distinguished by the larger CSS scale/glow). */
     const MONSTER_NAME_IMAGE_OVERRIDE = {
-        'Wolf': 'wolf', 'Ice Demon': 'ice_elemental',
-        'Goblin': 'goblinoid', 'Goblin Scout': 'goblin_scout', 'Goblin Warrior': 'goblin_warrior',
+        'Wolf': 'wolf_ff', 'Ice Demon': 'ice_demon_dragon',
+        'Goblin': 'goblin_ff', 'Goblin Scout': 'goblin_scout', 'Goblin Warrior': 'goblin_warrior',
         'Orc': 'orc_basic', 'Orc Shaman': 'orc_shaman',
-        'Bandit': 'bandit', 'Camel Rider': 'camel_rider',
-        'Giant Rat': 'giant_rat',
-        'Skeleton': 'skeleton_new', 'Zombie': 'zombie_new', 'Ghoul': 'ghoul_new', 'Mummy': 'mummy_mob',
-        'Wraith': 'wraith', 'Dread Wraith': 'wraith', 'Shadow Stalker': 'shadow_stalker', 'Djinn': 'djinn',
-        'Sand Golem': 'sand_golem'
+        'Hobgob': 'hobgob_holder', 'Camel Rider': 'camel_rider',
+        'Giant Rat': 'giant_rat_ff', 'Slime': 'slime_ff',
+        'Skeleton': 'skeleton_ff', 'Zombie': 'zombie_ff', 'Ghoul': 'ghoul_new', 'Mummy': 'mummy_mob',
+        'Wraith': 'wraith', 'Dread Wraith': 'wraith', 'Shadow Stalker': 'shadow_stalker', 'Djinn': 'djinn_holder',
+        'Sand Golem': 'sand_golem', 'Ancient Dragon': 'ancient_dragon_new'
     };
 
     /** Builds the sprite markup for one monster: a real image wrapped in the
@@ -32766,9 +32783,9 @@ const QUEST_DATA = [
             'Goblin': 'goblinoid', 'Goblin Scout': 'goblinoid', 'Goblin Warrior': 'goblinoid',
             'Elite Goblin': 'goblinoid', 'Orc': 'goblinoid',
             'Orc Shaman': 'goblinoid', 'Elite Orc': 'goblinoid', 'Goblin King': 'goblinoid',
-            'Bandit': 'human', 'Camel Rider': 'human',
+            'Hobgob': 'human', 'Camel Rider': 'human',
             'Dark Knight': 'knight', 'Ember Knight': 'ember_knight', 'Dread Knight': 'knight',
-            'Wolf': 'beast', 'Wild Boar': 'beast', 'Giant Rat': 'beast',
+            'Wolf': 'beast', 'Wild Boar': 'beast', 'Giant Rat': 'beast', 'Slime': 'elemental',
             'Sand Worm': 'worm', 'Forest Spider': 'spider', 'Desert Scorpion': 'scorpion',
             'Skeleton': 'undead', 'Zombie': 'undead', 'Ghoul': 'undead',
             'Mummy': 'undead', 'Ancient Mummy Lord': 'undead',
@@ -33343,7 +33360,7 @@ const QUEST_DATA = [
             this.canvas.height = this.canvas.parentElement.offsetHeight;
         }
 
-        burst(x, y, color, count = 16) {
+        burst(x, y, color, count = 16, options = {}) {
             if (!this.canvas) return;
             for (let i = 0; i < count; i++) {
                 const angle = Math.random() * Math.PI * 2;
@@ -33353,8 +33370,8 @@ const QUEST_DATA = [
                     vx: Math.cos(angle) * speed,
                     vy: Math.sin(angle) * speed,
                     life: 1,
-                    decay: 0.025 + Math.random() * 0.025,
-                    size: 2 + Math.random() * 3,
+                    decay: options.decay !== undefined ? options.decay : (0.025 + Math.random() * 0.025),
+                    size: (options.size !== undefined ? options.size : 2) + Math.random() * 3,
                     color,
                     gravity: 0.06
                 });
@@ -33411,10 +33428,24 @@ const QUEST_DATA = [
                 if (t < 1) {
                     requestAnimationFrame(step);
                 } else {
-                    this.burst(x2, y2, color, options.critical ? 26 : 14);
+                    // A quick bright white flash-core at the very center,
+                    // under the colored burst - this is most of what reads
+                    // as "pop": real explosions have a near-white hottest
+                    // point at their core for an instant before the color
+                    // takes over, not just colored particles from frame one.
+                    this.burst(x2, y2, '#ffffff', options.critical ? 10 : 6, { decay: 0.16, size: 5 });
+                    this.burst(x2, y2, color, options.critical ? 30 : 18);
                     this.shockwaveRing(x2, y2, options.ringColor || color, {
-                        maxRadius: options.critical ? 85 : 55,
-                        decay: options.critical ? 0.04 : 0.055
+                        maxRadius: options.critical ? 90 : 62,
+                        decay: options.critical ? 0.035 : 0.05
+                    });
+                    // Every spell impact now gets a second, faster, smaller
+                    // white shockwave layered under the main colored one -
+                    // two expanding rings read as a much bigger detonation
+                    // than one, for very little extra cost.
+                    this.shockwaveRing(x2, y2, '#ffffff', {
+                        maxRadius: options.critical ? 50 : 34,
+                        decay: 0.08
                     });
                     if (onComplete) onComplete();
                 }
@@ -33773,6 +33804,30 @@ const QUEST_DATA = [
         void avatar.offsetWidth;
         avatar.classList.add('svg-attacking');
         setTimeout(() => avatar.classList.remove('svg-attacking'), 450);
+
+        // Weapon-swing/staff-glow visual AT THE HERO'S OWN POSITION, not
+        // just the target - a flat portrait image has no separate weapon-
+        // arm layer to actually rotate, so without this an attack only
+        // ever reads as a brightness pulse on the whole sprite. Reuses the
+        // same canvas particle engine as the monster-impact slash (see
+        // createAttackEffects) rather than needing new art. Mages get a
+        // glowing-staff burst instead of a blade sweep; warriors and
+        // paladins both swing a weapon.
+        if (window.fx) {
+            const heroEl = getBattleElement(hero);
+            const center = heroEl && getBattleCenter(heroEl);
+            if (center) {
+                const isCaster = hero.heroClass === 'mage';
+                setTimeout(() => {
+                    if (isCaster) {
+                        window.fx.burst(center.x, center.y - 18, '#a68cff', 10, { decay: 0.05, size: 3 });
+                        window.fx.shockwaveRing(center.x, center.y - 18, '#c8b6ff', { maxRadius: 32, decay: 0.09 });
+                    } else {
+                        window.fx.slashArc(center.x, center.y, '#e8e8e8', { baseAngle: -0.4, radius: 42, thickness: 11 });
+                    }
+                }, 110); // small delay so it reads as part of the swing, not the very first frame
+            }
+        }
     }
 
     /** Triggers a small recoil flinch on a hero's sprite when it's hit. */
