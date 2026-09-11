@@ -2801,13 +2801,42 @@
         }
 
         @keyframes shakeBig {
-            0%, 100% { transform: translate(0, 0) rotate(0deg); }
-            15% { transform: translate(-10px, 5px) rotate(-0.5deg); }
-            30% { transform: translate(12px, -6px) rotate(0.5deg); }
-            45% { transform: translate(-10px, -8px) rotate(-0.4deg); }
-            60% { transform: translate(9px, 7px) rotate(0.4deg); }
-            75% { transform: translate(-6px, -4px) rotate(-0.2deg); }
-            90% { transform: translate(4px, 2px) rotate(0.1deg); }
+            0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1); }
+            8% { transform: translate(-10px, 5px) rotate(-0.5deg) scale(1.045); }
+            15% { transform: translate(-10px, 5px) rotate(-0.5deg) scale(1.03); }
+            30% { transform: translate(12px, -6px) rotate(0.5deg) scale(1.015); }
+            45% { transform: translate(-10px, -8px) rotate(-0.4deg) scale(1.008); }
+            60% { transform: translate(9px, 7px) rotate(0.4deg) scale(1.003); }
+            75% { transform: translate(-6px, -4px) rotate(-0.2deg) scale(1); }
+            90% { transform: translate(4px, 2px) rotate(0.1deg) scale(1); }
+        }
+
+        /* Reserved for Limit Breaks / Dual Techs / boss-defeating blows - a
+           bigger shake plus a stronger camera "punch" (the zoom-in kick
+           combined into the same transform as the shake, rather than a
+           second animation on the same property, which is essential CSS
+           only ever applies the LAST animation touching a given property
+           when several run concurrently - see shakeBattleScreen()). */
+        @keyframes shakeUltimate {
+            0% { transform: translate(0, 0) rotate(0deg) scale(1); }
+            6% { transform: translate(-14px, 7px) rotate(-0.8deg) scale(1.09); }
+            14% { transform: translate(14px, -8px) rotate(0.8deg) scale(1.065); }
+            24% { transform: translate(-14px, -10px) rotate(-0.6deg) scale(1.04); }
+            36% { transform: translate(12px, 9px) rotate(0.5deg) scale(1.02); }
+            50% { transform: translate(-8px, -6px) rotate(-0.3deg) scale(1.01); }
+            65% { transform: translate(6px, 4px) rotate(0.2deg) scale(1.004); }
+            80% { transform: translate(-3px, -2px) rotate(-0.1deg) scale(1); }
+            100% { transform: translate(0, 0) rotate(0deg) scale(1); }
+        }
+
+        /* Freeze-frame ("hit-stop") - pauses every CSS animation inside the
+           battle screen for a beat at the moment of impact, the single
+           highest-impact technique from the classic "juice" toolkit (Vlambeer's
+           "Art of Screenshake" talk, etc.). Applied to #battle-shake-wrapper
+           so it covers swings/lunges/recoils/shakes/flashes all at once
+           without needing to touch every individual animation. */
+        .hitstop-paused, .hitstop-paused * {
+            animation-play-state: paused !important;
         }
 
         /* ====================================================================== */
@@ -3468,10 +3497,11 @@
         }
 
         @keyframes monsterSwing {
-            0% { transform: rotate(0deg); }
-            35% { transform: rotate(-42deg) scale(1.06); }
-            65% { transform: rotate(-18deg); }
-            100% { transform: rotate(0deg); }
+            0% { transform: rotate(0deg) scale(1, 1); }
+            10% { transform: rotate(8deg) scale(0.92, 1.08); }
+            35% { transform: rotate(-42deg) scale(1.14, 0.9); }
+            65% { transform: rotate(-18deg) scale(1.03, 0.99); }
+            100% { transform: rotate(0deg) scale(1, 1); }
         }
 
         /* Bosses are 2.5x the size and read as "heavier" - a slightly
@@ -3481,10 +3511,11 @@
         }
 
         @keyframes bossSwing {
-            0% { transform: rotate(0deg); }
-            35% { transform: rotate(-38deg) scale(1.1); }
-            65% { transform: rotate(-14deg); }
-            100% { transform: rotate(0deg); }
+            0% { transform: rotate(0deg) scale(1, 1); }
+            10% { transform: rotate(6deg) scale(0.90, 1.1); }
+            35% { transform: rotate(-38deg) scale(1.18, 0.86); }
+            65% { transform: rotate(-14deg) scale(1.04, 0.98); }
+            100% { transform: rotate(0deg) scale(1, 1); }
         }
 
         /* Recoil flinch when a monster takes a hit (pairs with hit-flash,
@@ -3612,10 +3643,11 @@
         }
 
         @keyframes heroSwing {
-            0% { transform: rotate(0deg); }
-            18% { transform: rotate(-95deg); }
-            55% { transform: rotate(-70deg); }
-            100% { transform: rotate(0deg); }
+            0% { transform: rotate(0deg) scale(1, 1); }
+            10% { transform: rotate(15deg) scale(0.90, 1.1); }
+            18% { transform: rotate(-95deg) scale(1.15, 0.88); }
+            55% { transform: rotate(-70deg) scale(1.02, 0.99); }
+            100% { transform: rotate(0deg) scale(1, 1); }
         }
 
         /* Mage's weapon-arm swing is a smaller cast-thrust rather than a full sword swing */
@@ -3625,7 +3657,8 @@
 
         @keyframes mageCast {
             0% { transform: rotate(0deg) scale(1); }
-            40% { transform: rotate(-18deg) scale(1.05); }
+            15% { transform: rotate(-6deg) scale(0.94, 1.06); }
+            40% { transform: rotate(-18deg) scale(1.10, 0.95); }
             100% { transform: rotate(0deg) scale(1); }
         }
 
@@ -5673,7 +5706,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v171</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v173</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -17040,7 +17073,7 @@
                 const idx = this.monsters.indexOf(tgt);
                 const monsterDiv = document.getElementById(`monster-${idx}`);
                 if (monsterDiv) {
-                    shakeBattleScreen(true);
+                    shakeBattleScreen(true, true);
                     hitFlash(monsterDiv);
                     playMonsterRecoilAnim(monsterDiv);
                     this.createAttackEffects(monsterDiv, true);
@@ -17248,10 +17281,10 @@
                 const monsterIndex = this.monsters.indexOf(target);
                 const monsterDiv = document.getElementById(`monster-${monsterIndex}`);
                 if (monsterDiv) {
-                    shakeBattleScreen(true);
+                    shakeBattleScreen(true, isCrit);
                     hitFlash(monsterDiv);
                     playMonsterRecoilAnim(monsterDiv);
-                    this.createAttackEffects(monsterDiv, true);
+                    this.createAttackEffects(monsterDiv, isCrit);
                     if (getBattleCenter(monsterDiv)) window.fx.burst(getBattleCenter(monsterDiv).x, getBattleCenter(monsterDiv).y, '#ff66cc', 30);
                 }
                 window.game.audio.play('sword');
@@ -17724,7 +17757,7 @@
                 const monsterIndex = this.monsters.indexOf(target);
                 const monsterDiv = document.getElementById(`monster-${monsterIndex}`);
                 if (monsterDiv) {
-                    shakeBattleScreen(isCrit);
+                    shakeBattleScreen(isCrit, isCrit);
                     hitFlash(monsterDiv);
                     playMonsterRecoilAnim(monsterDiv);
                     // Used to also do a scale(1.2)->scale(1) "impact pop" here via
@@ -18106,7 +18139,8 @@
                     damage = Math.floor(damage * target.elementalResist[spell.element]);
                     spellLogLines.push(`${target.name} resists the ${spell.element}!`);
                 }
-                if (spell.element && target.elementalWeakness && target.elementalWeakness[spell.element]) {
+                const isWeakness = !!(spell.element && target.elementalWeakness && target.elementalWeakness[spell.element]);
+                if (isWeakness) {
                     damage = Math.floor(damage * target.elementalWeakness[spell.element]);
                     spellLogLines.push(`${target.name} is weak to ${spell.element}!`);
                 }
@@ -18183,8 +18217,9 @@
                     if (casterDiv) {
                         this.showCasterSparkles(casterDiv);
                     }
-                    castSpellProjectile(caster, target, spell.element, null);
+                    castSpellProjectile(caster, target, spell.element, null, { critical: isWeakness });
                     if (monsterDiv) { hitFlash(monsterDiv); playMonsterRecoilAnim(monsterDiv); }
+                    shakeBattleScreen(isWeakness);
                     window.game.audio.play('magic');
                     window.game.audio.play('hit');
                     spellLogLines.forEach(line => this.log(line));
@@ -19649,42 +19684,19 @@
         }
 
         createAttackEffects(targetElement, isCritical) {
-            const battleScreen = document.getElementById('battle-window');
             const r = getBattleLocalRect(targetElement);
-            if (!battleScreen || !r) return;
+            if (!r) return;
             const centerX = r.left + r.width / 2;
             const centerY = r.top + r.height / 2;
-            const effectCount = isCritical ? 12 : 6;
-            for (let i = 0; i < effectCount; i++) {
-                setTimeout(() => {
-                    if (Math.random() > 0.5) {
-                        const sword = document.createElement('div');
-                        sword.style.cssText = `
-                            position: absolute; left: ${centerX + (Math.random() - 0.5) * 60}px;
-                            top: ${centerY + (Math.random() - 0.5) * 60}px;
-                            color: ${isCritical ? '#ffaa00' : '#ffffff'};
-                            font-size: ${20 + Math.random() * 20}px; font-weight: bold;
-                            text-shadow: 0 0 20px ${isCritical ? '#ffaa00' : '#ffffff'};
-                            z-index: 150; animation: swordSlash 0.4s forwards;
-                        `;
-                        const swords = ['⚔️', '🗡️', '🔪', '⚔️'];
-                        sword.textContent = swords[Math.floor(Math.random() * swords.length)];
-                        battleScreen.appendChild(sword);
-                        setTimeout(() => sword.remove(), 400);
-                    } else {
-                        const smoke = document.createElement('div');
-                        smoke.style.cssText = `
-                            position: absolute; left: ${centerX + (Math.random() - 0.5) * 40}px;
-                            top: ${centerY + (Math.random() - 0.5) * 40}px;
-                            color: #888888; font-size: ${15 + Math.random() * 15}px;
-                            opacity: 0.7; text-shadow: 0 0 10px #666666;
-                            z-index: 149; animation: smokePuff 0.5s forwards;
-                        `;
-                        smoke.textContent = '💨';
-                        battleScreen.appendChild(smoke);
-                        setTimeout(() => smoke.remove(), 500);
-                    }
-                }, i * 30);
+            // Real canvas-drawn blade sweep + motion sparks, replacing the
+            // old scattered ⚔️🗡️💨 emoji-DOM-element effect - this reads as
+            // an actual weapon cutting through the target rather than icons
+            // falling on top of it. A few smoke-tinted burst particles
+            // layer underneath for weight, matching the old smoke puffs'
+            // intent with the same shaped-particle system spells already use.
+            if (window.fx) {
+                window.fx.slashArc(centerX, centerY, isCritical ? '#ffd24d' : '#f0f0f0', { critical: isCritical });
+                window.fx.burst(centerX, centerY, '#888888', isCritical ? 10 : 6);
             }
         }
 
@@ -21015,6 +21027,8 @@
             this.renderHistory();
 
             this.typeText(line.text || '', this.estimateCharDelay(line));
+            this._typingLineRef = line;
+            this._typingStartTime = performance.now();
             // Voice starts the moment the line is shown, alongside the
             // portrait/text (design doc item 11) - play() itself stops
             // whatever the previous line was speaking first, so this is
@@ -21082,23 +21096,47 @@
             return Math.max(18, Math.min(85, delay));
         }
 
+        /** Called once the premium-audio path knows a line's REAL duration
+         *  (after its file's metadata loads) - recalculates the pace for
+         *  whatever text hasn't typed yet so the whole line finishes right
+         *  around when the audio does. This is what fixes long lines
+         *  drifting behind: estimateCharDelay() above is a flat per-profile
+         *  guess made before anything is known about THIS specific line, so
+         *  it can't account for a particular sentence running faster or
+         *  slower than the profile's average - real duration can. Only
+         *  affects lines with a premium audio file; speechSynthesis lines
+         *  have no equivalent "real duration" to correct against ahead of
+         *  time, so they keep using the estimate alone. */
+        retimeTyping(actualDurationMs, forLine) {
+            if (forLine !== this._typingLineRef) return; // superseded/stale
+            if (!this.isTyping) return; // already finished typing - nothing left to retime
+            const fullText = this._typingFullText || '';
+            const remainingChars = fullText.length - this._typingPos;
+            if (remainingChars <= 0) return;
+            const elapsed = performance.now() - this._typingStartTime;
+            const bufferMs = 120; // aim to finish just before the audio, not after
+            const remainingMs = Math.max(remainingChars * 12, actualDurationMs - elapsed - bufferMs);
+            this._typingCharDelay = Math.max(14, Math.min(95, remainingMs / remainingChars));
+        }
+
         typeText(fullText, charDelayOverride) {
             const textEl = document.getElementById('dialogue-text');
             if (!textEl) return;
             clearTimeout(this.typeTimer);
             textEl.textContent = '';
             this.isTyping = true;
-            const stepDelay = charDelayOverride || this.charDelayMs;
-            let pos = 0;
+            this._typingFullText = fullText;
+            this._typingPos = 0;
+            this._typingCharDelay = charDelayOverride || this.charDelayMs;
             const step = () => {
                 if (!this.isOpen) return;
-                pos++;
-                textEl.textContent = fullText.slice(0, pos);
-                if (pos >= fullText.length) {
+                this._typingPos++;
+                textEl.textContent = fullText.slice(0, this._typingPos);
+                if (this._typingPos >= fullText.length) {
                     this.finishTyping();
                     return;
                 }
-                this.typeTimer = setTimeout(step, stepDelay);
+                this.typeTimer = setTimeout(step, this._typingCharDelay);
             };
             step();
         }
@@ -21521,7 +21559,7 @@
             // directly (no in-browser MP3 encoder was worth the added
             // dependency for this), so the real playback path matches.
             const url = `assets/voices/${profileKey}/${hash}.wav`;
-            this._tryPremiumAudio(url, hash, profile, myToken, () => {
+            this._tryPremiumAudio(url, hash, profile, myToken, line, () => {
                 // Only fall back if this is still the "current" line -
                 // otherwise a slow 404 for an old line could start
                 // speaking over whatever's already playing now.
@@ -21531,7 +21569,7 @@
             });
         }
 
-        _tryPremiumAudio(url, hash, profile, myToken, onMissing) {
+        _tryPremiumAudio(url, hash, profile, myToken, line, onMissing) {
             if (!this._ensureAudioContext()) { onMissing(); return; }
             const el = new Audio();
             let settled = false;
@@ -21547,6 +21585,14 @@
                     this.buildEffectsChain(source, profile.fx);
                     this.currentAudioEl = el;
                     if (window.game && window.game.audio) window.game.audio.duckMusic();
+                    // Now that the real file has loaded, its actual duration
+                    // is known - use it to correct the typewriter's pace for
+                    // whatever text hasn't typed yet (see
+                    // DialogueManager.retimeTyping() for why this matters
+                    // more than the flat per-profile estimate alone).
+                    if (window.game && window.game.dialogue && el.duration && isFinite(el.duration)) {
+                        window.game.dialogue.retimeTyping(el.duration * 1000, line);
+                    }
                     el.addEventListener('ended', () => {
                         if (myToken === this.currentLineToken && window.game && window.game.audio) {
                             window.game.audio.unduckMusic();
@@ -23138,7 +23184,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v171]');
+            console.log('Game starting... [build v173]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
@@ -33253,6 +33299,7 @@ const QUEST_DATA = [
             this.ctx = null;
             this.particles = [];
             this.running = false;
+            this.frozenUntil = 0;
         }
 
         attach(canvas) {
@@ -33364,11 +33411,65 @@ const QUEST_DATA = [
                 if (t < 1) {
                     requestAnimationFrame(step);
                 } else {
-                    this.burst(x2, y2, color, 14);
+                    this.burst(x2, y2, color, options.critical ? 26 : 14);
+                    this.shockwaveRing(x2, y2, options.ringColor || color, {
+                        maxRadius: options.critical ? 85 : 55,
+                        decay: options.critical ? 0.04 : 0.055
+                    });
                     if (onComplete) onComplete();
                 }
             };
             requestAnimationFrame(step);
+        }
+
+        /** Weapon slash-arc for melee attacks - a solid crescent "blade sweep"
+         *  at the point of impact plus a few bright motion-line sparks along
+         *  its edge, replacing the old scattered-emoji impact effect (⚔️🗡️💨)
+         *  with something that actually reads as a weapon cutting through
+         *  the air rather than icons falling on the target. */
+        slashArc(cx, cy, color, options = {}) {
+            if (!this.canvas) return;
+            const critical = !!options.critical;
+            const radius = options.radius || (critical ? 72 : 50);
+            const thickness = options.thickness || (critical ? 24 : 15);
+            const baseAngle = options.baseAngle !== undefined ? options.baseAngle : (Math.random() * 0.6 - 0.3);
+            const sweep = critical ? 2.1 : 1.4;
+            const startAngle = baseAngle - sweep / 2 - Math.PI / 2;
+            const endAngle = baseAngle + sweep / 2 - Math.PI / 2;
+            this.particles.push({
+                x: cx, y: cy, vx: 0, vy: 0,
+                life: 1, decay: critical ? 0.05 : 0.08,
+                size: 0, color, shape: 'slash', angle: 0,
+                startAngle, endAngle,
+                innerR: radius - thickness, outerR: radius,
+                gravity: 0
+            });
+            const sparkCount = critical ? 7 : 4;
+            for (let i = 0; i < sparkCount; i++) {
+                const t = sparkCount === 1 ? 0.5 : i / (sparkCount - 1);
+                const a = startAngle + (endAngle - startAngle) * t;
+                this.particles.push({
+                    x: cx + Math.cos(a) * radius, y: cy + Math.sin(a) * radius,
+                    vx: Math.cos(a) * 0.5, vy: Math.sin(a) * 0.5,
+                    life: 1, decay: 0.10, size: 2 + Math.random() * 2,
+                    color: '#ffffff', shape: 'spark', angle: a, gravity: 0
+                });
+            }
+        }
+
+        /** Expanding fading ring - a "shockwave" beat for bigger spell
+         *  impacts and crits, layered on top of the normal burst() rather
+         *  than replacing it, so higher-tier hits visibly outclass a
+         *  regular one instead of just having more of the same particles. */
+        shockwaveRing(cx, cy, color, options = {}) {
+            if (!this.canvas) return;
+            this.particles.push({
+                x: cx, y: cy, vx: 0, vy: 0,
+                life: 1, decay: options.decay || 0.05,
+                size: 0, color, shape: 'ring', angle: 0,
+                maxRadius: options.maxRadius || 60,
+                gravity: 0
+            });
         }
 
         /** Draws a single particle in its assigned shape - 'circle' (default,
@@ -33378,7 +33479,8 @@ const QUEST_DATA = [
             const ctx = this.ctx;
             const s = Math.max(0, p.size);
             const shape = p.shape || 'circle';
-            if (shape === 'circle' || s <= 0) {
+            if (shape === 'circle') {
+                if (s <= 0) return;
                 ctx.beginPath();
                 ctx.arc(p.x, p.y, s, 0, Math.PI * 2);
                 ctx.fill();
@@ -33410,6 +33512,22 @@ const QUEST_DATA = [
                 ctx.lineTo(-s, 0); ctx.lineTo(-s * 0.25, -s * 0.25);
                 ctx.closePath();
                 ctx.fill();
+            } else if (shape === 'slash') {
+                // Solid crescent "blade sweep" - see slashArc() above.
+                ctx.beginPath();
+                ctx.arc(0, 0, p.outerR, p.startAngle, p.endAngle, false);
+                ctx.arc(0, 0, p.innerR, p.endAngle, p.startAngle, true);
+                ctx.closePath();
+                ctx.fill();
+            } else if (shape === 'ring') {
+                // Expanding shockwave outline - see shockwaveRing() above.
+                const progress = 1 - p.life;
+                const r = (p.maxRadius || 60) * (0.35 + progress * 0.65);
+                ctx.lineWidth = Math.max(1, 5 * p.life);
+                ctx.strokeStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(0, 0, r, 0, Math.PI * 2);
+                ctx.stroke();
             } else {
                 ctx.beginPath();
                 ctx.arc(0, 0, s, 0, Math.PI * 2);
@@ -33420,14 +33538,17 @@ const QUEST_DATA = [
 
         loop() {
             if (this.ctx && this.canvas && this.canvas.width > 0) {
+                const frozen = this.frozenUntil && performance.now() < this.frozenUntil;
                 this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-                this.particles.forEach(p => {
-                    p.x += p.vx;
-                    p.y += p.vy;
-                    p.vy += p.gravity || 0;
-                    p.life -= p.decay;
-                });
-                this.particles = this.particles.filter(p => p.life > 0);
+                if (!frozen) {
+                    this.particles.forEach(p => {
+                        p.x += p.vx;
+                        p.y += p.vy;
+                        p.vy += p.gravity || 0;
+                        p.life -= p.decay;
+                    });
+                    this.particles = this.particles.filter(p => p.life > 0);
+                }
                 this.particles.forEach(p => {
                     this.ctx.globalAlpha = Math.max(0, p.life);
                     this.ctx.fillStyle = p.color;
@@ -33467,7 +33588,7 @@ const QUEST_DATA = [
         battleScreen.appendChild(banner);
         setTimeout(() => banner.remove(), 1650);
 
-        shakeBattleScreen(true);
+        shakeBattleScreen(true, true);
         hapticPulse([40, 80, 40, 80, 70]);
         if (window.game && window.game.audio) {
             window.game.audio.play('bossAppear');
@@ -33911,14 +34032,42 @@ const QUEST_DATA = [
         hapticPulse(12);
     }
 
-    /** Screen shake helper - normal hits shake lightly, crits shake harder.
+    /** Freeze-frame at the moment of impact - pauses every CSS animation
+     *  and the particle-physics step inside the battle screen for a beat,
+     *  then resumes. Scales with hit weight (see shakeBattleScreen below):
+     *  a jab barely freezes, a crit or ultimate holds noticeably longer,
+     *  which is most of what sells the difference in "weight" between them. */
+    function hitStop(ms) {
+        const wrapper = document.getElementById('battle-shake-wrapper');
+        if (wrapper) wrapper.classList.add('hitstop-paused');
+        if (window.fx) window.fx.frozenUntil = performance.now() + ms;
+        setTimeout(() => { if (wrapper) wrapper.classList.remove('hitstop-paused'); }, ms);
+    }
+
+    /** Screen shake helper - normal hits shake lightly, crits shake harder
+     *  with a camera "punch" (brief zoom-in) baked into the same keyframe,
+     *  and `ultimate` (Limit Breaks/Dual Techs/killing blows) goes bigger
+     *  still. Each tier also triggers a proportional hit-stop freeze-frame -
+     *  together these are what make a crit read as fundamentally weightier
+     *  than a regular hit, not just "the same hit but bigger numbers".
      *  Targets #battle-shake-wrapper (NOT #battle-window) so this can never
      *  collide with the battle-window's entrance animation again. */
-    function shakeBattleScreen(big = false) {
+    function shakeBattleScreen(big = false, ultimate = false) {
         const battleScreen = document.getElementById('battle-shake-wrapper');
         if (!battleScreen) return;
-        battleScreen.style.animation = big ? 'shakeBig 0.35s' : 'shake 0.2s';
-        setTimeout(() => { battleScreen.style.animation = ''; }, big ? 350 : 200);
+        if (ultimate) {
+            battleScreen.style.animation = 'shakeUltimate 0.5s';
+            setTimeout(() => { battleScreen.style.animation = ''; }, 500);
+            hitStop(130);
+        } else if (big) {
+            battleScreen.style.animation = 'shakeBig 0.35s';
+            setTimeout(() => { battleScreen.style.animation = ''; }, 350);
+            hitStop(75);
+        } else {
+            battleScreen.style.animation = 'shake 0.2s';
+            setTimeout(() => { battleScreen.style.animation = ''; }, 200);
+            hitStop(30);
+        }
     }
 
     /** Fires a canvas spell projectile between two battle participants. */
@@ -33928,7 +34077,7 @@ const QUEST_DATA = [
      *  dot. Lightning already has its own instant double-zigzag bolt via
      *  createLightningBolt(), so it skips this slower arcing projectile
      *  entirely rather than layering a redundant effect on top. */
-    function castSpellProjectile(casterEntity, targetEntity, element, onComplete) {
+    function castSpellProjectile(casterEntity, targetEntity, element, onComplete, options = {}) {
         if (element === 'lightning') { if (onComplete) onComplete(); return; }
         const casterEl = getBattleElement(casterEntity);
         const targetEl = getBattleElement(targetEntity);
@@ -33951,7 +34100,8 @@ const QUEST_DATA = [
             shape: style.shape,
             trailShape: style.trailShape,
             trailColor: style.trailColor,
-            headSize: style.headSize
+            headSize: style.headSize,
+            critical: options.critical
         });
     }
 
