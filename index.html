@@ -969,6 +969,173 @@
         }
 
         /* ====================================================================== */
+        /*              START SCREEN - MULTI-FRAME MENU SYSTEM                  */
+        /* ====================================================================== */
+        /* Each "frame" (main menu / slot picker / delete confirm / settings) is
+           one of these, all stacked in the same dock - only one is ever
+           .visible (display:flex + opacity transition) at a time, so there's
+           always exactly one interactive layer (see StartMenu.showFrame()).
+           The background/leaves/key-art never move or reload between frames -
+           only this dock's contents cross-fade, which is what keeps it
+           feeling like "same world, new menu layer" instead of a page swap. */
+        .ss-frame {
+            display: none;
+            width: 100%;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            opacity: 0;
+            transform: translateY(6px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        .ss-frame.visible {
+            display: flex;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Individual main-menu buttons fade in staggered (see
+           revealMainMenu()) rather than the whole frame popping in at once -
+           this is the "options fade in elegantly" 3-second reveal. */
+        .ss-menu-item {
+            opacity: 0;
+            transform: translateY(8px);
+            transition: opacity 0.45s ease, transform 0.45s ease;
+            width: 100%;
+            max-width: 260px;
+        }
+        .ss-menu-item.revealed {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .ss-frame-title {
+            color: var(--highlight);
+            font-size: 13px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin: 0 0 2px;
+            text-shadow: 0 2px 6px rgba(0,0,0,0.8);
+        }
+
+        /* Inline "this slot is occupied/empty" feedback - replaces a full
+           popup interrupting the flow for what's just a quick nudge. */
+        .ss-hint {
+            color: #ffb8b8;
+            font-size: 11px;
+            min-height: 14px;
+            opacity: 0;
+            transition: opacity 0.25s ease;
+            text-align: center;
+        }
+        .ss-hint.visible { opacity: 1; }
+
+        .ss-delete-summary {
+            background: rgba(0,0,0,0.45);
+            border: 1px solid #ff4444;
+            border-radius: 8px;
+            padding: 10px 16px;
+            color: #ffd0d0;
+            font-size: 12px;
+            text-align: center;
+            min-width: 220px;
+            line-height: 1.5;
+        }
+        .ss-delete-warning {
+            color: #ff9d9d;
+            font-size: 10px;
+            font-style: italic;
+        }
+        .ss-confirm-row { display: flex; gap: 10px; }
+        .menu-button.ss-danger {
+            border-color: #ff4444;
+            color: #ff9d9d;
+        }
+        .menu-button.ss-danger:hover {
+            border-color: #ff6666;
+            color: #fff;
+            box-shadow: 0 6px 25px rgba(255,68,68,0.3);
+        }
+        .ss-back-btn {
+            margin-top: 4px !important;
+            opacity: 0.8;
+        }
+
+        /* Settings frame reuses the SAME AudioManager/VoiceManager instances
+           as the in-game Settings panel (window.game.audio / .voice) - this
+           is just a second, title-screen-appropriate rendering of the one
+           authoritative setting, not a separate settings system. */
+        .ss-settings-block {
+            width: 100%;
+            max-width: 300px;
+            background: rgba(10,5,20,0.55);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px 14px;
+        }
+        .ss-settings-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            color: #cfc0ee;
+            margin-bottom: 8px;
+        }
+        .ss-settings-row input[type=range] { width: 130px; }
+        .ss-settings-toggle {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+        }
+        .ss-settings-toggle.on { border-color: var(--highlight); color: var(--highlight); }
+
+        /* Small persistent icon row (Settings/Help/Fullscreen) - deliberately
+           NOT part of the animated frame sequence per the design goal of
+           keeping the first impression to "artwork + minimal menu", but
+           still always reachable rather than buried. Hidden during the
+           intro and whenever a slot/delete/settings frame has focus, so
+           there's only ever one interactive layer on screen at once. */
+        .ss-corner-icons {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            z-index: 4;
+            display: flex;
+            gap: 8px;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            pointer-events: none;
+        }
+        .ss-corner-icons.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .ss-icon-btn {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: rgba(10,5,20,0.6);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            backdrop-filter: blur(4px);
+            transition: all 0.2s ease;
+        }
+        .ss-icon-btn:hover {
+            border-color: var(--highlight);
+            color: var(--highlight);
+            transform: scale(1.06);
+        }
+
+        /* ====================================================================== */
         /*                      WORLD MAP - ENHANCED                            */
         /* ====================================================================== */
         #world-screen {
@@ -5506,7 +5673,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v163</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v164</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -5817,37 +5984,107 @@
             <div class="subtitle">✦ A Retro RPG Adventure ✦</div>
             <div class="start-screen-leaves" id="start-screen-leaves"></div>
 
+            <!-- Persistent, deliberately unobtrusive - see .ss-corner-icons
+                 comment above. Settings/Help/Fullscreen live here instead of
+                 the animated main-menu frame so the first impression stays
+                 to just "artwork + 3 options" per the design goal, without
+                 actually removing any of this functionality. -->
+            <div class="ss-corner-icons" id="ss-corner-icons">
+                <button class="ss-icon-btn" onclick="window.game.startMenu.openSettings()" title="Settings">⚙️</button>
+                <button class="ss-icon-btn" onclick="if(window.game) window.game.showInstructions();" title="Help">📖</button>
+                <button class="ss-icon-btn" onclick="toggleFullscreen()" title="Full Screen">⛶</button>
+            </div>
+
             <div class="start-screen-dock">
-                <div class="start-actions-secondary">
-                    <button class="menu-button primary" onclick="if(window.game) window.game.newGame();">🆕 New Game</button>
-                    <button class="menu-button" onclick="if(window.game) window.game.loadGame();">📂 Load</button>
-                    <button class="menu-button" onclick="if(window.game) window.game.saveGame();">💾 Save</button>
-                    <button class="menu-button" onclick="if(window.game) window.game.deleteSave();">🗑️ Delete</button>
-                    <button class="menu-button" onclick="if(window.game) window.game.showInstructions();">📖 Help</button>
-                    <button class="menu-button" onclick="toggleFullscreen()">⛶ Full Screen</button>
+                <!-- FRAME: MAIN MENU (New Game / Load Game / Delete Saved Game
+                     only - per design goal, nothing else clutters this frame).
+                     Buttons fade in staggered via revealMainMenu(). -->
+                <div class="ss-frame" id="ss-frame-main" data-frame="main">
+                    <button class="menu-button primary ss-menu-item" id="ss-item-newgame"
+                            onclick="window.game.startMenu.selectMain('start')">🆕 New Game</button>
+                    <button class="menu-button ss-menu-item" id="ss-item-load"
+                            onclick="window.game.startMenu.selectMain('load')">📂 Load Game</button>
+                    <button class="menu-button ss-menu-item" id="ss-item-delete"
+                            onclick="window.game.startMenu.selectMain('delete')">🗑️ Delete Saved Game</button>
                 </div>
 
-                <div class="start-slots-row">
-                    <div class="save-slot" id="slot1-container" onclick="window.game.selectSlot(1)">
-                        <h3>SLOT 1</h3>
-                        <div class="slot-info" id="slot1-info">
-                            <div class="slot-empty">✨ Begin a new journey</div>
+                <!-- FRAME: SAVE SLOT PICKER - shared by Start/Load/Delete, only
+                     the title text + per-slot click behavior changes per
+                     mode (see StartMenu.renderSlots()). The slot cards
+                     themselves (#slot1-container etc.) are the SAME elements
+                     Game.updateSlotInfo() already populates - no duplicate
+                     save-data rendering logic. -->
+                <div class="ss-frame" id="ss-frame-slots" data-frame="slots">
+                    <h3 class="ss-frame-title" id="ss-slots-title">SELECT SLOT</h3>
+                    <div class="start-slots-row">
+                        <div class="save-slot" id="slot1-container">
+                            <h3>SLOT 1</h3>
+                            <div class="slot-info" id="slot1-info">
+                                <div class="slot-empty">✨ Begin a new journey</div>
+                            </div>
+                        </div>
+                        <div class="save-slot" id="slot2-container">
+                            <h3>SLOT 2</h3>
+                            <div class="slot-info" id="slot2-info">
+                                <div class="slot-empty">✨ Begin a new journey</div>
+                            </div>
+                        </div>
+                        <div class="save-slot" id="slot3-container">
+                            <h3>SLOT 3</h3>
+                            <div class="slot-info" id="slot3-info">
+                                <div class="slot-empty">✨ Begin a new journey</div>
+                            </div>
                         </div>
                     </div>
+                    <div class="ss-hint" id="ss-slots-hint"></div>
+                    <button class="menu-button ss-back-btn" onclick="window.game.startMenu.back()">⬅ Back</button>
+                </div>
 
-                    <div class="save-slot" id="slot2-container" onclick="window.game.selectSlot(2)">
-                        <h3>SLOT 2</h3>
-                        <div class="slot-info" id="slot2-info">
-                            <div class="slot-empty">✨ Begin a new journey</div>
-                        </div>
+                <!-- FRAME: DELETE CONFIRMATION - custom in-game UI, no
+                     browser confirm() (per design requirement). -->
+                <div class="ss-frame" id="ss-frame-deleteconfirm" data-frame="deleteConfirm">
+                    <h3 class="ss-frame-title" style="color:#ff8888;">Delete This Saved Game?</h3>
+                    <div class="ss-delete-summary" id="ss-delete-summary"></div>
+                    <div class="ss-delete-warning">This cannot be undone.</div>
+                    <div class="ss-confirm-row">
+                        <button class="menu-button ss-danger" onclick="window.game.startMenu.confirmDelete()">🗑️ Delete</button>
+                        <button class="menu-button" onclick="window.game.startMenu.cancelDelete()">Cancel</button>
                     </div>
+                </div>
 
-                    <div class="save-slot" id="slot3-container" onclick="window.game.selectSlot(3)">
-                        <h3>SLOT 3</h3>
-                        <div class="slot-info" id="slot3-info">
-                            <div class="slot-empty">✨ Begin a new journey</div>
+                <!-- FRAME: SETTINGS - title-screen-appropriate rendering of
+                     the SAME AudioManager/VoiceManager settings the in-game
+                     Settings panel uses (one authoritative setting - see
+                     .ss-settings-block comment above). Safe to open before
+                     any game/party exists, unlike the full in-game menu. -->
+                <div class="ss-frame" id="ss-frame-settings" data-frame="settings">
+                    <h3 class="ss-frame-title">Settings</h3>
+                    <div class="ss-settings-block">
+                        <div class="ss-settings-row">
+                            <span>🎵 Music</span>
+                            <input type="range" min="0" max="1" step="0.05" id="ss-music-slider"
+                                   oninput="window.game.audio.setMusicVolume(this.value); localStorage.setItem('legendOfEternal_musicVolume', this.value);">
+                        </div>
+                        <div class="ss-settings-row">
+                            <span>🔊 SFX</span>
+                            <input type="range" min="0" max="1" step="0.05" id="ss-sfx-slider"
+                                   oninput="window.game.audio.setSFXVolume(this.value); localStorage.setItem('legendOfEternal_sfxVolume', this.value);">
+                        </div>
+                        <div class="ss-settings-row">
+                            <span>🗣️ Voice Narration</span>
+                            <button class="ss-settings-toggle" id="ss-voice-toggle" onclick="window.game.startMenu.toggleVoice()"></button>
+                        </div>
+                        <div class="ss-settings-row">
+                            <span>🔈 Voice Volume</span>
+                            <input type="range" min="0" max="1" step="0.05" id="ss-voice-vol-slider"
+                                   oninput="window.game.voice.setVolume(this.value)">
+                        </div>
+                        <div class="ss-settings-row" style="margin-bottom:0;">
+                            <span>✨ Voice Effects</span>
+                            <button class="ss-settings-toggle" id="ss-voice-fx-toggle" onclick="window.game.startMenu.toggleVoiceFx()"></button>
                         </div>
                     </div>
+                    <button class="menu-button ss-back-btn" onclick="window.game.startMenu.closeSettings()">⬅ Back</button>
                 </div>
             </div>
         </div>
@@ -22756,7 +22993,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v163]');
+            console.log('Game starting... [build v164]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
@@ -29266,15 +29503,28 @@
             if (!confirm(`Are you sure you want to delete Slot ${slot}${saveInfo}? This cannot be undone!`)) {
                 return;
             }
+            this.performDeleteSlot(slot);
+        }
+
+        /** Actual deletion, extracted out of confirmDeleteSlot() above so the
+         *  new title-screen delete-confirmation frame (see StartMenu) can
+         *  reuse this exact logic with its own custom in-game confirmation
+         *  UI instead of the browser's confirm() dialog. This is the single
+         *  authoritative delete path - both flows funnel into it. */
+        performDeleteSlot(slot) {
+            const saveKey = `legendOfEternal_save_${slot}`;
+            if (!localStorage.getItem(saveKey)) return false;
             try {
                 localStorage.removeItem(saveKey);
                 this.updateSlotInfo();
                 if (this.currentSlot === slot) {
                     this.currentSlot = 1;
                 }
-                this.ui.showPopup('Save Deleted', `Slot ${slot} has been deleted.`);
+                if (this.audio) this.audio.play('saveGame');
+                return true;
             } catch (e) {
-                this.ui.showPopup('Error', 'Failed to delete save.');
+                console.error('Delete error:', e);
+                return false;
             }
         }
 
@@ -33659,8 +33909,250 @@ const QUEST_DATA = [
         }
     }
 
+    // =====================================================================
+    //                    START SCREEN MENU CONTROLLER
+    // =====================================================================
+    // Presentation-only state machine for the title screen's multi-frame
+    // menu (empty intro -> main menu -> slot picker -> delete confirm /
+    // settings). Deliberately thin: every actual save/load/delete/audio
+    // operation below just calls straight into the EXISTING Game methods
+    // (newGame/loadGame/performDeleteSlot/updateSlotInfo/audio/voice) -
+    // this class owns none of that logic, only which frame is showing and
+    // how a slot tap is routed for the current mode.
+    class StartMenu {
+        constructor(game) {
+            this.game = game;
+            this.mode = null; // 'start' | 'load' | 'delete' while the slots frame is open
+            this.pendingDeleteSlot = null;
+            this.transitioning = false;
+            this.introTimer = null;
+            this.introSkipped = false;
+            this._hintTimer = null;
+        }
+
+        /** Called once at boot (see the init call near spawnStartScreenLeaves()
+         *  below). Leaves the screen with NO menu frame visible - the ~3s
+         *  atmospheric intro - then reveals the main menu, either on the
+         *  timer or immediately if the player taps/clicks anywhere first. */
+        init() {
+            const screen = document.getElementById('start-screen');
+            const skip = () => {
+                if (this.introSkipped) return;
+                this.introSkipped = true;
+                clearTimeout(this.introTimer);
+                this.revealMainMenu();
+            };
+            this.introTimer = setTimeout(skip, 3000);
+            if (screen) {
+                screen.addEventListener('click', (e) => {
+                    // Only treat this as an "intro skip" tap if the intro
+                    // hasn't already resolved - once the main menu (or any
+                    // later frame) is up, clicks are normal button taps and
+                    // must NOT re-trigger this listener's logic.
+                    if (!this.introSkipped) skip();
+                }, { once: false });
+            }
+        }
+
+        /** Frame 1 -> Frame 2. Fades the main menu's three buttons in with
+         *  a small stagger (per the "reveal itself" design goal) rather
+         *  than the whole frame popping in at once. Safe to call more than
+         *  once (skip-tap vs timer both route here) - guarded by
+         *  introSkipped in init() above. */
+        revealMainMenu() {
+            this.showFrame('main');
+            const items = ['ss-item-newgame', 'ss-item-load', 'ss-item-delete'];
+            items.forEach((id, i) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                setTimeout(() => el.classList.add('revealed'), i * 150);
+            });
+            const icons = document.getElementById('ss-corner-icons');
+            if (icons) setTimeout(() => icons.classList.add('visible'), items.length * 150);
+        }
+
+        /** Swaps which .ss-frame has the 'visible' class - exactly one at a
+         *  time. Does not touch the background/leaves/key-art at all, only
+         *  this dock's contents, which is what keeps transitions feeling
+         *  like a menu layer changing rather than a page reload. */
+        showFrame(name) {
+            document.querySelectorAll('.ss-frame').forEach(f => {
+                f.classList.toggle('visible', f.dataset.frame === name);
+            });
+        }
+
+        /** Brief input-protection window around every frame change (design
+         *  requirement: a double-tap during the fade shouldn't fire two
+         *  transitions/actions). Wrap any handler that changes frames or
+         *  performs an action in this. */
+        _guard(fn) {
+            if (this.transitioning) return;
+            this.transitioning = true;
+            fn();
+            setTimeout(() => { this.transitioning = false; }, 350);
+        }
+
+        _chime() { if (this.game.audio) this.game.audio.play('saveGame'); }
+
+        selectMain(action) {
+            this._guard(() => {
+                this._chime();
+                if (action === 'start') this.renderSlots('start', 'Choose an Empty Slot');
+                else if (action === 'load') this.renderSlots('load', 'Load Which Save?');
+                else if (action === 'delete') this.renderSlots('delete', 'Delete Which Save?');
+            });
+        }
+
+        back() {
+            this._guard(() => {
+                this.mode = null;
+                this.showFrame('main');
+            });
+        }
+
+        /** Populates the (shared) slot cards via the EXISTING
+         *  updateSlotInfo() - no duplicate save-summary rendering - then
+         *  rewires each card's click behavior for the given mode. Empty
+         *  slots get a visual 'ss-slot-empty' flag so CSS/hints can react;
+         *  the actual occupied/empty check always re-reads localStorage
+         *  directly (never trusts stale DOM state) right before acting. */
+        renderSlots(mode, title) {
+            this.mode = mode;
+            const titleEl = document.getElementById('ss-slots-title');
+            if (titleEl) titleEl.textContent = title;
+            this.game.updateSlotInfo();
+            for (let slot = 1; slot <= 3; slot++) {
+                const container = document.getElementById(`slot${slot}-container`);
+                if (!container) continue;
+                const hasSave = !!localStorage.getItem(`legendOfEternal_save_${slot}`);
+                container.onclick = () => this.tapSlot(slot, hasSave);
+            }
+            this.showFrame('slots');
+        }
+
+        tapSlot(slot, hasSaveAtRenderTime) {
+            // Re-check live rather than trusting the closure's snapshot -
+            // guards against acting on stale info if storage somehow
+            // changed while this frame was open (e.g. another tab).
+            const hasSave = !!localStorage.getItem(`legendOfEternal_save_${slot}`);
+            if (this.mode === 'start') {
+                if (hasSave) { this.showHint('This slot is occupied - pick an empty one, or Delete it first.'); return; }
+                this._guard(() => {
+                    this._chime();
+                    this.showFrame('main'); // fade the slot picker away immediately
+                    this.game.currentSlot = slot;
+                    setTimeout(() => this.game.newGame(), 200);
+                });
+            } else if (this.mode === 'load') {
+                if (!hasSave) { this.showHint('This slot is empty.'); return; }
+                this._guard(() => {
+                    this._chime();
+                    this.showFrame('main');
+                    this.game.currentSlot = slot;
+                    setTimeout(() => this.game.loadGame(), 200);
+                });
+            } else if (this.mode === 'delete') {
+                if (!hasSave) { this.showHint('This slot is already empty.'); return; }
+                this._guard(() => this.showDeleteConfirm(slot));
+            }
+        }
+
+        showHint(text) {
+            const el = document.getElementById('ss-slots-hint');
+            if (!el) return;
+            el.textContent = text;
+            el.classList.add('visible');
+            clearTimeout(this._hintTimer);
+            this._hintTimer = setTimeout(() => el.classList.remove('visible'), 1800);
+        }
+
+        showDeleteConfirm(slot) {
+            this.pendingDeleteSlot = slot;
+            const saveKey = `legendOfEternal_save_${slot}`;
+            const raw = localStorage.getItem(saveKey);
+            let summary = `SLOT ${slot}`;
+            try {
+                const data = JSON.parse(raw);
+                const gold = data.party?.gold !== undefined ? `💰 ${data.party.gold.toLocaleString()} G` : '';
+                summary = `<b>SLOT ${slot}</b><br>${[gold, data.timestamp || ''].filter(Boolean).join(' · ')}`;
+            } catch (e) { /* corrupted save - still deletable, just show the slot number */ }
+            const summaryEl = document.getElementById('ss-delete-summary');
+            if (summaryEl) summaryEl.innerHTML = summary;
+            this.showFrame('deleteConfirm');
+        }
+
+        confirmDelete() {
+            this._guard(() => {
+                const slot = this.pendingDeleteSlot;
+                if (slot != null) this.game.performDeleteSlot(slot);
+                this.pendingDeleteSlot = null;
+                // Per design: after a successful delete, return all the way
+                // to the main title menu (not back to the slot list).
+                this.showFrame('main');
+            });
+        }
+
+        cancelDelete() {
+            this._guard(() => {
+                this.pendingDeleteSlot = null;
+                this.renderSlots('delete', 'Delete Which Save?');
+            });
+        }
+
+        openSettings() {
+            this._guard(() => {
+                this._syncSettingsFrame();
+                this.showFrame('settings');
+            });
+        }
+
+        closeSettings() {
+            this._guard(() => this.showFrame('main'));
+        }
+
+        _syncSettingsFrame() {
+            const g = this.game;
+            const musicSlider = document.getElementById('ss-music-slider');
+            const sfxSlider = document.getElementById('ss-sfx-slider');
+            const voiceVolSlider = document.getElementById('ss-voice-vol-slider');
+            if (musicSlider) musicSlider.value = localStorage.getItem('legendOfEternal_musicVolume') ?? 0.25;
+            if (sfxSlider) sfxSlider.value = localStorage.getItem('legendOfEternal_sfxVolume') ?? 0.25;
+            if (voiceVolSlider && g.voice) voiceVolSlider.value = g.voice.volume;
+            this._refreshToggles();
+        }
+
+        _refreshToggles() {
+            const g = this.game;
+            if (!g.voice) return;
+            const voiceBtn = document.getElementById('ss-voice-toggle');
+            if (voiceBtn) {
+                voiceBtn.textContent = g.voice.enabled ? 'ON' : 'OFF';
+                voiceBtn.classList.toggle('on', g.voice.enabled);
+            }
+            const fxBtn = document.getElementById('ss-voice-fx-toggle');
+            if (fxBtn) {
+                fxBtn.textContent = g.voice.effectsEnabled ? 'ON' : 'OFF';
+                fxBtn.classList.toggle('on', g.voice.effectsEnabled);
+            }
+        }
+
+        /** Delegates to the SAME VoiceManager instance/localStorage keys the
+         *  in-game Settings panel uses (Game.toggleVoiceEnabled) - one
+         *  authoritative setting, just a second place to flip it. */
+        toggleVoice() {
+            this.game.toggleVoiceEnabled();
+            this._refreshToggles();
+        }
+
+        toggleVoiceFx() {
+            this.game.toggleVoiceEffects();
+            this._refreshToggles();
+        }
+    }
+
     console.log('Creating Game instance...');
     window.game = new Game();
+    window.game.startMenu = new StartMenu(window.game);
 
     // Title-screen ambiance: play the overworld theme immediately on the
     // save-slot picker, before New Game/Load Game even runs initAudio().
@@ -33683,6 +34175,7 @@ const QUEST_DATA = [
 
     injectAmbientLayers();
     spawnStartScreenLeaves();
+    window.game.startMenu.init();
     /** Analog joystick alternative to the D-pad (see toggleMovementControlStyle()) -
      *  drag from the base's center; once the drag clears a small deadzone,
      *  the angle snaps to the nearest of 8 directions and moves exactly
