@@ -3472,6 +3472,21 @@
             image-rendering: crisp-edges;
             filter: drop-shadow(0 6px 4px rgba(0,0,0,0.45));
         }
+        /* v179: real animated monster battler (Free Foes by Low) - a
+           9-col x 6-row RPG Maker MV/MZ standard sheet, driven the same
+           background-position-stepping way as the hero battlers, via
+           MonsterBattlerAnim. Same .attack-limb/.monster-portrait wrapper
+           as the static <img> path above, so it inherits identical sizing/
+           glow/hitFlash/death-fade treatment for free. */
+        .monster-battler-sheet {
+            width: 100%;
+            height: 100%;
+            background-repeat: no-repeat;
+            background-size: 900% 600%;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            filter: drop-shadow(0 6px 4px rgba(0,0,0,0.45));
+        }
         /* Dread Knight reuses the regular Knight portrait, darkened and
            tinted red so it still reads as a distinct, more menacing boss. */
         .monster-portrait.dread-knight img {
@@ -5750,7 +5765,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v178</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v179</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -16710,6 +16725,7 @@
                 `;
                 div.onclick = () => this.selectTarget(index);
                 monstersArea.appendChild(div);
+                ensureMonsterBattlerAnim(div);
             });
             this.updatePartyDisplay();
             const log = document.getElementById('battle-log');
@@ -16937,6 +16953,12 @@
                         const deathStyle = getMonsterDeathStyle(monster);
                         sprite.classList.remove('monster-attacking', 'monster-recoil');
                         sprite.classList.add('dying', deathStyle);
+                        // v179: real animated battler - hold on the "Dead"
+                        // pose rather than snapping back to idle once the
+                        // CSS dying/greyscale treatment below takes over.
+                        const sheetDiv = sprite.querySelector('.monster-battler-sheet');
+                        const anim = sheetDiv && sheetDiv._battlerAnim;
+                        if (anim) anim.setMotion('dead', { loop: false, fps: 8 });
                         setTimeout(() => {
                             sprite.classList.remove('dying', deathStyle);
                             sprite.style.opacity = '0.3';
@@ -23421,7 +23443,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v178]');
+            console.log('Game starting... [build v179]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
@@ -32981,6 +33003,122 @@ const QUEST_DATA = [
         'Hobgob': { flip: true, scale: 1.6 }
     };
 
+    // =====================================================================
+    //                v179: REAL ANIMATED MONSTER BATTLERS
+    // =====================================================================
+    // Free Foes by Low ships full RPG Maker MV/MZ-standard battler sheets
+    // (9 cols x 6 rows), not single portraits - the single frames used in
+    // v175 were a placeholder. This wires up the real thing.
+    //
+    // The MV/MZ standard sheet is NOT "9 frames of one motion" per row - it
+    // packs 18 different motions into a 6-row x 3-column-GROUP grid, 3
+    // actual frames each (confirmed against a canonical reference AND by
+    // eye against the goblin sheet - the slash-effect frame sits exactly
+    // in the THRUST group, the collapsed-on-the-ground frame sits exactly
+    // in the DEAD group):
+    //
+    //   WALK    THRUST   ESCAPE
+    //   WAIT    SWING    VICTORY
+    //   CHANT   MISSILE  DYING
+    //   GUARD   SKILL    ABNORMAL
+    //   DAMAGE  SPELL    SLEEP
+    //   EVADE   ITEM     DEAD
+    //
+    // { row, colGroup } below - colGroup 0/1/2 selects which 3-column block
+    // of the row is this motion; the 3 real frames within it are reached
+    // via colGroup*3 + 0/1/2.
+    const MONSTER_BATTLER_MOTION = {
+        walk: { row: 0, colGroup: 0 }, attack: { row: 0, colGroup: 1 }, escape: { row: 0, colGroup: 2 },
+        idle: { row: 1, colGroup: 0 }, swing: { row: 1, colGroup: 1 }, victory: { row: 1, colGroup: 2 },
+        chant: { row: 2, colGroup: 0 }, missile: { row: 2, colGroup: 1 }, dying: { row: 2, colGroup: 2 },
+        guard: { row: 3, colGroup: 0 }, skill: { row: 3, colGroup: 1 }, abnormal: { row: 3, colGroup: 2 },
+        hurt: { row: 4, colGroup: 0 }, spell: { row: 4, colGroup: 1 }, sleep: { row: 4, colGroup: 2 },
+        evade: { row: 5, colGroup: 0 }, item: { row: 5, colGroup: 1 }, dead: { row: 5, colGroup: 2 }
+    };
+    const MONSTER_BATTLER_SHEET_COLS = 9;
+    const MONSTER_BATTLER_SHEET_ROWS = 6;
+
+    /** Only the reskinned mobs (v175) actually have a real animated sheet -
+     *  everything else (the original Willibab set, boss art, dragon
+     *  reskins) stays exactly as it was: a single static portrait via
+     *  MONSTER_IMAGES. Keyed the same as MONSTER_IMAGE_FILES/imageKey so
+     *  buildMonsterSpriteHTML can just check "does an animated version of
+     *  this imageKey exist" before falling back to the static path. */
+    const MONSTER_BATTLER_SHEET_FILES = {
+        goblin_ff: 'goblin_sheet', skeleton_ff: 'skeleton_sheet', wolf_ff: 'wolf_sheet',
+        giant_rat_ff: 'giant_rat_sheet', zombie_ff: 'zombie_sheet', slime_ff: 'slime_sheet'
+    };
+    const MONSTER_BATTLER_SHEETS = {};
+    Object.keys(MONSTER_BATTLER_SHEET_FILES).forEach(key => {
+        const img = new Image();
+        img.loaded = false;
+        img.onload = () => { img.loaded = true; };
+        img.src = 'assets/monsters/' + MONSTER_BATTLER_SHEET_FILES[key] + '.png';
+        MONSTER_BATTLER_SHEETS[key] = img;
+    });
+
+    /** Drives one monster battler's sprite-sheet animation - same shape as
+     *  HeroBattlerAnim, but simpler (no weapon layer). loop=true uses the
+     *  pack creator's own documented "1-2-3-2-1" bounce order for a clean
+     *  seamless loop rather than a hard reset-to-frame-0 snap; loop=false
+     *  plays the 3 real frames once and holds (or calls onComplete). */
+    class MonsterBattlerAnim {
+        constructor(el) {
+            this.el = el;
+            this.motionKey = 'idle';
+            this.seq = [0];
+            this.seqIndex = 0;
+            this.timer = null;
+        }
+        setMotion(motionKey, { loop = true, fps = 6, onComplete = null } = {}) {
+            clearInterval(this.timer);
+            this.motionKey = MONSTER_BATTLER_MOTION[motionKey] ? motionKey : 'idle';
+            this.seq = loop ? [0, 1, 2, 1] : [0, 1, 2];
+            this.seqIndex = 0;
+            this._render();
+            this.timer = setInterval(() => {
+                this.seqIndex++;
+                if (this.seqIndex >= this.seq.length) {
+                    if (loop) {
+                        this.seqIndex = 0;
+                    } else {
+                        clearInterval(this.timer);
+                        this.seqIndex = this.seq.length - 1;
+                        this._render();
+                        if (onComplete) onComplete();
+                        return;
+                    }
+                }
+                this._render();
+            }, 1000 / fps);
+        }
+        _render() {
+            const m = MONSTER_BATTLER_MOTION[this.motionKey] || MONSTER_BATTLER_MOTION.idle;
+            const frameInGroup = this.seq[this.seqIndex];
+            const col = m.colGroup * 3 + frameInGroup;
+            const x = (col / (MONSTER_BATTLER_SHEET_COLS - 1)) * 100;
+            const y = (m.row / (MONSTER_BATTLER_SHEET_ROWS - 1)) * 100;
+            this.el.style.backgroundPosition = `${x}% ${y}%`;
+        }
+        destroy() { clearInterval(this.timer); }
+    }
+
+    /** Looks up (or lazily creates) the running MonsterBattlerAnim for a
+     *  freshly-built monster div - called once right after that div is
+     *  appended in updatePartyDisplay's monster-render pass (monster divs
+     *  are rebuilt once per encounter, not every frame, so there's no
+     *  equality-guard concern like the hero side has). */
+    function ensureMonsterBattlerAnim(monsterDiv) {
+        if (!monsterDiv) return null;
+        const sheetDiv = monsterDiv.querySelector('.monster-battler-sheet');
+        if (!sheetDiv) return null;
+        if (!sheetDiv._battlerAnim) {
+            sheetDiv._battlerAnim = new MonsterBattlerAnim(sheetDiv);
+            sheetDiv._battlerAnim.setMotion('idle', { loop: true, fps: 4 });
+        }
+        return sheetDiv._battlerAnim;
+    }
+
     /** Builds the sprite markup for one monster: a real image wrapped in the
      *  same .attack-limb group the SVG archetypes use (so the existing
      *  monsterSwing/bossSwing CSS animations and hitFlash/recoil code all
@@ -32990,13 +33128,19 @@ const QUEST_DATA = [
         const strippedName = monster.name.replace(/^(Elite\s+)+/i, '');
         const imageKey = MONSTER_NAME_IMAGE_OVERRIDE[strippedName] ||
             MONSTER_IMAGE_ARCHETYPE_ALIAS[archetype] || archetype;
+        const fix = MONSTER_NAME_ART_FIX[strippedName];
+        const fixTransform = fix ? `scaleX(${fix.flip ? -1 : 1}) scale(${fix.scale})` : 'none';
+        const filterClass = MONSTER_IMAGE_FILTER_CLASS[archetype] || '';
+        const battlerSheet = MONSTER_BATTLER_SHEETS[imageKey];
+        if (battlerSheet && battlerSheet.loaded) {
+            return `<div class="attack-limb monster-portrait ${filterClass}" style="transform-origin: 50% 65%;">
+                <div class="monster-battler-sheet" data-monster-key="${imageKey}" style="background-image:url(${battlerSheet.src}); transform:${fixTransform};"></div>
+            </div>`;
+        }
         const img = MONSTER_IMAGES[imageKey];
         if (img) {
-            const filterClass = MONSTER_IMAGE_FILTER_CLASS[archetype] || '';
-            const fix = MONSTER_NAME_ART_FIX[strippedName];
-            const fixTransform = fix ? ` scaleX(${fix.flip ? -1 : 1}) scale(${fix.scale})` : '';
             return `<div class="attack-limb monster-portrait ${filterClass}" style="transform-origin: 50% 65%;">
-                <img src="${img.src}" alt="${monster.name}" draggable="false" style="transform:${fixTransform || 'none'};">
+                <img src="${img.src}" alt="${monster.name}" draggable="false" style="transform:${fixTransform};">
             </div>`;
         }
         return MONSTER_ARCHETYPE_SVG[archetype] || monster.sprite;
@@ -34136,6 +34280,18 @@ const QUEST_DATA = [
         el.classList.add('monster-attacking');
         const duration = el.classList.contains('boss') ? 600 : 460;
         setTimeout(() => el.classList.remove('monster-attacking'), duration);
+
+        // v179: real animated battler - "Thrust" pose for the same window
+        // as the CSS swing above, then back to idle. No-op for any monster
+        // still on the static-image path (querySelector/anim are just
+        // null then).
+        const sheetDiv = el.querySelector('.monster-battler-sheet');
+        const anim = sheetDiv && sheetDiv._battlerAnim;
+        if (anim) {
+            anim.setMotion('attack', { loop: false, fps: 14, onComplete: () => {
+                anim.setMotion('idle', { loop: true, fps: 4 });
+            }});
+        }
     }
 
     /** Triggers a small recoil flinch on a monster's sprite when it's hit
@@ -34147,6 +34303,15 @@ const QUEST_DATA = [
         void el.offsetWidth;
         el.classList.add('monster-recoil');
         setTimeout(() => el.classList.remove('monster-recoil'), 320);
+
+        // v179: "Damage" pose for the same 320ms window, then back to idle.
+        const sheetDiv = el.querySelector('.monster-battler-sheet');
+        const anim = sheetDiv && sheetDiv._battlerAnim;
+        if (anim) {
+            anim.setMotion('hurt', { loop: false, fps: 10, onComplete: () => {
+                anim.setMotion('idle', { loop: true, fps: 4 });
+            }});
+        }
     }
 
     /** Small backward hop, played instead of playMonsterRecoilAnim when a
@@ -34159,6 +34324,15 @@ const QUEST_DATA = [
         void el.offsetWidth;
         el.classList.add('monster-dodge');
         setTimeout(() => el.classList.remove('monster-dodge'), 360);
+
+        // v179: "Evade" pose for the same window, then back to idle.
+        const sheetDiv = el.querySelector('.monster-battler-sheet');
+        const anim = sheetDiv && sheetDiv._battlerAnim;
+        if (anim) {
+            anim.setMotion('evade', { loop: false, fps: 10, onComplete: () => {
+                anim.setMotion('idle', { loop: true, fps: 4 });
+            }});
+        }
     }
 
     /** Maps a monster to which one-time death animation family it should

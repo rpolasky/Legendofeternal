@@ -5,7 +5,7 @@
 // shell (manifest + icons). Bump CACHE_VERSION any time you ship an
 // updated index.html so installed devices pick up the new build instead
 // of continuing to serve the stale cached copy.
-const CACHE_VERSION = 'legend-of-eternal-v178';
+const CACHE_VERSION = 'legend-of-eternal-v179';
 const CORE_ASSETS = [
     './',
     './index.html',
@@ -88,6 +88,18 @@ const CORE_ASSETS = [
     './assets/monsters/hobgob_holder.png',
     './assets/monsters/ancient_dragon_new.png',
     './assets/monsters/ice_demon_dragon.png',
+
+    // v179 - real animated battler sheets for the same six reskins above
+    // (Free Foes' actual RPG Maker MV/MZ format sheets, not the single
+    // frame placeholders). Those single-frame files stay in the cache
+    // list too, deliberately - they're the automatic fallback if a sheet
+    // somehow fails to load.
+    './assets/monsters/goblin_sheet.png',
+    './assets/monsters/skeleton_sheet.png',
+    './assets/monsters/wolf_sheet.png',
+    './assets/monsters/giant_rat_sheet.png',
+    './assets/monsters/zombie_sheet.png',
+    './assets/monsters/slime_sheet.png',
     './assets/heroes/warrior.png',
     './assets/heroes/mage.png',
     './assets/heroes/paladin.png',
