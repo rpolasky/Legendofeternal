@@ -5506,7 +5506,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v161</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v163</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -6056,6 +6056,36 @@
                                        onchange="window.game.audio.setSFXVolume(this.value); localStorage.setItem('legendOfEternal_sfxVolume', this.value);"
                                        oninput="document.getElementById('sfx-volume-value').textContent = Math.round(this.value * 100) + '%'"
                                        id="sfx-volume-slider">
+                            </div>
+                        </div>
+
+                        <!-- Voice Narration: intentionally its own card,
+                             completely separate from the Audio card above
+                             (own settings, own volume, own on/off) so
+                             nothing here can ever affect music/SFX in
+                             either direction. -->
+                        <div class="audio-controls" style="margin-top: 14px;">
+                            <h3 class="audio-title">&#128483; Voice Narration</h3>
+                            <div style="display: flex; gap: 5px; justify-content: center; margin-bottom: 6px;">
+                                <button class="menu2-backbtn" id="voice-enabled-btn"
+                                        onclick="window.game.toggleVoiceEnabled()" style="flex:1;"></button>
+                            </div>
+                            <div class="audio-slider-container">
+                                <div class="audio-slider-label">
+                                    <span>&#128264; Voice Volume</span>
+                                    <span id="voice-volume-value">85%</span>
+                                </div>
+                                <input type="range" min="0" max="1" step="0.05" value="0.85" class="audio-slider"
+                                       onchange="window.game.voice.setVolume(this.value)"
+                                       oninput="document.getElementById('voice-volume-value').textContent = Math.round(this.value * 100) + '%'"
+                                       id="voice-volume-slider">
+                            </div>
+                            <div style="display: flex; gap: 5px; justify-content: center; margin-top: 6px;">
+                                <button class="menu2-backbtn" id="voice-fx-btn"
+                                        onclick="window.game.toggleVoiceEffects()" style="flex:1; font-size: 11px;"></button>
+                            </div>
+                            <div style="color:#9d8bc9; font-size: 10px; text-align:center; margin-top: 6px; line-height:1.4;">
+                                If a voice doesn't sound right yet, turn off Effects or Voice Narration entirely - dialogue text always keeps working either way.
                             </div>
                         </div>
                     </div>
@@ -7011,6 +7041,184 @@
         for (let i = 0; i < name.length; i++) { hash = (hash * 31 + name.charCodeAt(i)) | 0; }
         const idx = Math.abs(hash) % GENERIC_NPC_PORTRAIT_POOL.length;
         return GENERIC_NPC_PORTRAIT_POOL[idx];
+    }
+
+    // =====================================================================
+    //                    CINEMATIC VOICE NARRATION SYSTEM
+    // =====================================================================
+    // Data-driven voice layer that rides on top of the EXISTING dialogue
+    // pipeline above - it never touches dialogue content, only reacts to
+    // the same {speaker, portraitKey, text} lines DialogueManager already
+    // shows. Two playback paths, resolved automatically per line:
+    //
+    //   1. PREMIUM: a real recorded/AI-generated audio file, if one has
+    //      been dropped into assets/voices/<profile>/<lineHash>.mp3. Full
+    //      Web Audio processing (reverb/warmth/distortion) is available on
+    //      this path since it's a real decodable audio source.
+    //   2. FALLBACK: the browser's speechSynthesis, voiced/paced per
+    //      profile. This is what plays out of the box with zero manual
+    //      asset work - it will never sound like real voice acting, but it
+    //      gives every character a genuinely distinct voice today. Web
+    //      Audio effects CANNOT be layered onto native speechSynthesis
+    //      output (no browser exposes it as a MediaStream/AudioNode), so
+    //      the fallback path differentiates purely via voice choice,
+    //      pitch, and rate. This is a real platform limitation, not a
+    //      shortcut - see VoiceManager.speakFallback() below.
+    //
+    // lineHash is a deterministic hash of the line's own text (see
+    // hashVoiceLine()), NOT a hand-authored ID - this is what lets Ray (or
+    // anyone) drop in a real recorded line later for ANY existing piece of
+    // dialogue without threading IDs through 30k lines of content first.
+
+    /** Voice "personality" presets. playbackRate/pitch drive the
+     *  speechSynthesis fallback; the fx block only ever applies to the
+     *  premium audio-file path (see VoiceManager.buildEffectsChain()).
+     *  voiceHints is an ordered list of substrings matched (case-
+     *  insensitively) against the names of voices the browser/OS actually
+     *  has installed - first hint that matches any installed voice wins,
+     *  so this degrades gracefully across Chrome/Android/iOS/desktop
+     *  rather than hard-requiring one specific voice that may not exist. */
+    const VOICE_PROFILES = {
+        narrator: {
+            label: 'Narrator', gender: 'male', pitch: 0.92, rate: 0.88,
+            voiceHints: ['google uk english male', 'daniel', 'arthur', 'male'],
+            fx: { reverb: 0.16, warmth: 0.5, presence: 0.5, distortion: 0, echo: 0.05 }
+        },
+        wizard: {
+            label: 'Master Aldous (Wizard)', gender: 'male', pitch: 0.62, rate: 0.78,
+            voiceHints: ['daniel', 'google uk english male', 'fred', 'male'],
+            fx: { reverb: 0.30, warmth: 0.70, presence: 0.55, distortion: 0, echo: 0.08 }
+        },
+        king: {
+            label: 'King', gender: 'male', pitch: 0.72, rate: 0.90,
+            voiceHints: ['google uk english male', 'oliver', 'gordon', 'male'],
+            fx: { reverb: 0.22, warmth: 0.55, presence: 0.6, distortion: 0, echo: 0.05 }
+        },
+        queen: {
+            label: 'Queen', gender: 'female', pitch: 1.08, rate: 0.92,
+            voiceHints: ['google uk english female', 'serena', 'kate', 'female'],
+            fx: { reverb: 0.20, warmth: 0.55, presence: 0.55, distortion: 0, echo: 0.05 }
+        },
+        elder: {
+            label: 'Elder', gender: 'male', pitch: 0.70, rate: 0.82,
+            voiceHints: ['daniel', 'fred', 'male'],
+            fx: { reverb: 0.18, warmth: 0.6, presence: 0.5, distortion: 0, echo: 0.04 }
+        },
+        guildmaster: {
+            label: 'Guildmaster', gender: 'male', pitch: 0.95, rate: 1.02,
+            voiceHints: ['google uk english male', 'oliver', 'male'],
+            fx: { reverb: 0.08, warmth: 0.4, presence: 0.6, distortion: 0, echo: 0 }
+        },
+        merchant: {
+            label: 'Merchant', gender: 'male', pitch: 1.05, rate: 1.08,
+            voiceHints: ['google us english', 'alex', 'male'],
+            fx: { reverb: 0.06, warmth: 0.35, presence: 0.55, distortion: 0, echo: 0 }
+        },
+        priest: {
+            label: 'Priest', gender: 'female', pitch: 1.0, rate: 0.86,
+            voiceHints: ['google uk english female', 'serena', 'female'],
+            fx: { reverb: 0.20, warmth: 0.5, presence: 0.5, distortion: 0, echo: 0.05 }
+        },
+        bard: {
+            label: 'Bard', gender: 'male', pitch: 1.1, rate: 1.1,
+            voiceHints: ['google us english', 'alex', 'male'],
+            fx: { reverb: 0.10, warmth: 0.4, presence: 0.6, distortion: 0, echo: 0 }
+        },
+        soldier: {
+            label: 'Soldier', gender: 'male', pitch: 0.85, rate: 1.05,
+            voiceHints: ['google uk english male', 'gordon', 'male'],
+            fx: { reverb: 0.08, warmth: 0.35, presence: 0.6, distortion: 0, echo: 0 }
+        },
+        villain: {
+            label: 'Villain', gender: 'male', pitch: 0.55, rate: 0.82,
+            voiceHints: ['daniel', 'fred', 'male'],
+            fx: { reverb: 0.26, warmth: 0.35, presence: 0.55, distortion: 0.22, echo: 0.10 }
+        },
+        monster: {
+            label: 'Monster', gender: 'male', pitch: 0.45, rate: 0.90,
+            voiceHints: ['fred', 'male'],
+            fx: { reverb: 0.20, warmth: 0.2, presence: 0.5, distortion: 0.4, echo: 0.06 }
+        },
+        heroWarrior: {
+            label: 'Rowan (Warrior)', gender: 'male', pitch: 0.74, rate: 0.94,
+            voiceHints: ['daniel', 'google uk english male', 'fred', 'david', 'mark', 'male', 'alex'],
+            fx: { reverb: 0.05, warmth: 0.35, presence: 0.55, distortion: 0, echo: 0 }
+        },
+        heroMage: {
+            label: 'Mina (Mage)', gender: 'female', pitch: 1.12, rate: 1.0,
+            voiceHints: ['google us english female', 'samantha', 'female'],
+            fx: { reverb: 0.05, warmth: 0.3, presence: 0.55, distortion: 0, echo: 0 }
+        },
+        heroPaladin: {
+            label: 'Pike (Paladin)', gender: 'male', pitch: 0.88, rate: 0.96,
+            voiceHints: ['google uk english male', 'oliver', 'male'],
+            fx: { reverb: 0.05, warmth: 0.3, presence: 0.55, distortion: 0, echo: 0 }
+        },
+        villager: {
+            label: 'Townsfolk', gender: 'female', pitch: 1.02, rate: 1.0,
+            voiceHints: ['google us english female', 'samantha', 'female'],
+            fx: { reverb: 0.06, warmth: 0.3, presence: 0.5, distortion: 0, echo: 0 }
+        }
+    };
+
+    /** Small per-emotion nudge applied on top of a profile's base
+     *  pitch/rate - see VoiceManager.speakFallback(). Deliberately subtle;
+     *  the profile itself should already carry most of the personality. */
+    const VOICE_EMOTION_MODIFIERS = {
+        neutral: { pitchMul: 1.0, rateMul: 1.0 },
+        happy: { pitchMul: 1.06, rateMul: 1.05 },
+        sad: { pitchMul: 0.92, rateMul: 0.90 },
+        angry: { pitchMul: 0.94, rateMul: 1.08 },
+        fearful: { pitchMul: 1.1, rateMul: 1.12 },
+        mysterious: { pitchMul: 0.9, rateMul: 0.85 },
+        excited: { pitchMul: 1.12, rateMul: 1.15 },
+        dramatic: { pitchMul: 0.95, rateMul: 0.82 },
+        whisper: { pitchMul: 1.0, rateMul: 0.88 },
+        commanding: { pitchMul: 0.9, rateMul: 0.95 },
+        solemn: { pitchMul: 0.88, rateMul: 0.85 }
+    };
+
+    /** Maps every existing DIALOGUE_PORTRAITS key to a voice profile. This
+     *  is the automation step that means no dialogue line anywhere in the
+     *  game needs to be hand-edited: every line already carries a
+     *  portraitKey (see showLine() below), so resolving a voice is just a
+     *  lookup. Keep this in sync any time a new portrait key is added to
+     *  DIALOGUE_PORTRAITS. */
+    const PORTRAIT_VOICE_MAP = {
+        warrior: 'heroWarrior', mage: 'heroMage', paladin: 'heroPaladin',
+        king_aldric: 'king', king_theron: 'king', queen_seraphina: 'queen',
+        wren: 'villager', master_aldous: 'wizard', nessa: 'villager',
+        mora: 'villager', sable: 'villager', guildmaster: 'guildmaster',
+        merchant: 'merchant', villager: 'villager', blacksmith: 'soldier',
+        wizard: 'wizard', explorer: 'villager', soldier: 'soldier',
+        elder: 'elder', priest: 'priest', bard: 'bard',
+        goblinking: 'monster', dreadknight: 'villain', mummylord: 'monster',
+        voraxis: 'villain', _fallback: 'villager'
+    };
+
+    /** Deterministic 32-bit hash of a line's own text, used as its stable
+     *  "line ID" for the premium-audio drop-in path (assets/voices/
+     *  <profile>/<hash>.mp3). Same algorithm shape already used elsewhere
+     *  in this file (portraitKeyForNPC) for consistency. Returned as an
+     *  unsigned base36 string to keep filenames short. */
+    function hashVoiceLine(text) {
+        const s = (text || '').trim();
+        let hash = 5381;
+        for (let i = 0; i < s.length; i++) { hash = ((hash * 33) ^ s.charCodeAt(i)) | 0; }
+        return (hash >>> 0).toString(36);
+    }
+
+    /** Resolves a voice profile name for a dialogue line. A line can
+     *  request one explicitly (line.voiceProfile / line.voice), otherwise
+     *  it's derived automatically from the same portraitKey the line
+     *  already carries for its portrait art - see the "no manual dialogue
+     *  edits" goal in the design doc. */
+    function resolveVoiceProfileKey(line) {
+        if (!line) return 'villager';
+        if (line.voiceProfile && VOICE_PROFILES[line.voiceProfile]) return line.voiceProfile;
+        const pk = line.portraitKey;
+        if (pk && PORTRAIT_VOICE_MAP[pk]) return PORTRAIT_VOICE_MAP[pk];
+        return PORTRAIT_VOICE_MAP._fallback;
     }
 
     /** Best-effort background key for wherever a conversation is currently
@@ -15631,6 +15839,12 @@
          *  every other caller (random world encounters, boss doors, etc.)
          *  just omits them and behaves exactly as before. */
         startEncounter(party, location = 'world', ambushType = null, fieldAnchor = null) {
+            // Defensive safety net: dialogue.end() already stops voice on
+            // its own transition path, but a random field ambush can in
+            // theory interrupt a scene through a route that doesn't pass
+            // through it - this guarantees narration never bleeds into
+            // battle regardless of how the encounter was triggered.
+            if (window.game && window.game.voice) window.game.voice.stop();
             this.showingResults = false;
             this.battleEndHandled = false;
             this.rewardsGranted = false;
@@ -20540,6 +20754,12 @@
             this.renderHistory();
 
             this.typeText(line.text || '');
+            // Voice starts the moment the line is shown, alongside the
+            // portrait/text (design doc item 11) - play() itself stops
+            // whatever the previous line was speaking first, so this is
+            // also how overlap-prevention on advance/skip is handled with
+            // no extra call needed at those sites.
+            if (window.game && window.game.voice) window.game.voice.play(line);
         }
 
         /** Swaps in a new list of lines and keeps the scene open (same
@@ -20738,6 +20958,7 @@
             if (!this.isOpen) return;
             clearTimeout(this.typeTimer);
             clearTimeout(this.autoTimer);
+            if (window.game && window.game.voice) window.game.voice.stop();
             document.removeEventListener('keydown', this._boundKeyHandler);
             const overlay = document.getElementById('dialogue-scene-overlay');
             const cb = this.onEnd;
@@ -20757,6 +20978,319 @@
             if (window.game && window.game.state) window.game.state.resume();
             this.onEnd = null;
             if (cb) cb();
+        }
+    }
+
+    // =====================================================================
+    //                            VOICE MANAGER
+    // =====================================================================
+    // Cinematic narration/character-voice layer. Fully independent of
+    // AudioManager on purpose - it has its own gain node, its own
+    // settings, its own localStorage keys, and never touches
+    // AudioManager's masterGain/musicGain/sfxGain graph. That's
+    // deliberate: Ray's music/SFX must never be affected by anything in
+    // here, in either direction (turning voice off/on/broken must not
+    // touch music, and muting music must not silently kill voice).
+    //
+    // Driven entirely by DialogueManager.showLine()/end() below - it has
+    // no knowledge of dialogue content, only of the same line objects the
+    // dialogue UI already renders.
+    class VoiceManager {
+        constructor() {
+            // --- Settings (own localStorage keys, independent of the
+            // existing legendOfEternal_musicVolume/_sfxVolume keys) ---
+            const savedEnabled = localStorage.getItem('legendOfEternal_voiceEnabled');
+            const savedVolume = localStorage.getItem('legendOfEternal_voiceVolume');
+            const savedFx = localStorage.getItem('legendOfEternal_voiceEffectsEnabled');
+            this.enabled = savedEnabled === null ? true : savedEnabled === 'true';
+            this.volume = savedVolume === null ? 0.85 : parseFloat(savedVolume);
+            this.effectsEnabled = savedFx === null ? true : savedFx === 'true';
+            // Console-only diagnostics (item 39 of the design doc) - flip
+            // with window.game.voice.debug = true in devtools. Off by
+            // default so normal play isn't spammed, since a voice line
+            // fires on every single dialogue advance.
+            this.debug = false;
+
+            // --- speechSynthesis fallback state ---
+            this.synth = window.speechSynthesis || null;
+            this.voicesList = [];
+            this._resolvedVoiceCache = {}; // profileKey -> chosen SpeechSynthesisVoice|null
+            this._refreshVoices();
+            if (this.synth && typeof this.synth.addEventListener === 'function') {
+                // Chrome/Android loads the real voice list asynchronously
+                // after construction - without this, the very first line
+                // of the game would resolve against an empty list and get
+                // stuck on whatever the browser's silent default is.
+                this.synth.addEventListener('voiceschanged', () => {
+                    this._refreshVoices();
+                    this._resolvedVoiceCache = {};
+                });
+            }
+
+            // --- Premium audio-file path state ---
+            this.audioContext = null; // created lazily, same user-gesture rule as AudioManager
+            this.voiceGain = null;
+            this.currentAudioEl = null;
+            this._missingAudioCache = new Set(); // lineHashes confirmed to have no premium file this session
+            this.currentLineToken = 0; // incremented per play() call; guards against a slow-loading premium file finishing playback AFTER a newer line has already started
+        }
+
+        _log(...args) { if (this.debug) console.log('[Voice]', ...args); }
+
+        _refreshVoices() {
+            if (!this.synth) return;
+            try { this.voicesList = this.synth.getVoices() || []; } catch (e) { this.voicesList = []; }
+        }
+
+        /** Must be called from inside a real user-gesture handler (same
+         *  requirement/timing as Game.initAudio() for AudioManager) so
+         *  mobile Safari/Chrome don't silently block the very first line
+         *  of narration. Speaking and immediately cancelling a zero-volume
+         *  utterance is the standard trick to "prime" speechSynthesis. */
+        prime() {
+            if (!this.synth) return;
+            try {
+                this._refreshVoices();
+                const u = new SpeechSynthesisUtterance(' ');
+                u.volume = 0;
+                this.synth.speak(u);
+                this.synth.cancel();
+            } catch (e) { /* non-fatal - fallback path just won't be primed */ }
+        }
+
+        /** Lazily builds the Web Audio graph used ONLY by the premium
+         *  audio-file path. Never shared with AudioManager. */
+        _ensureAudioContext() {
+            if (this.audioContext) return true;
+            try {
+                const Ctx = window.AudioContext || window.webkitAudioContext;
+                if (!Ctx) return false;
+                this.audioContext = new Ctx();
+                this.voiceGain = this.audioContext.createGain();
+                this.voiceGain.gain.value = this.volume;
+                this.voiceGain.connect(this.audioContext.destination);
+                return true;
+            } catch (e) {
+                this._log('AudioContext init failed', e);
+                return false;
+            }
+        }
+
+        /** Procedurally generates a short decaying-noise impulse response
+         *  for ConvolverNode reverb - no external IR audio file needed.
+         *  seconds/decay tuned per-profile via fx.reverb below. */
+        _makeImpulse(seconds, decay) {
+            const ctx = this.audioContext;
+            const rate = ctx.sampleRate;
+            const length = Math.max(1, Math.floor(rate * seconds));
+            const impulse = ctx.createBuffer(2, length, rate);
+            for (let ch = 0; ch < 2; ch++) {
+                const data = impulse.getChannelData(ch);
+                for (let i = 0; i < length; i++) {
+                    data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, decay);
+                }
+            }
+            return impulse;
+        }
+
+        /** Builds (sourceNode -> ... -> voiceGain) for the premium audio
+         *  path per the profile's fx settings: warmth/presence as a pair
+         *  of shelving-ish biquads, procedural reverb via convolver,
+         *  optional saturation via waveshaper for monsters/villains, and a
+         *  feedback-delay echo. Returns the node the caller should treat
+         *  as "final" (already connected onward to voiceGain). */
+        buildEffectsChain(sourceNode, fx) {
+            const ctx = this.audioContext;
+            if (!this.effectsEnabled || !fx) { sourceNode.connect(this.voiceGain); return sourceNode; }
+            let node = sourceNode;
+
+            // Warmth: gentle low-shelf boost.
+            if (fx.warmth) {
+                const warm = ctx.createBiquadFilter();
+                warm.type = 'lowshelf';
+                warm.frequency.value = 400;
+                warm.gain.value = fx.warmth * 6;
+                node.connect(warm);
+                node = warm;
+            }
+            // Presence: gentle mid/high peaking boost so processed voices
+            // don't get buried under the reverb/warmth below.
+            if (fx.presence) {
+                const pres = ctx.createBiquadFilter();
+                pres.type = 'peaking';
+                pres.frequency.value = 2500;
+                pres.Q.value = 0.9;
+                pres.gain.value = fx.presence * 5;
+                node.connect(pres);
+                node = pres;
+            }
+            // Distortion (villain/monster growl) via waveshaper curve.
+            if (fx.distortion) {
+                const shaper = ctx.createWaveShaper();
+                const amount = fx.distortion * 50;
+                const samples = 256;
+                const curve = new Float32Array(samples);
+                for (let i = 0; i < samples; i++) {
+                    const x = (i * 2) / samples - 1;
+                    curve[i] = ((3 + amount) * x * 20 * (Math.PI / 180)) / (Math.PI + amount * Math.abs(x));
+                }
+                shaper.curve = curve;
+                shaper.oversample = '2x';
+                node.connect(shaper);
+                node = shaper;
+            }
+            // Echo: single feedback-delay tap, mixed subtly under the dry
+            // signal rather than replacing it.
+            if (fx.echo) {
+                const delay = ctx.createDelay();
+                delay.delayTime.value = 0.18;
+                const feedback = ctx.createGain();
+                feedback.gain.value = Math.min(0.35, fx.echo * 2);
+                const echoMix = ctx.createGain();
+                echoMix.gain.value = fx.echo;
+                node.connect(delay);
+                delay.connect(feedback);
+                feedback.connect(delay);
+                delay.connect(echoMix);
+                echoMix.connect(this.voiceGain);
+            }
+            // Reverb: procedural convolver, mixed under the dry/processed
+            // signal rather than fully replacing it.
+            if (fx.reverb) {
+                const convolver = ctx.createConvolver();
+                convolver.buffer = this._makeImpulse(1.6, 2.2);
+                const reverbMix = ctx.createGain();
+                reverbMix.gain.value = fx.reverb;
+                node.connect(convolver);
+                convolver.connect(reverbMix);
+                reverbMix.connect(this.voiceGain);
+            }
+            // Dry signal always passes through too, at full level - the fx
+            // above are additive enhancements, not a replacement (design
+            // doc: "enhance the voice rather than make it unintelligible").
+            node.connect(this.voiceGain);
+            return node;
+        }
+
+        /** Picks the best installed speechSynthesis voice for a profile,
+         *  caching the result. Falls back to leaving utterance.voice
+         *  unset (browser default) if nothing matches or the platform has
+         *  no voices at all (common in headless/CI browsers). */
+        _pickVoice(profileKey, profile) {
+            if (this._resolvedVoiceCache[profileKey] !== undefined) return this._resolvedVoiceCache[profileKey];
+            let chosen = null;
+            if (this.voicesList && this.voicesList.length) {
+                for (const hint of profile.voiceHints) {
+                    const h = hint.toLowerCase();
+                    chosen = this.voicesList.find(v => v.name.toLowerCase().includes(h));
+                    if (chosen) break;
+                }
+            }
+            this._resolvedVoiceCache[profileKey] = chosen || null;
+            return chosen || null;
+        }
+
+        /** Stops whatever is currently speaking/playing, on either path.
+         *  Safe to call any time, including when nothing is playing. */
+        stop() {
+            this.currentLineToken++; // invalidates any in-flight premium-file load
+            if (this.synth) { try { this.synth.cancel(); } catch (e) {} }
+            if (this.currentAudioEl) {
+                try { this.currentAudioEl.pause(); this.currentAudioEl.currentTime = 0; } catch (e) {}
+                this.currentAudioEl = null;
+            }
+        }
+
+        /** Main entry point - called by DialogueManager.showLine() for
+         *  every line as it's displayed, exactly when the text/portrait
+         *  appear (design doc item 11: no unexplained delay). Always
+         *  stops any prior line's voice first, so overlapping lines are
+         *  never possible regardless of how fast the player advances. */
+        play(line) {
+            this.stop();
+            if (!this.enabled || !line || !line.text) return;
+            const profileKey = resolveVoiceProfileKey(line);
+            const profile = VOICE_PROFILES[profileKey] || VOICE_PROFILES.villager;
+            const hash = hashVoiceLine(line.text);
+            const myToken = this.currentLineToken;
+            this._log('line', { speaker: line.speaker, profileKey, hash, enabled: this.enabled });
+
+            if (this._missingAudioCache.has(hash)) {
+                this.speakFallback(line, profile, profileKey);
+                return;
+            }
+            const url = `assets/voices/${profileKey}/${hash}.mp3`;
+            this._tryPremiumAudio(url, hash, profile, myToken, () => {
+                // Only fall back if this is still the "current" line -
+                // otherwise a slow 404 for an old line could start
+                // speaking over whatever's already playing now.
+                if (myToken !== this.currentLineToken) return;
+                this._missingAudioCache.add(hash);
+                this.speakFallback(line, profile, profileKey);
+            });
+        }
+
+        _tryPremiumAudio(url, hash, profile, myToken, onMissing) {
+            if (!this._ensureAudioContext()) { onMissing(); return; }
+            const el = new Audio();
+            let settled = false;
+            const fail = () => { if (settled) return; settled = true; onMissing(); };
+            el.addEventListener('error', fail);
+            el.addEventListener('canplaythrough', () => {
+                if (settled) return;
+                settled = true;
+                if (myToken !== this.currentLineToken) return; // superseded while loading
+                try {
+                    if (this.audioContext.state === 'suspended') this.audioContext.resume();
+                    const source = this.audioContext.createMediaElementSource(el);
+                    this.buildEffectsChain(source, profile.fx);
+                    this.currentAudioEl = el;
+                    el.play().catch(() => fail());
+                    this._log('premium audio playing', url);
+                } catch (e) {
+                    this._log('premium audio graph error, falling back', e);
+                    fail();
+                }
+            }, { once: true });
+            // Short timeout guard - a hung/slow request shouldn't leave
+            // the player sitting in silence waiting on it.
+            setTimeout(fail, 1500);
+            el.src = url;
+            el.load();
+        }
+
+        speakFallback(line, profile, profileKey) {
+            if (!this.synth) { this._log('speechSynthesis unavailable'); return; }
+            try {
+                const utter = new SpeechSynthesisUtterance(line.text);
+                const emo = VOICE_EMOTION_MODIFIERS[line.emotion] || VOICE_EMOTION_MODIFIERS.neutral;
+                utter.pitch = Math.max(0, Math.min(2, profile.pitch * emo.pitchMul));
+                utter.rate = Math.max(0.1, Math.min(4, profile.rate * emo.rateMul));
+                utter.volume = this.volume;
+                const voice = this._pickVoice(profileKey, profile);
+                if (voice) utter.voice = voice;
+                this.synth.speak(utter);
+                this._log('speechSynthesis fallback', { profileKey, voice: voice && voice.name, pitch: utter.pitch, rate: utter.rate });
+            } catch (e) {
+                this._log('speechSynthesis error', e);
+            }
+        }
+
+        setEnabled(enabled) {
+            this.enabled = !!enabled;
+            localStorage.setItem('legendOfEternal_voiceEnabled', String(this.enabled));
+            if (!this.enabled) this.stop();
+        }
+
+        setVolume(v) {
+            this.volume = Math.max(0, Math.min(1, parseFloat(v)));
+            localStorage.setItem('legendOfEternal_voiceVolume', String(this.volume));
+            if (this.voiceGain) this.voiceGain.gain.value = this.volume;
+        }
+
+        setEffectsEnabled(enabled) {
+            this.effectsEnabled = !!enabled;
+            localStorage.setItem('legendOfEternal_voiceEffectsEnabled', String(this.effectsEnabled));
         }
     }
 
@@ -22093,6 +22627,7 @@
             // see showShopWelcome(). Intentionally session-only, not saved.
             this.seenShopWelcome = new Set();
             this.audio = new AudioManager();
+            this.voice = new VoiceManager();
             this.isSelling = false;
             // Default before any town has actually been visited - was previously
             // {x:25,y:25}, an arbitrary placeholder that didn't correspond to
@@ -22179,6 +22714,11 @@
         initAudio() {
             console.log('initAudio called - initializing audio');
             this.audio.init();
+            // Same user-gesture requirement as the music/SFX engine above -
+            // priming speechSynthesis here (not later) is what keeps the
+            // very first tutorial line from being silently blocked on
+            // mobile Safari/Chrome.
+            if (this.voice) this.voice.prime();
             setTimeout(() => {
                 const savedMusic = localStorage.getItem('legendOfEternal_musicVolume');
                 const savedSFX = localStorage.getItem('legendOfEternal_sfxVolume');
@@ -22216,7 +22756,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v161]');
+            console.log('Game starting... [build v163]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
@@ -27389,6 +27929,37 @@
                     this.audio.setSFXVolume(sfxValue);
                 }
             }
+            this.refreshVoiceSettingsUI();
+        }
+
+        /** Syncs the Voice Narration card's button labels/slider with
+         *  window.game.voice's actual current state - called whenever the
+         *  Settings panel opens (see loadVolumeSettings()) so it never
+         *  shows stale text after a reload. */
+        refreshVoiceSettingsUI() {
+            if (!this.voice) return;
+            const enabledBtn = document.getElementById('voice-enabled-btn');
+            if (enabledBtn) enabledBtn.textContent = this.voice.enabled ? '🗣️ Voice Narration: ON' : '🔇 Voice Narration: OFF';
+            const fxBtn = document.getElementById('voice-fx-btn');
+            if (fxBtn) fxBtn.textContent = this.voice.effectsEnabled ? '✨ Voice Effects: ON' : '✨ Voice Effects: OFF';
+            const volSlider = document.getElementById('voice-volume-slider');
+            const volDisplay = document.getElementById('voice-volume-value');
+            if (volSlider) {
+                volSlider.value = this.voice.volume;
+                if (volDisplay) volDisplay.textContent = Math.round(this.voice.volume * 100) + '%';
+            }
+        }
+
+        toggleVoiceEnabled() {
+            if (!this.voice) return;
+            this.voice.setEnabled(!this.voice.enabled);
+            this.refreshVoiceSettingsUI();
+        }
+
+        toggleVoiceEffects() {
+            if (!this.voice) return;
+            this.voice.setEffectsEnabled(!this.voice.effectsEnabled);
+            this.refreshVoiceSettingsUI();
         }
 
         /** Renders the Equipment sub-panel for whichever hero is currently
