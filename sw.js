@@ -5,7 +5,7 @@
 // shell (manifest + icons). Bump CACHE_VERSION any time you ship an
 // updated index.html so installed devices pick up the new build instead
 // of continuing to serve the stale cached copy.
-const CACHE_VERSION = 'legend-of-eternal-v179';
+const CACHE_VERSION = 'legend-of-eternal-v183';
 const CORE_ASSETS = [
     './',
     './index.html',
@@ -121,6 +121,36 @@ const CORE_ASSETS = [
     './assets/heroes/paladin_weapon.png',
     './assets/heroes/paladin_weapon_above.png',
     './assets/npcs/oratio.png',
+
+    // v182 - real walking-sprite NPCs (Low's free 8-directional
+    //     character sheets) for the generic town/world-map NPC pool.
+    './assets/npcs_walkers/npc_actor1-1.png',
+    './assets/npcs_walkers/npc_actor1-2.png',
+    './assets/npcs_walkers/npc_actor1-3.png',
+    './assets/npcs_walkers/npc_actor1-4.png',
+    './assets/npcs_walkers/npc_actor1-5.png',
+    './assets/npcs_walkers/npc_actor1-6.png',
+    './assets/npcs_walkers/npc_actor1-7.png',
+    './assets/npcs_walkers/npc_actor1-8.png',
+    './assets/npcs_walkers/npc_actor2-1.png',
+    './assets/npcs_walkers/npc_actor2-2.png',
+    './assets/npcs_walkers/npc_actor2-6.png',
+    './assets/npcs_walkers/npc_actor2-8.png',
+    './assets/npcs_walkers/npc_actor_2-4.png',
+    './assets/npcs_walkers/npc_actor3-2.png',
+    './assets/npcs_walkers/npc_actor3-6.png',
+    './assets/npcs_walkers/npc_actor_3-5.png',
+    './assets/npcs_walkers/npc_actor_3-7.png',
+    './assets/npcs_walkers/npc_people1-3.png',
+    './assets/npcs_walkers/npc_people1-4.png',
+    './assets/npcs_walkers/npc_people1-5.png',
+    './assets/npcs_walkers/npc_people1-6.png',
+    './assets/npcs_walkers/npc_people1-7.png',
+    './assets/npcs_walkers/npc_people1-8.png',
+    './assets/npcs_walkers/npc_people2-2.png',
+    './assets/npcs_walkers/npc_people2-6.png',
+    './assets/npcs_walkers/npc_people2-8.png',
+    './assets/npcs_walkers/npc_people3-7.png',
     './assets/npcs/ouzo.png',
     './assets/npcs/ley.png',
     './assets/npcs/prime.png',
