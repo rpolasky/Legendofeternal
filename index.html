@@ -5673,7 +5673,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v164</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v165</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -7443,6 +7443,30 @@
         let hash = 5381;
         for (let i = 0; i < s.length; i++) { hash = ((hash * 33) ^ s.charCodeAt(i)) | 0; }
         return (hash >>> 0).toString(36);
+    }
+
+    /** Emoji/pictograph ranges used throughout dialogue text (💡 hints, ⚔️
+     *  quest markers, 💰 gold, class/role icons, etc.) - these render fine
+     *  visually but speechSynthesis reads them aloud as their Unicode name
+     *  ("light bulb", "crossed swords"), which is exactly the bug Ray
+     *  caught. Stripped ONLY for the spoken copy in sanitizeForSpeech()
+     *  below - the on-screen dialogue text is never touched. */
+    const EMOJI_STRIP_REGEX = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{2190}-\u{21FF}\uFE0F\u200D]/gu;
+
+    /** Cleans a line of text for the speechSynthesis fallback path only
+     *  (never used for the on-screen text or the premium-audio hash, so
+     *  neither of those are affected). Two fixes live here:
+     *    1. Strip emoji/pictographs entirely (see EMOJI_STRIP_REGEX above).
+     *    2. "500 G" (the game's gold shorthand) reads back as "500 Gee" -
+     *       expand the abbreviation to "gold" whenever it directly follows
+     *       a number, without touching any other standalone "G".
+     *  Collapses whatever whitespace stripping leaves behind. */
+    function sanitizeForSpeech(text) {
+        let s = (text || '');
+        s = s.replace(EMOJI_STRIP_REGEX, '');
+        s = s.replace(/(\d[\d,]*)\s*G\b/g, '$1 gold');
+        s = s.replace(/\s{2,}/g, ' ').trim();
+        return s;
     }
 
     /** Resolves a voice profile name for a dialogue line. A line can
@@ -21288,10 +21312,16 @@
             if (!this.synth) return;
             try {
                 this._refreshVoices();
+                // Let this one finish naturally instead of cancelling it
+                // immediately - a synchronous speak()-then-cancel() is the
+                // same Android/Chrome race that can taint pitch/rate for
+                // every utterance afterward in a session (see
+                // speakFallback()'s comment). A near-silent, near-instant
+                // utterance costs nothing to just let play out.
                 const u = new SpeechSynthesisUtterance(' ');
                 u.volume = 0;
+                u.rate = 10;
                 this.synth.speak(u);
-                this.synth.cancel();
             } catch (e) { /* non-fatal - fallback path just won't be primed */ }
         }
 
@@ -21453,7 +21483,7 @@
             this._log('line', { speaker: line.speaker, profileKey, hash, enabled: this.enabled });
 
             if (this._missingAudioCache.has(hash)) {
-                this.speakFallback(line, profile, profileKey);
+                this.speakFallback(line, profile, profileKey, myToken);
                 return;
             }
             const url = `assets/voices/${profileKey}/${hash}.mp3`;
@@ -21463,7 +21493,7 @@
                 // speaking over whatever's already playing now.
                 if (myToken !== this.currentLineToken) return;
                 this._missingAudioCache.add(hash);
-                this.speakFallback(line, profile, profileKey);
+                this.speakFallback(line, profile, profileKey, myToken);
             });
         }
 
@@ -21496,21 +21526,37 @@
             el.load();
         }
 
-        speakFallback(line, profile, profileKey) {
+        speakFallback(line, profile, profileKey, myToken) {
             if (!this.synth) { this._log('speechSynthesis unavailable'); return; }
-            try {
-                const utter = new SpeechSynthesisUtterance(line.text);
-                const emo = VOICE_EMOTION_MODIFIERS[line.emotion] || VOICE_EMOTION_MODIFIERS.neutral;
-                utter.pitch = Math.max(0, Math.min(2, profile.pitch * emo.pitchMul));
-                utter.rate = Math.max(0.1, Math.min(4, profile.rate * emo.rateMul));
-                utter.volume = this.volume;
-                const voice = this._pickVoice(profileKey, profile);
-                if (voice) utter.voice = voice;
-                this.synth.speak(utter);
-                this._log('speechSynthesis fallback', { profileKey, voice: voice && voice.name, pitch: utter.pitch, rate: utter.rate });
-            } catch (e) {
-                this._log('speechSynthesis error', e);
-            }
+            // IMPORTANT: never call speak() in the same tick as the cancel()
+            // that stop() just issued. Chrome on Android has a well-known
+            // bug where speak() called immediately after cancel() silently
+            // drops the utterance's pitch/rate/voice and falls back to the
+            // flat default system voice - which is exactly the "every NPC
+            // sounds like Siri" symptom Ray hit. This is most visible on
+            // any REPEATED line (the common case - re-talking to an NPC),
+            // because the missing-audio-cache fast path in play() used to
+            // call this synchronously right after stop()'s cancel(). A
+            // short delay, gated by myToken so a since-superseded line
+            // never speaks late, reliably avoids the race.
+            setTimeout(() => {
+                if (myToken !== undefined && myToken !== this.currentLineToken) return;
+                try {
+                    const spokenText = sanitizeForSpeech(line.text);
+                    if (!spokenText) return;
+                    const utter = new SpeechSynthesisUtterance(spokenText);
+                    const emo = VOICE_EMOTION_MODIFIERS[line.emotion] || VOICE_EMOTION_MODIFIERS.neutral;
+                    utter.pitch = Math.max(0, Math.min(2, profile.pitch * emo.pitchMul));
+                    utter.rate = Math.max(0.1, Math.min(4, profile.rate * emo.rateMul));
+                    utter.volume = this.volume;
+                    const voice = this._pickVoice(profileKey, profile);
+                    if (voice) utter.voice = voice;
+                    this.synth.speak(utter);
+                    this._log('speechSynthesis fallback', { profileKey, voice: voice && voice.name, pitch: utter.pitch, rate: utter.rate, spokenText });
+                } catch (e) {
+                    this._log('speechSynthesis error', e);
+                }
+            }, 60);
         }
 
         setEnabled(enabled) {
@@ -22993,7 +23039,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v164]');
+            console.log('Game starting... [build v165]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
