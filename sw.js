@@ -5,7 +5,7 @@
 // shell (manifest + icons). Bump CACHE_VERSION any time you ship an
 // updated index.html so installed devices pick up the new build instead
 // of continuing to serve the stale cached copy.
-const CACHE_VERSION = 'legend-of-eternal-v177';
+const CACHE_VERSION = 'legend-of-eternal-v178';
 const CORE_ASSETS = [
     './',
     './index.html',
@@ -99,6 +99,15 @@ const CORE_ASSETS = [
     './assets/heroes/warrior_battler.png',
     './assets/heroes/mage_battler.png',
     './assets/heroes/paladin_battler.png',
+
+    // v178 - layered weapon sheets (same free pack), so the actor
+    // actually appears to be holding/swinging their weapon in battle.
+    './assets/heroes/warrior_weapon.png',
+    './assets/heroes/warrior_weapon_above.png',
+    './assets/heroes/mage_weapon.png',
+    './assets/heroes/mage_weapon_above.png',
+    './assets/heroes/paladin_weapon.png',
+    './assets/heroes/paladin_weapon_above.png',
     './assets/npcs/oratio.png',
     './assets/npcs/ouzo.png',
     './assets/npcs/ley.png',

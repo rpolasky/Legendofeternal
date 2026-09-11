@@ -3647,6 +3647,9 @@
             transform-origin: 50% 50%;
         }
         .hero-battler-sheet {
+            position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
             background-repeat: no-repeat;
@@ -3654,6 +3657,12 @@
             image-rendering: pixelated;
             image-rendering: crisp-edges;
         }
+        /* v178: weapon layers stack via z-index rather than DOM order, so
+           toggling which one is visible per-pose (see
+           HERO_BATTLER_POSE_WEAPON_LAYER) never has to reorder the DOM. */
+        .hero-battler-weapon-below { z-index: 1; }
+        .hero-battler-actor { z-index: 2; }
+        .hero-battler-weapon-above { z-index: 3; }
         /* No .weapon-arm rig exists on a flat image, so the attack "swing"
            becomes a quick whole-portrait pulse instead - the actual forward
            lunge toward the enemy is still handled by .battle-hero.lunging
@@ -5741,7 +5750,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v177</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v178</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -7943,6 +7952,34 @@
     // class with no battler sheet, same lazy-fallback convention as
     // everywhere else in this file.
     const HERO_BATTLER_SHEET_FILES = { warrior: 'warrior_battler', mage: 'mage_battler', paladin: 'paladin_battler' };
+    // v178: layered weapon sheets, same 4x14 grid as the actor sheets above,
+    // designed to align pixel-for-pixel with them. Each class has a
+    // "below" (renders behind the actor - weapon at rest/carried) and
+    // "above" (renders in front - weapon mid-swing/visible) variant. Which
+    // one is shown for a given pose is HERO_BATTLER_POSE_WEAPON_LAYER
+    // below, not a per-frame choice - a reasonable approximation without
+    // needing to hand-inspect all 56 frames per class.
+    const HERO_WEAPON_SHEET_FILES = {
+        warrior: { below: 'warrior_weapon', above: 'warrior_weapon_above' },
+        mage: { below: 'mage_weapon', above: 'mage_weapon_above' },
+        paladin: { below: 'paladin_weapon', above: 'paladin_weapon_above' }
+    };
+    const HERO_WEAPON_SHEETS = {};
+    Object.keys(HERO_WEAPON_SHEET_FILES).forEach(key => {
+        HERO_WEAPON_SHEETS[key] = {};
+        ['below', 'above'].forEach(layer => {
+            const img = new Image();
+            img.loaded = false;
+            img.onload = () => { img.loaded = true; };
+            img.src = 'assets/heroes/' + HERO_WEAPON_SHEET_FILES[key][layer] + '.png';
+            HERO_WEAPON_SHEETS[key][layer] = img;
+        });
+    });
+    const HERO_BATTLER_POSE_WEAPON_LAYER = {
+        idle: 'below', defend: 'below', woozy: 'below', struck: 'below',
+        attack: 'above', item: 'below', skill: 'above', magic: 'above',
+        advance: 'above', retreat: 'above', victory: 'below', enter: 'above', dead: 'below'
+    };
     const HERO_BATTLER_SHEETS = {};
     Object.keys(HERO_BATTLER_SHEET_FILES).forEach(key => {
         const img = new Image();
@@ -7967,22 +8004,22 @@
      *  this controller is created once per element and just keeps running
      *  underneath those checks. */
     class HeroBattlerAnim {
-        constructor(el) {
+        constructor(el, heroClass) {
             this.el = el;
+            this.heroClass = heroClass;
             this.row = 0;
             this.frame = 0;
             this.timer = null;
+            this.weaponBelowEl = el.parentElement.querySelector('.hero-battler-weapon-below');
+            this.weaponAboveEl = el.parentElement.querySelector('.hero-battler-weapon-above');
         }
-        /** loop=true keeps cycling frames 0-3 forever (idle/victory/dead-hold);
-         *  loop=false plays the 4 frames once then calls onComplete (or just
-         *  stops on the last frame if no onComplete is given - used for
-         *  "dead", which should freeze rather than snap back to idle). */
         setPose(poseKey, { loop = true, fps = 6, onComplete = null } = {}) {
             clearInterval(this.timer);
             this.row = HERO_BATTLER_POSE_ROW[poseKey] ?? 0;
             this.frame = 0;
+            this._applyWeaponLayer(poseKey);
             this._render();
-            if (fps <= 0) return; // static single-frame hold (e.g. dead, no onComplete)
+            if (fps <= 0) return;
             this.timer = setInterval(() => {
                 this.frame++;
                 if (this.frame >= HERO_BATTLER_COLS) {
@@ -7999,10 +8036,19 @@
                 this._render();
             }, 1000 / fps);
         }
+        _applyWeaponLayer(poseKey) {
+            if (!this.weaponBelowEl && !this.weaponAboveEl) return;
+            const layer = HERO_BATTLER_POSE_WEAPON_LAYER[poseKey] || 'below';
+            if (this.weaponBelowEl) this.weaponBelowEl.style.display = layer === 'below' ? 'block' : 'none';
+            if (this.weaponAboveEl) this.weaponAboveEl.style.display = layer === 'above' ? 'block' : 'none';
+        }
         _render() {
             const x = (this.frame / (HERO_BATTLER_COLS - 1)) * 100;
             const y = (this.row / (HERO_BATTLER_ROWS - 1)) * 100;
-            this.el.style.backgroundPosition = `${x}% ${y}%`;
+            const pos = `${x}% ${y}%`;
+            this.el.style.backgroundPosition = pos;
+            if (this.weaponBelowEl) this.weaponBelowEl.style.backgroundPosition = pos;
+            if (this.weaponAboveEl) this.weaponAboveEl.style.backgroundPosition = pos;
         }
         destroy() { clearInterval(this.timer); }
     }
@@ -8016,11 +8062,20 @@
      *  innerHTML-equality guard skips replacing the DOM node - and
      *  therefore never kills a running animation timer - on every normal
      *  refresh. Falls back to buildHeroPortraitInner() for any class with
-     *  no battler sheet loaded yet. */
+     *  no battler sheet loaded yet. Weapon layers (v178) sit as siblings
+     *  stacked via z-index rather than children of the actor div, so
+     *  their own background-position can be driven independently without
+     *  fighting the actor's - both "below" and "above" are always in the
+     *  DOM, HeroBattlerAnim just toggles which one is visible per pose. */
     function buildHeroBattlerHTML(heroClass) {
         const sheet = HERO_BATTLER_SHEETS[heroClass];
         if (sheet && sheet.loaded) {
-            return `<div class="hero-battler-clip"><div class="hero-battler-sheet" style="background-image:url(${sheet.src});"></div></div>`;
+            const weapons = HERO_WEAPON_SHEETS[heroClass];
+            const belowReady = weapons && weapons.below && weapons.below.loaded;
+            const aboveReady = weapons && weapons.above && weapons.above.loaded;
+            const belowDiv = belowReady ? `<div class="hero-battler-sheet hero-battler-weapon-below" style="background-image:url(${weapons.below.src});"></div>` : '';
+            const aboveDiv = aboveReady ? `<div class="hero-battler-sheet hero-battler-weapon-above" style="background-image:url(${weapons.above.src});"></div>` : '';
+            return `<div class="hero-battler-clip">${belowDiv}<div class="hero-battler-sheet hero-battler-actor" style="background-image:url(${sheet.src});"></div>${aboveDiv}</div>`;
         }
         return buildHeroPortraitInner(heroClass);
     }
@@ -8032,10 +8087,10 @@
      *  (cheap no-op check, avoids ever stacking duplicate timers). */
     function ensureHeroBattlerAnim(avatarEl) {
         if (!avatarEl) return null;
-        const sheetDiv = avatarEl.querySelector('.hero-battler-sheet');
+        const sheetDiv = avatarEl.querySelector('.hero-battler-actor');
         if (!sheetDiv) return null;
         if (!sheetDiv._battlerAnim) {
-            sheetDiv._battlerAnim = new HeroBattlerAnim(sheetDiv);
+            sheetDiv._battlerAnim = new HeroBattlerAnim(sheetDiv, avatarEl.dataset.class);
             sheetDiv._battlerAnim.setPose('idle', { loop: true, fps: 3 });
         }
         return sheetDiv._battlerAnim;
@@ -9533,7 +9588,7 @@
         if (!isShrine) {
             const quadrant = getCurrentWorldQuadrant();
             const quadrantData = QUADRANTS[quadrant] || QUADRANTS.CORNELIA;
-            const spawnCount = Math.min(6 + floorIndex, Math.max(4, Math.floor(reachable.length / 13))); // was min(4+floorIndex, max(3, /16)) - Ray wants a further, smaller bump here (not as much as the world map)
+            const spawnCount = Math.min(8 + floorIndex, Math.max(5, Math.floor(reachable.length / 10))); // v178: bumped again per Ray - dungeons still felt sparse even after the earlier smaller-than-world-map bump
             let attempts = 0;
             while (monsterSpawns.length < spawnCount && attempts < reachable.length) {
                 // Walk the same shuffled list chests used, but from the far
@@ -9894,6 +9949,36 @@
             if (found) return found;
         }
         return null;
+    }
+
+    /** Draws a field/dungeon monster marker using its REAL battle art when
+     *  one exists (same MONSTER_IMAGES/MONSTER_NAME_IMAGE_OVERRIDE lookup
+     *  the battle screen itself uses), falling back to the raw sprite
+     *  emoji only for species that don't have dedicated art yet. Several
+     *  monster "sprite" fields are actually theme icons rather than a
+     *  creature likeness (Goblin Scout's is a bow, several knights' are a
+     *  sword), which read as literally the wrong thing on the map - this
+     *  is what fixes that, for every species that already got real art.
+     *  Referenced consts (MONSTER_IMAGES etc.) are defined later in this
+     *  file, which is fine - this function is only ever called at render
+     *  time, long after the whole script has finished initializing. */
+    function drawMonsterMarkerIcon(ctx, template, x, y, size) {
+        const strippedName = template ? template.name.replace(/^(Elite\s+)+/i, '') : '';
+        const archetype = template ? getMonsterArchetype(template) : null;
+        const imageKey = template ? (MONSTER_NAME_IMAGE_OVERRIDE[strippedName] ||
+            MONSTER_IMAGE_ARCHETYPE_ALIAS[archetype] || archetype) : null;
+        const img = imageKey && MONSTER_IMAGES[imageKey];
+        if (img && img.loaded) {
+            const aspect = img.naturalWidth / img.naturalHeight || 1;
+            const h = size;
+            const w = size * aspect;
+            ctx.drawImage(img, x - w / 2, y - h / 2, w, h);
+            return;
+        }
+        ctx.font = `${Math.floor(size * 0.78)}px 'Segoe UI Emoji', sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText((template && template.sprite) || '❓', x, y);
     }
 
     function directionToFacing(dx, dy) {
@@ -10460,10 +10545,7 @@
                     ctx.restore();
                 }
                 const template = findMonsterTemplateByName(m.speciesName);
-                ctx.font = `${Math.floor(ts * 0.7)}px 'Segoe UI Emoji', sans-serif`;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText((template && template.sprite) || '❓', mPos.x, mPos.y);
+                drawMonsterMarkerIcon(ctx, template, mPos.x, mPos.y, ts * 0.9);
                 if (m.alertUntil && nowTs < m.alertUntil) {
                     ctx.save();
                     ctx.font = `bold ${Math.floor(ts * 0.6)}px 'Courier New', monospace`;
@@ -12099,7 +12181,7 @@
     class Party {
         constructor() {
             this.heroes = [];
-            this.gold = 500;
+            this.gold = 2500;
             this.inventory = {
                 items: [
                     { name: 'Potion', quantity: 3, type: 'consumable', effect: 'heal', power: 50 },
@@ -12373,22 +12455,26 @@
          *  nothing to actually persist except which ones are currently
          *  alive (see Game.saveGame()'s worldMonstersAlive).
          *
-         *  Only ~90 spawns exist across the whole 400x400 map, but that's
-         *  fine even far from any of them - updateFieldMonstersOnFloor()
-         *  only does real work (a LOS raycast) for spawns already within
-         *  FIELD_MONSTER_NOTICE_RADIUS of the player; everything else is
-         *  just a cheap distance check (or, if dead, a timestamp compare
-         *  for its respawn timer) every step. */
+         *  ~180 spawns exist across the whole 400x400 map (was bumped once
+         *  already, then again below to 300 - Ray still found the opening
+         *  Brighthollow area sparse, since 400x400 is a lot of ground to
+         *  spread even 180 across), but that's fine even far from any of
+         *  them - updateFieldMonstersOnFloor() only does real work (a LOS
+         *  raycast) for spawns already within FIELD_MONSTER_NOTICE_RADIUS
+         *  of the player; everything else is just a cheap distance check
+         *  (or, if dead, a timestamp compare for its respawn timer) every
+         *  step. */
         generateWorldMonsterSpawns() {
             const rng = mulberry32(hashStringToSeed('world_field_monsters_v1'));
             const spawns = [];
-            // Bumped again - Ray could still walk across large stretches of
-            // the world map without crossing paths with anything. Tightened
-            // minimum spacing (12->9 tiles) to comfortably fit the higher
-            // count without the placement loop starving for valid spots.
-            const targetCount = 180;
+            // Bumped again (180 -> 300) - even 180 across a 400x400 map
+            // left long stretches, especially right around the starting
+            // Brighthollow area, feeling empty. Spacing tightened to match
+            // (9 -> 7) so the placement loop can actually fit the higher
+            // count without starving for valid spots near the cap.
+            const targetCount = 300;
             let attempts = 0;
-            while (spawns.length < targetCount && attempts < 9000) {
+            while (spawns.length < targetCount && attempts < 12000) {
                 attempts++;
                 const x = Math.floor(rng() * this.width);
                 const y = Math.floor(rng() * this.height);
@@ -12402,7 +12488,7 @@
                 if (nearLocation) continue;
                 let tooClose = false;
                 for (const s of spawns) {
-                    if (Math.max(Math.abs(s.x - x), Math.abs(s.y - y)) < 9) { tooClose = true; break; }
+                    if (Math.max(Math.abs(s.x - x), Math.abs(s.y - y)) < 7) { tooClose = true; break; }
                 }
                 if (tooClose) continue;
                 const quadrant = getWorldQuadrantForPos(x, y);
@@ -16179,10 +16265,7 @@
                     ctx.restore();
                 }
                 const template = findMonsterTemplateByName(m.speciesName);
-                ctx.font = `${Math.floor(ts * 1.4)}px 'Segoe UI Emoji', sans-serif`;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText((template && template.sprite) || '❓', mx, my);
+                drawMonsterMarkerIcon(ctx, template, mx, my, ts * 1.8);
                 if (m.alertUntil && nowTsWorld < m.alertUntil) {
                     ctx.save();
                     ctx.font = `bold ${Math.floor(ts * 1.0)}px 'Courier New', monospace`;
@@ -23338,7 +23421,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v177]');
+            console.log('Game starting... [build v178]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
@@ -33361,9 +33444,9 @@ const QUEST_DATA = [
      *  full .battle-background stage (.party-battle-area now covers the
      *  whole stage, same as .monsters-area). */
     const HERO_SLOTS = [
-        { x: 62, y: 40, scale: 0.85 },
-        { x: 73, y: 50, scale: 0.95 },
-        { x: 84, y: 60, scale: 1.05 }
+        { x: 62, y: 30, scale: 0.85 },
+        { x: 73, y: 40, scale: 0.95 },
+        { x: 84, y: 50, scale: 1.05 }
     ];
 
     /** Assigns each monster in `monsters` a {x,y,scale} floor slot - a boss
@@ -34005,7 +34088,7 @@ const QUEST_DATA = [
         // sync instead of becoming two animations drifting apart. Falls
         // through silently for any hero with no battler sheet loaded (the
         // querySelector/anim checks below are just null then).
-        const sheetDiv = avatar.querySelector('.hero-battler-sheet');
+        const sheetDiv = avatar.querySelector('.hero-battler-actor');
         const battlerAnim = sheetDiv && sheetDiv._battlerAnim;
         if (battlerAnim) {
             battlerAnim.setPose('advance', { loop: false, fps: 20, onComplete: () => {
@@ -34033,7 +34116,7 @@ const QUEST_DATA = [
         // flight) needs to keep running - a hero getting hit mid-swing is
         // rare in this turn-based flow, but harmless either way since the
         // struck pose is brief and idle is always a safe place to land.
-        const sheetDiv = avatar.querySelector('.hero-battler-sheet');
+        const sheetDiv = avatar.querySelector('.hero-battler-actor');
         const battlerAnim = sheetDiv && sheetDiv._battlerAnim;
         if (battlerAnim) {
             battlerAnim.setPose('struck', { loop: false, fps: 12, onComplete: () => {
