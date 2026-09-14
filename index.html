@@ -5783,7 +5783,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v185</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v186</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -9713,7 +9713,7 @@
         const monsterSpawns = [];
         if (!isShrine) {
             const quadrant = getCurrentWorldQuadrant();
-            const quadrantData = QUADRANTS[quadrant] || QUADRANTS.CORNELIA;
+            const quadrantData = QUADRANTS[quadrant] || QUADRANTS.BRIGHTHOLLOW;
             const spawnCount = Math.min(8 + floorIndex, Math.max(5, Math.floor(reachable.length / 10))); // v178: bumped again per Ray - dungeons still felt sparse even after the earlier smaller-than-world-map bump
             let attempts = 0;
             while (monsterSpawns.length < spawnCount && attempts < reachable.length) {
@@ -10052,7 +10052,7 @@
      *  before indexing so low levels come up far more often than high ones
      *  (roll^exponent skews toward 0, i.e. toward the front of the sorted
      *  list). This is the actual fix for quadrants now spanning a much
-     *  wider level range (e.g. Cornelia 1-13 instead of 1-4) than before -
+     *  wider level range (e.g. Brighthollow 1-13 instead of 1-4) than before -
      *  without it, a level-1 party's very first dungeon floor could roll a
      *  spawn point tagged at level 13 just as easily as level 1, since
      *  spawn generation has no live party level to reference (it happens
@@ -10108,6 +10108,34 @@
             return (b.isElite === template.isElite ? 1 : 0) - (a.isElite === template.isElite ? 1 : 0);
         });
         return closest[0] || template;
+    }
+
+    /** Narrows a template's levelRange (see applyMonsterLevelRanges) down
+     *  to its intersection with [partyLevel-tolerance, partyLevel+tolerance]
+     *  before a Monster instance is actually rolled from it. levelGateTemplate
+     *  above only checks a tier's floor (template.level) when deciding
+     *  WHICH tier to use - necessary, since that's the only fixed number a
+     *  template has - but a tier's range can extend well past a floor
+     *  that was still technically "in range" (e.g. partyLevel 3 vs a
+     *  Wolf/Hobgob/Goblin Scout tier whose floor is 5 - passes the floor
+     *  gate at a diff of 2, but that tier's range still reaches up to 9).
+     *  This is the second half of the fix: whichever tier gets chosen,
+     *  the ACTUAL instantiated level never lands outside the party's
+     *  tolerance, even if the tier's natural range does. */
+    function clampLevelRangeToParty(template, partyLevel, tolerance = 3) {
+        if (!template || !template.levelRange) return template;
+        const lo = Math.max(template.levelRange[0], partyLevel - tolerance);
+        const hi = Math.min(template.levelRange[1], partyLevel + tolerance);
+        if (lo > hi) {
+            // Party is fully outside even this tier's range (only possible
+            // for the edge-case "nothing in range anywhere" fallback in
+            // levelGateTemplate) - pin to whichever bound is closer rather
+            // than leaving an inverted range.
+            const closest = Math.abs(template.levelRange[0] - partyLevel) <= Math.abs(template.levelRange[1] - partyLevel)
+                ? template.levelRange[0] : template.levelRange[1];
+            return { ...template, levelRange: [closest, closest] };
+        }
+        return { ...template, levelRange: [lo, hi] };
     }
 
     function findMonsterTemplateByName(name) {
@@ -10326,7 +10354,7 @@
             const quadrant = window.game.dungeonMap
                 ? getCurrentWorldQuadrant()
                 : getWorldQuadrantForPos(monster.spawnX, monster.spawnY);
-            const quadrantData = QUADRANTS[quadrant] || QUADRANTS.CORNELIA;
+            const quadrantData = QUADRANTS[quadrant] || QUADRANTS.BRIGHTHOLLOW;
             const partyLevel = window.game.party.getAverageLevel();
             // Reuses the same level-gating logic as the encounter-time fix
             // (levelGateTemplate) - was previously a separate, subtly
@@ -11710,7 +11738,16 @@
             // happens to be wearing in that particular fight.
             this.speciesName = template.name;
             this.sprite = template.sprite;
-            this.level = template.level;
+            // Rolled anywhere within the template's levelRange (see
+            // applyMonsterLevelRanges above) rather than a fixed value, so
+            // encounters within one "tier" actually vary level-to-level
+            // instead of every Goblin you ever meet being exactly level 1.
+            // Bosses (isBoss=true) and anything with no levelRange (should
+            // be none left, but this is a safe fallback) keep the
+            // template's exact authored level.
+            this.level = (template.levelRange && !isBoss)
+                ? (template.levelRange[0] + Math.floor(Math.random() * (template.levelRange[1] - template.levelRange[0] + 1)))
+                : template.level;
             // Combat stats/rewards are level-formula-driven now (see above)
             // rather than read straight off the template - a template
             // authored as isElite gets a flat +50% on top (matching the
@@ -11864,7 +11901,7 @@
     // =====================================================================
 
     const QUADRANTS = {
-        CORNELIA: {
+        BRIGHTHOLLOW: {
             name: 'Brighthollow Region',
             minLevel: 1,
             maxLevel: 13,
@@ -11928,7 +11965,7 @@
                     weaponDrop: { chance: 0.10, item: { name: 'Shadeblade', type: 'weapon', attack: 13, speed: 3, price: 420, bonusVsFamily: { shade: 0.2 }, desc: 'A jagged dagger that drinks ambient shadow. 20% more damage to creatures of shade.' } } }
             ]
         },
-        PRAVOCA: {
+        DUSKMERE: {
             name: 'Duskmere Region',
             minLevel: 13,
             maxLevel: 26,
@@ -11994,7 +12031,7 @@
                     weaponDrop: { chance: 0.09, item: { name: 'Grimward Rod', type: 'weapon', magic: 20, mageOnly: true, price: 700, bonusVsFamily: { undead: 0.18, shade: 0.18 }, desc: 'Carved with warding sigils that flare bright near anything that shouldn\'t still be moving. 18% more damage to undead and shades.' } } }
             ]
         },
-        ELFHEIM: {
+        SYLVARIS: {
             name: 'Sylvaris Region',
             minLevel: 26,
             maxLevel: 39,
@@ -12062,7 +12099,7 @@
                     weaponDrop: { chance: 0.09, item: { name: 'Emberfang Blade', type: 'weapon', attack: 24, magic: 6, element: 'fire', warriorOnly: true, price: 950, bonusVsFamily: { elemental: 0.15 }, desc: 'Tempered in the elemental\'s own dying flame. 15% more damage to elemental creatures.' } } }
             ]
         },
-        CHAOS: {
+        ASHEN_WASTES: {
             name: 'Ashen Wastes',
             minLevel: 39,
             maxLevel: 52,
@@ -12118,6 +12155,34 @@
         }
     };
 
+    /** Per Ray: rather than each "tier" of monster within a region being
+     *  pinned to one exact level (which was leaving hard gaps - a level 3
+     *  party in Brighthollow could only ever meet a level 1 or a level 5
+     *  monster, nothing in between), every regular monster now gets a
+     *  levelRange spanning from its own authored level up through the
+     *  next tier's level in the same region (sharing that boundary, same
+     *  as Ray's own "1 & 5", "5 & 9" spec) - the LAST tier in a region
+     *  (nothing above it to blend into) gets a flat +3 bump instead.
+     *  Monster.level is then rolled ANYWHERE in that range per-instance
+     *  (see the Monster constructor) rather than a fixed value, so a
+     *  Goblin encountered today might be level 2 and tomorrow's level 4 -
+     *  stats/HP/rewards all follow automatically since those were already
+     *  formula-driven off .level, not hardcoded per template. The
+     *  template's own .level is left untouched (still the tier's floor)
+     *  so level-gating/selection logic elsewhere, which compares against
+     *  that value, is completely unaffected by this. */
+    (function applyMonsterLevelRanges() {
+        Object.keys(QUADRANTS).forEach(qKey => {
+            const monsters = QUADRANTS[qKey].monsters;
+            const distinctLevels = [...new Set(monsters.map(m => m.level))].sort((a, b) => a - b);
+            monsters.forEach(m => {
+                const idx = distinctLevels.indexOf(m.level);
+                const next = distinctLevels[idx + 1];
+                m.levelRange = [m.level, next !== undefined ? next : m.level + 3];
+            });
+        });
+    })();
+
     // =====================================================================
     //                         CASTLE BOSSES
     // =====================================================================
@@ -12158,7 +12223,7 @@
     // load time directly off the same authored data the game itself battles
     // against, so the codex can never drift out of sync with real stats.
     const MONSTER_CODEX_LIST = (() => {
-        const regionLabels = { CORNELIA: 'Brighthollow', PRAVOCA: 'Duskmere', ELFHEIM: 'Sylvaris', CHAOS: 'Ashen Wastes' };
+        const regionLabels = { BRIGHTHOLLOW: 'Brighthollow', DUSKMERE: 'Duskmere', SYLVARIS: 'Sylvaris', ASHEN_WASTES: 'Ashen Wastes' };
         const list = [];
         Object.keys(QUADRANTS).forEach(key => {
             QUADRANTS[key].monsters.forEach(m => {
@@ -12662,7 +12727,7 @@
                 }
                 if (tooClose) continue;
                 const quadrant = getWorldQuadrantForPos(x, y);
-                const quadrantData = QUADRANTS[quadrant] || QUADRANTS.CORNELIA;
+                const quadrantData = QUADRANTS[quadrant] || QUADRANTS.BRIGHTHOLLOW;
                 const roll = rng();
                 // Lowered from 0.04/0.22 - same reasoning as the dungeon
                 // version above (see FIELD_MONSTER_ELITE_RESPAWN_* for the
@@ -13537,7 +13602,7 @@
                     quest: { id: 'chaos_lava_beast_hunt', name: 'Lava Beast Hunt', description: 'Defeat 8 lava beasts and collect their cores.', type: 'monster_kill', targetMonster: 'Lava Beast', goal: 8, reward: { gold: 3800, item: 'Magma Shield' } } },
 
                 // =========================================================
-                // STORY NPCs - CORNELIA REGION
+                // STORY NPCs - BRIGHTHOLLOW REGION
                 // "quest_giver" NPCs offer the quest via showNPCPopup like any
                 // other NPC here. "story_target" NPCs have no quest of their
                 // own - they ARE the objective of a find_npc quest someone
@@ -13565,7 +13630,7 @@
                     quest: { id: 'brighthollow_warn_duskmere', name: 'A Warning for Duskmere', description: "Carry word of the Dark Fortress threat to Duskmere.", type: 'visit_locations', targets: ['Duskmere'], goal: 1, reward: { gold: 400, item: 'Potion x3' } } },
 
                 // =========================================================
-                // STORY NPCs - PRAVOCA REGION
+                // STORY NPCs - DUSKMERE REGION
                 // =========================================================
                 { x: 64, y: 258, name: 'Wren', sprite: '🧙‍♀️', type: 'quest_giver',
                     dialogue: ["Master Aldous went to investigate the crypts near the fortress.", "He said he'd be back by nightfall. That was days ago.", "I'm too afraid to go alone. Please, find him."],
@@ -13591,7 +13656,7 @@
                     quest: { id: 'duskmere_warn_sylvaris', name: 'Word to the West', description: 'Carry news west to Sylvaris of the growing threat.', type: 'visit_locations', targets: ['Sylvaris'], goal: 1, reward: { gold: 450, item: 'Potion x3' } } },
 
                 // =========================================================
-                // STORY NPCs - ELFHEIM REGION
+                // STORY NPCs - SYLVARIS REGION
                 // =========================================================
                 { x: 68, y: 66, name: 'Yara', sprite: '😰', type: 'quest_giver',
                     dialogue: ["My son ran off toward the Sand Crypts two days ago.", "Chasing lights he swore were dancing over the dunes.", "Please, bring Kesh home safe."],
@@ -16659,7 +16724,7 @@
             // (like today's world_rare ambush) stays a solo threat.
             if (fieldAnchor) {
                 const quadrant = getCurrentWorldQuadrant();
-                const quadrantData = QUADRANTS[quadrant] || QUADRANTS.CORNELIA;
+                const quadrantData = QUADRANTS[quadrant] || QUADRANTS.BRIGHTHOLLOW;
                 let template = quadrantData.monsters.find(m => m.name === fieldAnchor.speciesName);
                 if (!template) template = quadrantData.monsters[0];
                 // Level-gate right before the fight actually happens (see
@@ -16667,7 +16732,7 @@
                 // has no idea what level the party will be when they
                 // actually walk up to it.
                 template = levelGateTemplate(template, quadrantData.monsters, partyLevel, 3);
-                const anchorMonster = new Monster(template, false);
+                const anchorMonster = new Monster(clampLevelRangeToParty(template, partyLevel, 3), false);
                 if (fieldAnchor.isRare) {
                     anchorMonster.name = `Menacing ${anchorMonster.name.replace(/^Elite /, '')}`;
                     anchorMonster.maxHp = Math.floor(anchorMonster.maxHp * 2.4);
@@ -16700,7 +16765,7 @@
                         // anchor could still drag in a wildly-off-level
                         // extra monster right alongside it.
                         t = levelGateTemplate(t, quadrantData.monsters, partyLevel, 3);
-                        this.monsters.push(new Monster(t, false));
+                        this.monsters.push(new Monster(clampLevelRangeToParty(t, partyLevel, 3), false));
                     }
                 }
                 return;
@@ -16738,7 +16803,7 @@
                 // still gated, so a level 1 party can't roll a quadrant's
                 // max-level rare on their very first steps.
                 template = levelGateTemplate(template, quadrantData.monsters, partyLevel, 5);
-                const monster = new Monster(template, false);
+                const monster = new Monster(clampLevelRangeToParty(template, partyLevel, 5), false);
                 monster.name = `Menacing ${monster.name.replace(/^Elite /, '')}`;
                 monster.maxHp = Math.floor(monster.maxHp * 2.4);
                 monster.currentHp = monster.maxHp;
@@ -16780,7 +16845,7 @@
                 // likely explanation for a level 1 party running into a
                 // level 9 Wild Boar with no field sprite involved.
                 template = levelGateTemplate(template, quadrantData.monsters, partyLevel, 3);
-                const monster = new Monster(template, false);
+                const monster = new Monster(clampLevelRangeToParty(template, partyLevel, 3), false);
                 // Only apply the extra "Elite X" boost to a monster that
                 // ISN'T already pulled from the elite-tagged template pool
                 // above - otherwise an already-strong template (e.g. Elite
@@ -19807,7 +19872,7 @@
                 // the only code that fired this type lived in an unused function nothing
                 // ever calls. This fires on every battle won, and updateQuestProgress
                 // itself filters by dungeon type / elite / region as each quest requires.
-                const questQuadrant = { CORNELIA: 'brighthollow', PRAVOCA: 'duskmere', ELFHEIM: 'sylvaris', CHAOS: 'chaos' }[getCurrentWorldQuadrant()];
+                const questQuadrant = { BRIGHTHOLLOW: 'brighthollow', DUSKMERE: 'duskmere', SYLVARIS: 'sylvaris', ASHEN_WASTES: 'chaos' }[getCurrentWorldQuadrant()];
                 window.game.updateQuestProgress('cave_encounters', 1, null, {
                     location: fightDungeonType, locationName: fightDungeonName, isElite: wasEliteFight, quadrant: questQuadrant
                 });
@@ -22612,7 +22677,7 @@
             this.music = [];
             const startTime = this.context.currentTime;
             if (type === 'overworld') {
-                // One melody per overworld biome (CORNELIA/grass is the
+                // One melody per overworld biome (BRIGHTHOLLOW/grass is the
                 // original default track, kept byte-for-byte so existing
                 // saves/behavior don't shift when no variant is passed).
                 const tracks = {
@@ -23638,7 +23703,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v185]');
+            console.log('Game starting... [build v186]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
@@ -25980,7 +26045,7 @@
             // or the reverse. Anchored to roughly 1.1x an on-level monster
             // kill's worth of gold (see monsterGoldForLevel) per chest.
             const quadrant = getCurrentWorldQuadrant();
-            const quadrantData = QUADRANTS[quadrant] || QUADRANTS.CORNELIA;
+            const quadrantData = QUADRANTS[quadrant] || QUADRANTS.BRIGHTHOLLOW;
             const anchorLevel = (quadrantData.minLevel + quadrantData.maxLevel) / 2;
             const perKillGold = monsterGoldForLevel(anchorLevel);
             const goldFound = Math.round(perKillGold * (0.9 + Math.random() * 0.4) * chest.itemCount);
@@ -26036,7 +26101,7 @@
             // generateDungeonFloor's exitType logic - so there's no floor-
             // depth term needed here the way chests have via itemCount.)
             const quadrant = getCurrentWorldQuadrant();
-            const quadrantData = QUADRANTS[quadrant] || QUADRANTS.CORNELIA;
+            const quadrantData = QUADRANTS[quadrant] || QUADRANTS.BRIGHTHOLLOW;
             const anchorLevel = (quadrantData.minLevel + quadrantData.maxLevel) / 2;
             const goldFound = Math.round(monsterGoldForLevel(anchorLevel) * 6);
             this.party.gold += goldFound;
@@ -31127,7 +31192,7 @@ const LORE_CHAPTERS = [
  */
 const QUEST_DATA = [
     // =============================================================
-    // QUADRANT 1 - CORNELIA REGION (Lower Right)
+    // QUADRANT 1 - BRIGHTHOLLOW REGION (Lower Right)
     // Easy quests for beginners - Level 1-4 monsters
     // =============================================================
     {
@@ -31426,7 +31491,7 @@ const QUEST_DATA = [
                 drops: { material: 'Troll Hide', chance: 0.7, quantity: 1 } 
             },
     // =============================================================
-    // QUADRANT 2 - PRAVOCA REGION (Lower Left)
+    // QUADRANT 2 - DUSKMERE REGION (Lower Left)
     // Medium difficulty - Level 4-8 monsters
     // =============================================================
     {
@@ -31678,7 +31743,7 @@ const QUEST_DATA = [
                 drops: { material: 'Troll Hide', chance: 0.7, quantity: 2 } 
             },
     // =============================================================
-    // QUADRANT 3 - ELFHEIM REGION (Upper Left)
+    // QUADRANT 3 - SYLVARIS REGION (Upper Left)
     // Hard difficulty - Level 7-12 monsters
     // =============================================================
     {
@@ -31916,7 +31981,7 @@ const QUEST_DATA = [
     },
 
     // =============================================================
-    // QUADRANT 4 - CHAOS REGION (Upper Right)
+    // QUADRANT 4 - ASHEN_WASTES REGION (Upper Right)
     // Very Hard - Level 12-20 monsters
     // =============================================================
     {
@@ -32208,7 +32273,7 @@ const QUEST_DATA = [
     },
 
     // =============================================================
-    // STORY QUESTS - CORNELIA REGION
+    // STORY QUESTS - BRIGHTHOLLOW REGION
     // Narrative quests given by townsfolk (met just outside the town
     // gate) and King Aldric himself, rather than material turn-ins.
     // Two new quest mechanics power these: "find_npc" (walk up to and
@@ -32306,7 +32371,7 @@ const QUEST_DATA = [
     },
 
     // =============================================================
-    // STORY QUESTS - PRAVOCA REGION
+    // STORY QUESTS - DUSKMERE REGION
     // =============================================================
     {
         id: 'duskmere_missing_master',
@@ -32415,7 +32480,7 @@ const QUEST_DATA = [
     },
 
     // =============================================================
-    // STORY QUESTS - ELFHEIM REGION
+    // STORY QUESTS - SYLVARIS REGION
     // =============================================================
     {
         id: 'sylvaris_traders_son',
@@ -33600,7 +33665,7 @@ const QUEST_DATA = [
         return s;
     }
 
-    /** Single volcano cone with a glowing crater, used as the CHAOS far layer. */
+    /** Single volcano cone with a glowing crater, used as the ASHEN_WASTES far layer. */
     function svgVolcano(width, baseY, color, glow) {
         const cx = width * 0.5;
         const peakY = baseY - width * 0.19;
@@ -33692,14 +33757,14 @@ const QUEST_DATA = [
      *  four map quadrants they're standing in - shared by monster generation
      *  and the battle background picker so both agree on "where we are". */
     function getWorldQuadrantForPos(px, py) {
-        if (px >= 200 && px <= 400 && py >= 200 && py <= 400) return 'CORNELIA';
-        if (px >= 0 && px <= 200 && py >= 200 && py <= 400) return 'PRAVOCA';
-        if (px >= 0 && px <= 200 && py >= 0 && py <= 200) return 'ELFHEIM';
-        if (px >= 200 && px <= 400 && py >= 0 && py <= 200) return 'CHAOS';
-        return 'CORNELIA';
+        if (px >= 200 && px <= 400 && py >= 200 && py <= 400) return 'BRIGHTHOLLOW';
+        if (px >= 0 && px <= 200 && py >= 200 && py <= 400) return 'DUSKMERE';
+        if (px >= 0 && px <= 200 && py >= 0 && py <= 200) return 'SYLVARIS';
+        if (px >= 200 && px <= 400 && py >= 0 && py <= 200) return 'ASHEN_WASTES';
+        return 'BRIGHTHOLLOW';
     }
 
-    function getCurrentWorldQuadrant() {        let quadrant = 'CORNELIA';
+    function getCurrentWorldQuadrant() {        let quadrant = 'BRIGHTHOLLOW';
         if (window.game && window.game.world) {
             quadrant = getWorldQuadrantForPos(window.game.world.playerX, window.game.world.playerY);
         }
@@ -33864,12 +33929,12 @@ const QUEST_DATA = [
         }
         const quadrant = getCurrentWorldQuadrant();
         const biomeMap = {
-            CORNELIA: { scene: 'grass', particle: 'stars' },
-            PRAVOCA: { scene: 'swamp', particle: 'mist' },
-            ELFHEIM: { scene: 'desert', particle: 'dust' },
-            CHAOS: { scene: 'volcanic', particle: 'embers' }
+            BRIGHTHOLLOW: { scene: 'grass', particle: 'stars' },
+            DUSKMERE: { scene: 'swamp', particle: 'mist' },
+            SYLVARIS: { scene: 'desert', particle: 'dust' },
+            ASHEN_WASTES: { scene: 'volcanic', particle: 'embers' }
         };
-        return biomeMap[quadrant] || biomeMap.CORNELIA;
+        return biomeMap[quadrant] || biomeMap.BRIGHTHOLLOW;
     }
 
     /** Swaps the battle stage's background scene, silhouette backdrop, and
