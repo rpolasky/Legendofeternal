@@ -5783,7 +5783,7 @@
          present. Small and unobtrusive on purpose (bottom-left corner,
          low-contrast); not meant to be a UI feature, just a debugging aid.
          Keep this in sync with CACHE_VERSION in sw.js on every release. -->
-    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v186</div>
+    <div id="build-version-tag" style="position:fixed; bottom:2px; left:4px; z-index:99999; font-size:9px; color:rgba(255,255,255,0.35); pointer-events:none; font-family:monospace;">v188</div>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <p>Please rotate your device to landscape<br>for the best experience.</p>
@@ -9342,6 +9342,35 @@
     // Small wooden signpost, drawn procedurally (post + placard) so any shop
     // icon can sit on it at a small readable size instead of floating as a
     // giant emoji over the building art.
+    /** Small pulsing "!" badge for town buildings whose one-time mentor
+     *  tip hasn't fired yet (v187) - the DOM-based updateNewBadge()/
+     *  markBadgeSeen() system used for the Echoes tab and Spell Weave's
+     *  Combo Guide button only works for menu-screen buttons; Gem Crafter
+     *  and Merchant are physical town buildings on the canvas map, so this
+     *  is the canvas equivalent - same "point the player at an unseen
+     *  feature" purpose, different rendering surface. */
+    function drawBuildingNudgeBadge(ctx, cx, topY, ts, time) {
+        const r = ts * 0.16;
+        const bob = Math.sin(time * 3) * 2;
+        const y = topY - r - 4 + bob;
+        ctx.save();
+        ctx.shadowColor = '#ffd700';
+        ctx.shadowBlur = 8;
+        ctx.fillStyle = '#ff3b3b';
+        ctx.beginPath();
+        ctx.arc(cx, y, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = `bold ${Math.floor(r * 1.3)}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('!', cx, y + 1);
+        ctx.restore();
+    }
+
     function drawShopSignpost(ctx, cx, groundY, ts, icon) {
         // Doubled from the original size per request ("hard to read") - post,
         // placard, and icon font are all 2x, with a heavier placard border
@@ -14939,6 +14968,15 @@
                 const signCol = Math.floor(b.w / 2) + (b.w >= 5 ? 2 : 1);
                 const signX = bx + Math.min(signCol, b.w - 1) * ts + ts / 2;
                 drawShopSignpost(ctx, signX, by + bh, ts, b.icon);
+                if (window.game && window.game.party) {
+                    const plTopY = by + bh - ts * 1.0 - ts * 0.78 * 0.5;
+                    const hasGems = window.game.party.gems && window.game.party.gems.length > 0;
+                    if (b.action === 'gemcrafter' && !window.game.gemIntroSeen && hasGems) {
+                        drawBuildingNudgeBadge(ctx, signX, plTopY, ts, time);
+                    } else if (b.action === 'merchant' && !window.game.merchantIntroSeen) {
+                        drawBuildingNudgeBadge(ctx, signX, plTopY, ts, time);
+                    }
+                }
                 // Fence line tracing the building's footprint (bottom + sides), using
                 // the real fence post art - matching the reference town art's every-
                 // house-has-a-fence look, with pieces at full tile width so they
@@ -16702,14 +16740,32 @@
             } else if (ambushType === 'surprise') {
                 this.log('⚠️ Ambushed! They get the first move.');
             }
-            
-            if (ambushType === 'surprise') {
-                // Skip the heroes' first turn entirely and let the enemies
-                // swing first - enemyPhase() handles clearing pendingAmbush
-                // and the eventual hand-back to nextTurn() itself.
-                this.enemyPhase();
+
+            const beginFirstTurn = () => {
+                if (ambushType === 'surprise') {
+                    // Skip the heroes' first turn entirely and let the enemies
+                    // swing first - enemyPhase() handles clearing pendingAmbush
+                    // and the eventual hand-back to nextTurn() itself.
+                    this.enemyPhase();
+                } else {
+                    this.nextTurn();
+                }
+            };
+            // v187 - the very first battle a save ever enters. Deferring the
+            // actual first turn until AFTER this closes (rather than just
+            // relying on the dialogue's own pause) means there's no window
+            // at all where turn logic could kick off underneath it.
+            if (window.game && !window.game.firstBattleIntroSeen && !window.game.firstBattleIntroShowing) {
+                window.game.firstBattleIntroSeen = true;
+                window.game.firstBattleIntroShowing = true;
+                setTimeout(() => {
+                    window.game.showFirstBattleMentorIntro(() => {
+                        window.game.firstBattleIntroShowing = false;
+                        beginFirstTurn();
+                    });
+                }, 400);
             } else {
-                this.nextTurn();
+                beginFirstTurn();
             }
             return true;
         }
@@ -18928,6 +18984,16 @@
             }
             const processTurn = () => {
                 if (!this.autoBattle || !this.active) return;
+                if (window.game && window.game.state && window.game.state.isPaused) {
+                    // A mentor scene (or anything else that pauses the
+                    // game) is showing - wait it out rather than executing
+                    // a turn underneath it. This was the exact bug Ray hit:
+                    // a Limit Break tutorial popping up mid-auto-battle
+                    // didn't stop the fight at all, so the battle had
+                    // already ended by the time the narration finished.
+                    this.autoBattleInterval = setTimeout(processTurn, 300);
+                    return;
+                }
                 if (this.checkBattleEnd()) return;
                 const hero = this.party.heroes[this.selectedHeroIndex];
                 if (hero && !hero.isDead) {
@@ -23615,6 +23681,13 @@
             // never repeats for a given save.
             this.dualTechIntroSeen = false;
             this.dualTechIntroShowing = false;
+            // v187: the very first battle a save ever enters, before any of
+            // the other mentor scenes - none of them ever actually taught
+            // the base Attack/Magic/Item/Defend loop, targeting, or
+            // elemental weaknesses. Fires from startEncounter() the first
+            // time it's ever called for a given save.
+            this.firstBattleIntroSeen = false;
+            this.firstBattleIntroShowing = false;
             // Same one-time-mentor-scene pattern as Dual Tech above, reused
             // for the rest of the New Player Onboarding pass (see design
             // doc): Limit Break fires the first time any hero's gauge is
@@ -23703,7 +23776,7 @@
         }
 
         start() {
-            console.log('Game starting... [build v186]');
+            console.log('Game starting... [build v188]');
             sRandom = mulberry32(SEED);
             this.world = new WorldMap(400, 400);
             this.world.playerX = 360;
@@ -24047,12 +24120,13 @@
          *  feature. Useful for testing, and for a player who wants to
          *  revisit the tips (or was skipping them too fast to read). */
         confirmReplayTutorials() {
-            this.ui.showPopup('Replay Tutorials?', 'This will make every one-time mentor tip (Limit Break, Dual Tech, Echoes, Gems, Merchant, Spell Weaving, Milo\'s Charm) play again the next time it comes up in this save.<br><br>' +
+            this.ui.showPopup('Replay Tutorials?', 'This will make every one-time mentor tip (First Battle, Limit Break, Dual Tech, Echoes, Gems, Merchant, Spell Weaving, Milo\'s Charm) play again the next time it comes up in this save.<br><br>' +
                 '<button class="menu-button" onclick="window.game.resetTutorialFlags()" style="width:100%; margin-top:10px;">Yes, Replay Them</button>' +
                 '<button class="menu-button" onclick="window.game.ui.closePopup()" style="width:100%; margin-top:6px; background:#555;">Cancel</button>', true);
         }
 
         resetTutorialFlags() {
+            this.firstBattleIntroSeen = false;
             this.limitBreakIntroSeen = false;
             this.dualTechIntroSeen = false;
             this.echoIntroSeen = false;
@@ -25402,6 +25476,25 @@
         /** New Player Onboarding, Layer 1 - fires once, the first time the
          *  player actually enters the Merchant shop screen (see
          *  _openMerchantShop()). */
+        /** v187 - the very first battle a save ever sees. None of the other
+         *  mentor scenes ever actually cover the base battle loop itself
+         *  (Attack/Magic/Item/Defend, targeting, elemental weakness), so
+         *  this is the one that does - see startEncounter() for the
+         *  trigger. */
+        showFirstBattleMentorIntro(onEnd) {
+            const lines = [
+                { speaker: 'Master Aldous', portraitKey: 'wizard', side: 'left',
+                    text: "Ah - your first real fight. Let's make sure you know the basics before steel meets scale." },
+                { speaker: 'Master Aldous', portraitKey: 'wizard', side: 'left',
+                    text: "Attack, Magic, Item, or Defend - choose an action for whichever hero is highlighted, then a target if one's needed. Speed decides who acts first each round." },
+                { speaker: 'Master Aldous', portraitKey: 'wizard', side: 'left',
+                    text: "Watch for elemental weaknesses - striking a foe's weak element hits harder, and the battle log will tell you the moment it lands." },
+                { speaker: 'Master Aldous', portraitKey: 'wizard', side: 'left',
+                    text: "Take your time, or tap Auto Battle and let your heroes handle it themselves. Either way - good luck out there." }
+            ];
+            this.dialogue.start({ background: 'wizard_tower', lines, onEnd: onEnd || null });
+        }
+
         showMerchantMentorIntro(onEnd) {
             const lines = [
                 { speaker: 'Master Aldous', portraitKey: 'wizard', side: 'left',
@@ -29787,6 +29880,7 @@
                     ? this.world.liveMonsters.map(m => !!m.alive)
                     : [],
                 dualTechIntroSeen: !!this.dualTechIntroSeen,
+                firstBattleIntroSeen: !!this.firstBattleIntroSeen,
                 limitBreakIntroSeen: !!this.limitBreakIntroSeen,
                 echoIntroSeen: !!this.echoIntroSeen,
                 gemIntroSeen: !!this.gemIntroSeen,
@@ -30007,6 +30101,7 @@
                     });
                 }
                 this.dualTechIntroSeen = !!saveData.dualTechIntroSeen;
+                this.firstBattleIntroSeen = !!saveData.firstBattleIntroSeen;
                 // Same undefined-defaults-to-false behavior as above, which
                 // is exactly what we want: saves from before this feature
                 // existed correctly read as "not seen yet" rather than
